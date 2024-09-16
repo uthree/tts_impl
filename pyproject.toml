@@ -1,5 +1,5 @@
 [project]
-name = "tts_impl"
+name = "tts-impl"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
@@ -11,5 +11,4 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
 pythonpath = ["src"]

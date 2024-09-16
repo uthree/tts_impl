@@ -1,7 +1,8 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from src.net.vocoder.hifigan import HifiganGeneratorV1
+
+from src.tts_impl.net.vocoder.hifigan import HifiganGeneratorV1
 
 def test_hifigan_generator():
     G = HifiganGeneratorV1()
