@@ -2,7 +2,8 @@
 implementation of TTS models in PyTorch  
 TTSモデルのPyTorch実装集　なるべく依存関係を減らす
 pytorch lightningを使って学習できるようにする。これにより簡単に複数GPUを利用でき、TensorBoardでの進捗監視ができる。  
-モデル構造がほぼ同じなので、VITS派生のVCもついでに実装。
+モデル構造がほぼ同じなので、VITS派生の(S)VCもついでに実装。
+
 
 ## テスト
 `pytest` でテストを実行できる。
@@ -19,7 +20,7 @@ pytorch lightningを使って学習できるようにする。これにより簡
     - 共通のインターフェイスを多くのボコーダーに実装すれば可能そう。
     - ボコーダーに関してはDiscriminatorを差し替えたりなど
 - また、TTSのText Encoderに言語モデルの特徴量を入力する機構をつけたい。
-- Onnxエクスポート
+- Onnxエクスポート: Python, PyTorchがない環境で推論できるようにしたい。
 - モデルアーキテクチャを指定して、データセットを準備すれば前処理から学習まですべてできる
 ようにしたい。
 
