@@ -6,7 +6,8 @@ import torch.nn.functional as F
 
 from .utils import get_padding
 
-from torch.nn.utils.parametrizations import weight_norm, spectral_norm
+from torch.nn.utils.parametrizations import weight_norm
+from torch.nn.utils import spectral_norm
 
 from typing import List, Tuple
 
@@ -44,7 +45,7 @@ class PeriodDiscriminator(nn.Module):
                 )
             )
             c = c_n
-        self.post = nn.Conv2d(c, 1, (3, 1), 1, (1, 0))
+        self.conv_post = norm_f(nn.Conv2d(c, 1, (3, 1), 1, (1, 0)))
 
     
     def forward(self, x: torch.Tensor) -> Tuple[torch.Tensor, List[torch.Tensor]]:
@@ -69,7 +70,7 @@ class PeriodDiscriminator(nn.Module):
             x = l(x)
             x = F.leaky_relu(x, LRELU_SLOPE)
             fmap.append(x)
-        x = self.post(x)
+        x = self.conv_post(x)
         fmap.append(x)
         x = torch.flatten(x, 1, -1)
 
@@ -88,7 +89,7 @@ class ScaleDiscriminator(nn.Module):
         else:
             self.pool = nn.AvgPool1d(scale*2, scale, scale)
 
-        norm_f = weight_norm if use_spectral_norm == False else spectral_norm
+        norm_f = weight_norm if use_spectral_norm == False else nn.utils.spectral_norm
         self.convs = nn.ModuleList([
             norm_f(nn.Conv1d(1, 128, 15, 1, padding=7)),
             norm_f(nn.Conv1d(128, 128, 41, 2, groups=4, padding=20)),
@@ -98,7 +99,7 @@ class ScaleDiscriminator(nn.Module):
             norm_f(nn.Conv1d(1024, 1024, 41, 1, groups=16, padding=20)),
             norm_f(nn.Conv1d(1024, 1024, 5, 1, padding=2)),
         ])
-        self.post = norm_f(nn.Conv1d(1024, 1, 3, 1, padding=1))
+        self.conv_post = norm_f(nn.Conv1d(1024, 1, 3, 1, padding=1))
 
     
     def forward(self, x: torch.Tensor) -> Tuple[torch.Tensor, List[torch.Tensor]]:
@@ -119,14 +120,14 @@ class CombinedDiscriminator(nn.Module):
     '''
     Combined multiple discriminators.
     '''
-    def __init__(self, sub_discriminators=[]):
+    def __init__(self, discriminators=[]):
         super().__init__()
-        self.sub_discriminators = nn.ModuleList(sub_discriminators)
+        self.discriminators = nn.ModuleList(discriminators)
 
     def forward(self, x: torch.Tensor) -> Tuple[List[torch.Tensor], List[torch.Tensor]]:
         fmap = []
         logits = []
-        for sd in self.sub_discriminators:
+        for sd in self.discriminators:
             l, f = sd(x)
             if type(l) is list:
                 logits += l
@@ -149,17 +150,17 @@ class MultiPeriodDiscriminator(CombinedDiscriminator):
             num_layers: int = 4,
     ):
         super().__init__()
-        self.sub_discriminators = nn.ModuleList()
+        self.discriminators = nn.ModuleList()
         for p in periods:
-            self.sub_discriminators.append(PeriodDiscriminator(p, kernel_size, stride, use_spectral_norm, channels, channels_max, channels_mul, num_layers))
+            self.discriminators.append(PeriodDiscriminator(p, kernel_size, stride, use_spectral_norm, channels, channels_max, channels_mul, num_layers))
 
 
 class MultiScaleDiscriminator(CombinedDiscriminator):
     def __init__(
             self,
-            scales=[1, 2, 4]        
+            scales=[1, 2, 2]        
     ):
         super().__init__()
-        self.sub_discriminators = nn.ModuleList()
+        self.discriminators = nn.ModuleList()
         for i, s in enumerate(scales):
-            self.sub_discriminators.append(ScaleDiscriminator(s, i==0))
+            self.discriminators.append(ScaleDiscriminator(s, i==0))

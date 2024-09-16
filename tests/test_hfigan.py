@@ -2,10 +2,10 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from tts_impl.net.vocoder.hifigan import HifiganGeneratorV1, HifiganDiscriminator
+from tts_impl.net.vocoder.hifigan import HifiganGenerator, HifiganDiscriminator
 
 def test_hifigan_generator():
-    G = HifiganGeneratorV1()
+    G = HifiganGenerator()
     mel = torch.randn(2, 80, 100)
     wf = G(mel)
     assert wf.shape == torch.Size((2, 1, 25600))

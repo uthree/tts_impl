@@ -13,3 +13,4 @@ hydra-core
 pytest
 mypy
 numba
+wget
