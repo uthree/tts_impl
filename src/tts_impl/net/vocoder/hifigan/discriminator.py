@@ -4,7 +4,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from utils import get_padding
+from .utils import get_padding
 
 from torch.nn.utils.parametrizations import weight_norm, spectral_norm
 
@@ -36,13 +36,14 @@ class PeriodDiscriminator(nn.Module):
         )
         c = channels
         for _ in range(num_layers):
+            c_n = c * channels_mul
+            c_n = min(c_n, channels_max)
             self.convs.append(
                 norm_f(
-                    nn.Conv2d(c, c * channels_mul, (kernel_size, 1), (stride, 1), get_padding(kernel_size, 1))
+                    nn.Conv2d(c, c_n, (kernel_size, 1), (stride, 1), get_padding(kernel_size, 1))
                 )
             )
-            c = c * channels_mul
-            c = min(c, channels_max)
+            c = c_n
         self.post = nn.Conv2d(c, 1, (3, 1), 1, (1, 0))
 
     
@@ -118,7 +119,7 @@ class CombinedDiscriminator(nn.Module):
     '''
     Combined multiple discriminators.
     '''
-    def __init__(self, sub_discriminators):
+    def __init__(self, sub_discriminators=[]):
         super().__init__()
         self.sub_discriminators = nn.ModuleList(sub_discriminators)
 

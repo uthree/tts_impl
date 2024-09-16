@@ -5,7 +5,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from torch.nn.utils.parametrizations import weight_norm
-from utils import get_padding
+from .utils import get_padding
 
 
 def init_weights(m, mean=0.0, std=0.01):
