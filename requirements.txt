@@ -11,3 +11,5 @@ safetensors
 alias-free-torch
 hydra-core
 pytest
+mypy
+numba
