@@ -1,4 +1,6 @@
 # tts_impl (仮)
+**わーくいんぷろぐれす**
+
 implementation of TTS models in PyTorch  
 TTSモデルのPyTorch実装集　なるべく依存関係を減らす
 pytorch lightningを使って学習できるようにする。これにより簡単に複数GPUを利用でき、TensorBoardでの進捗監視ができる。  
