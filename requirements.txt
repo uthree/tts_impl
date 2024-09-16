@@ -1,0 +1,13 @@
+torch
+torchaudio
+numpy
+gradio
+pyworld
+torchfcpe
+lightning
+tensorboard
+tqdm
+safetensors
+alias-free-torch
+hydra-core
+pytest
