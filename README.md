@@ -33,44 +33,15 @@ pytorch lightningを使って学習できるようにする。これにより簡
 
 Vocoder / Codec:
 - HiFi-GAN ✅
-- NSF-HiFi-GAN
-- SiFi-GAN
-- BigVGAN
-- UnivNet
-- DDSP(combtooth, sinusoidal)
-- SAN Discriminators
-- MRSD, CQT Discriminator
-- WaveGrad
 
 TTS: text to speech
 - VITS
 - JETS
 - FastSpeech2
-- Glow-TTS
-- Tacotoron
-- Diffusion, ODE系
-
-SVS: Singing Voice Synthesis
-- VISinger / VISinger 2
-
-VC: Voice Conversion
-- So-VITS-SVC
-- RVC
-- DDSP-SVC
-- Cyclone
-
-PE: Pitch Estimation
-- CREPE
-- RMVPE
-- FCPE
 
 grapheme to phoneme frontend: 
 - pyopenjtalk-plus
 - phonemizers
 
 language model frontend:
-- BERT / RoBERTa, w/Tokenizer
-
-Evaluation:
-- SpeechMOS
-- UTMOS
+- BERT / RoBERTa

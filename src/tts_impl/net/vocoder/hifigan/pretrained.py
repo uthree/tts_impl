@@ -41,6 +41,9 @@ def load_config_from_official_format(config_path: Path) -> HifiganConfig:
 
 
 def load_discriminator_from_official_format(discriminator_path: Path, config_path: Path) -> CombinedDiscriminator:
+    '''
+    load discriminator pretrained parameters from official implementation's (https://github.com/jik876/hifi-gan)
+    '''
     with open(config_path) as f:
         config = json.load(f)
     discriminator_dict = torch.load(discriminator_path, map_location='cpu')
