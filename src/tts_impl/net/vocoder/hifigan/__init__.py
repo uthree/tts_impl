@@ -2,4 +2,3 @@
 
 from .generator import HifiganGenerator
 from .discriminator import CombinedDiscriminator, MultiPeriodDiscriminator, MultiScaleDiscriminator
-from .pretrained import from_pretrained

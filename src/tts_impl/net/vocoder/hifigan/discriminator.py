@@ -108,7 +108,7 @@ class ScaleDiscriminator(nn.Module):
             x = l(x)
             x = F.leaky_relu(x, LRELU_SLOPE)
             fmap.append(x)
-        x = self.post(x)
+        x = self.conv_post(x)
         fmap.append(x)
         x = torch.flatten(x, 1, -1)
 

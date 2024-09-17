@@ -3,42 +3,6 @@ import torch
 from pathlib import Path
 from .generator import HifiganGenerator
 from .discriminator import CombinedDiscriminator, MultiPeriodDiscriminator, MultiScaleDiscriminator
-from .config import HifiganConfig, HifiganMelConfig, HifiganTrainConfig, HifiganGeneratorConfig, HifiganDiscriminatorConfig
-
-
-def load_config_from_official_format(config_path: Path) -> HifiganConfig:
-    '''
-    load config.json from official implementation's format (https://github.com/jik876/hifi-gan)
-    '''
-    with open(config_path) as f:
-        config_dict = json.load(f)
-    
-    gen_config = HifiganGeneratorConfig(
-        config_dict['num_mels'],
-        config_dict['upsample_rates'],
-        config_dict['upsample_kernel_sizes'],
-        config_dict['upsample_initial_channel'],
-        config_dict['resblock'],
-        config_dict['resblock_kernel_sizes'],
-        config_dict['resblock_dilations'],
-        1,
-    )
-
-    dis_config = HifiganDiscriminatorConfig()
-
-    mel_config = HifiganMelConfig(
-        config_dict['segment_size'],
-        config_dict['num_mels'],
-        config_dict['n_fft'],
-        config_dict['hop_size'],
-        config_dict['sample_rate']
-    )
-
-    train_config = HifiganTrainConfig()
-
-    config = HifiganConfig(mel_config, train_config, dis_config, gen_config)
-    return config
-
 
 def load_discriminator_from_official_format(discriminator_path: Path, config_path: Path) -> CombinedDiscriminator:
     '''
