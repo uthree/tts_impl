@@ -16,6 +16,7 @@ pytorch lightningを使って学習できるようにする。これにより簡
         - `hifigan/`: HiFi-GANの実装。
 
 ## TODO List
+- 学習処理
 - pipでのインストール、何らかのプロジェクトへこのリポジトリを組み込んでの運用
 - モジュラー設計
     - end-to-endなTTSなど、ボコーダー部分を任意に差し替えることができる機構を備えたい
@@ -29,19 +30,21 @@ pytorch lightningを使って学習できるようにする。これにより簡
 
 
 ### モデル一覧
-"✅" がついているものは実装済み。
+✅ : 実装済み
+🚧 : 実装着手中 
+❓ : 計画・構想中
 
 Vocoder / Codec:
 - HiFi-GAN ✅
 
 TTS: text to speech
-- VITS
-- JETS
-- FastSpeech2
+- VITS ❓
+- JETS 🚧
+- FastSpeech2 🚧
 
 grapheme to phoneme frontend: 
-- pyopenjtalk-plus
-- phonemizers
+- pyopenjtalk-plus ❓
+- phonemizers ❓
 
 language model frontend:
-- BERT / RoBERTa
+- BERT / RoBERTa ❓
