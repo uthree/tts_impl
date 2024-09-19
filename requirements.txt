@@ -13,4 +13,6 @@ hydra-core
 pytest
 mypy
 numba
-wget
+cython
+pyopenjtalk-plus
+phonemizer

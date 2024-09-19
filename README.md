@@ -34,17 +34,27 @@ pytorch lightningを使って学習できるようにする。これにより簡
 🚧 : 実装着手中 
 ❓ : 計画・構想中
 
-Vocoder / Codec:
+Vocoder:
 - HiFi-GAN ✅
+- HiFi-GAN Variants(NSF, Harmonic, SiFi-GAN, EVA-GAN) ❓
+- more discriminators(CQT, MRSD) ❓
+- BigVGAN ❓
+- DDSP❓
 
 TTS: text to speech
-- VITS ❓
-- JETS 🚧
-- FastSpeech2 🚧
+- via mel spectrogram
+    - FastSpeech2 🚧
+- end-to-end
+    - VITS ❓
+    - JETS 🚧
 
-grapheme to phoneme frontend: 
-- pyopenjtalk-plus ❓
-- phonemizers ❓
-
-language model frontend:
-- BERT / RoBERTa ❓
+linguistic frontend
+- g2p:
+    - pyopenjtalk-plus ❓
+    - phonemizers ❓
+- alignment:
+    - on-tye-fly alignment(monotonic-alignment-search, forward-sum, etc.) 🚧
+    - Montreal Forced Aligner
+- feature adapter
+    - BERT / RoBERTa ❓
+    - predict accent classic (e.g. dictionary) method ❓

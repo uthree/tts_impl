@@ -5,7 +5,6 @@ from .generator import HifiganGenerator
 from .discriminator import CombinedDiscriminator, MultiPeriodDiscriminator, MultiScaleDiscriminator
 
 
-
 def load_discriminator_from_official_format(discriminator_path: Path, config_path: Path) -> CombinedDiscriminator:
     '''
     load discriminator pretrained parameters from official implementation's (https://github.com/jik876/hifi-gan)

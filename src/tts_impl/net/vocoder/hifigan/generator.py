@@ -8,6 +8,9 @@ from torch.nn.utils.parametrizations import weight_norm
 from .utils import get_padding
 
 
+LRELU_SLOPE = 0.1
+
+
 def init_weights(m, mean=0.0, std=0.01):
     classname = m.__class__.__name__
     if classname.find("Conv") != -1:
@@ -25,9 +28,9 @@ class ResBlock1(nn.Module):
 
     def forward(self, x):
         for c1, c2 in zip(self.convs1, self.convs2):
-            xt = F.leaky_relu(x, 0.1)
+            xt = F.leaky_relu(x, LRELU_SLOPE)
             xt = c1(xt)
-            xt = F.leaky_relu(xt, 0.1)
+            xt = F.leaky_relu(xt, LRELU_SLOPE)
             xt = c2(xt)
             x = x + xt
         return x
@@ -42,7 +45,7 @@ class ResBlock2(nn.Module):
 
     def forward(self, x):
         for c1 in self.convs1:
-            xt = F.leaky_relu(x, 0.1)
+            xt = F.leaky_relu(x, LRELU_SLOPE)
             xt = c1(xt)
             x = x + xt
         return x
