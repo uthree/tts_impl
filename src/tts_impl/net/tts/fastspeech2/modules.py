@@ -33,26 +33,53 @@ class VariancePredictor(nn.Module):
         num_layers=1,
         kernel_size=3,
         dropout_rate=0.1,
-        output_channels=1
     ):
         super().__init__()
-        self.output_channels = output_channels
         self.layers = nn.ModuleList()
         self.layers.append(ConvReluNorm(input_channels, internal_channels, kernel_size, dropout_rate))
         for _ in range(num_layers):
             self.layers.append(ConvReluNorm(internal_channels, internal_channels, kernel_size, dropout_rate))
-        self.layers.append(nn.Conv1d(internal_channels, output_channels, 1))
+        self.layers.append(nn.Conv1d(internal_channels, 1, 1))
 
     def forward(self, x, x_mask):
         x = x * x_mask
         for layer in self.layers:
             x = layer(x) * x_mask
         return x
+
+
+def convert_pad_shape(pad_shape):
+    l = pad_shape[::-1]
+    pad_shape = [item for sublist in l for item in sublist]
+    return pad_shape
+
+
+def sequence_mask(length, max_length=None):
+    if max_length is None:
+        max_length = length.max()
+    x = torch.arange(max_length, dtype=length.dtype, device=length.device)
+    return x.unsqueeze(0) < length.unsqueeze(1)
+
+
+def generate_path(duration: torch.Tensor, mask: torch.Tensor) -> torch.Tensor:
+    """
+    duration: [b, 1, t_x]
+    mask: [b, 1, t_y, t_x]
+    """
+    b, _, t_y, t_x = mask.shape
+    cum_duration = torch.cumsum(duration, -1)
+
+    cum_duration_flat = cum_duration.view(b * t_x)
+    path = sequence_mask(cum_duration_flat, t_y).to(mask.dtype)
+    path = path.view(b, t_x, t_y)
+    path = path - F.pad(path, convert_pad_shape([[0, 0], [1, 0], [0, 0]]))[:, :-1]
+    path = path.unsqueeze(1).transpose(2,3) * mask
+    return path
     
 
 class ScaledDotProductAttention(nn.Module):
-    """ Scaled Dot-Product Attention """
 
+    """ Scaled Dot-Product Attention """
     def __init__(self, temperature):
         super().__init__()
         self.temperature = temperature
@@ -73,8 +100,8 @@ class ScaledDotProductAttention(nn.Module):
     
 
 class MultiHeadAttention(nn.Module):
-    """ Multi-Head Attention module """
 
+    """ Multi-Head Attention module """
     def __init__(self, n_head, d_model, d_k=None, d_v=None, dropout=0.1):
         super().__init__()
         if d_k is None:
@@ -208,3 +235,39 @@ class PositionalEncoding(nn.Module):
     def forward(self, x):
         x = x + (self.pe[:, :x.shape[1], :]).detach()
         return
+    
+
+class VarianceAdapter(nn.Module):
+    def __init__(
+        self,
+        d_model=256,
+        channels=256,
+        num_layers=1,
+        kernel_size=3,
+    ):
+        super().__init__()
+        self.duration_predictor = VarianceAdapter(d_model, channels, num_layers, kernel_size)
+        self.pitch_predictor = VarianceAdapter(d_model, channels, num_layers, kernel_size)
+        self.energy_predictor = VarianceAdapter(d_model, channels, num_layers, kernel_size)
+
+        self.pitch_embedding = nn.Conv1d(1, d_model, 1)
+        self.energy_embedding = nn.Conv1d(1, d_model, 1)
+    
+    def forward(self, x, x_mask, duration, pitch, energy):
+        predicted_duration = self.duration_predictor(x, x_mask)
+
+        attn = generate_path(duration, x_mask)
+        x = torch.matmul(attn.squeeze(1), x.transpose(1, 2)).transpose(1, 2)
+
+        x_mask = x_mask.transpose(1, 2)
+
+        predicted_pitch = self.pitch_predictor(x, x_mask)
+        predicted_energy = self.energy_predictor(x, x_mask)
+        
+        x = x + self.pitch_embedding(pitch) + self.energy_embedding(energy)
+        
+        return x, predicted_duration, predicted_pitch, predicted_energy
+    
+
+    def infer(self, x, x_mask, pitch=None, energy=None):
+        pass
