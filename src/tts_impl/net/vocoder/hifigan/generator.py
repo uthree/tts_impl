@@ -7,6 +7,10 @@ import torch.nn.functional as F
 from torch.nn.utils.parametrizations import weight_norm
 from .utils import get_padding
 
+from typing import Optional, List
+
+from tts_impl.net.vocoder.base import GanVocoderGenerator
+
 
 LRELU_SLOPE = 0.1
 
@@ -18,7 +22,7 @@ def init_weights(m, mean=0.0, std=0.01):
 
 
 class ResBlock1(nn.Module):
-    def __init__(self, channels, kernel_size=3, dilations=[1, 3, 5]):
+    def __init__(self, channels:int, kernel_size: int = 3, dilations: List[int] = [1, 3, 5]):
         super().__init__()
         self.convs1 = nn.ModuleList()
         self.convs2 = nn.ModuleList()
@@ -37,7 +41,7 @@ class ResBlock1(nn.Module):
     
 
 class ResBlock2(nn.Module):
-    def __init__(self, channels, kernel_size=3, dilations=[1, 3]):
+    def __init__(self, channels: int, kernel_size: int = 3, dilations: List[int] = [1, 3]):
         super().__init__()
         self.convs1 = nn.ModuleList()
         for d in dilations:
@@ -51,17 +55,18 @@ class ResBlock2(nn.Module):
         return x
     
 
-class HifiganGenerator(nn.Module):
+class HifiganGenerator(GanVocoderGenerator):
     def __init__(
             self,
-            input_channels=80,
-            upsample_initial_channels=512,
-            resblock_type="1",
-            resblock_kernel_sizes=[3, 7, 11],
-            resblock_dilations=[[1, 3, 5], [1, 3, 5], [1, 3, 5]],
-            upsample_kernel_sizes=[16, 16, 4, 4],
-            upsample_rates=[8, 8, 2, 2],
-            output_channels=1
+            input_channels: int = 80,
+            upsample_initial_channels: int = 512,
+            resblock_type: str = "1",
+            resblock_kernel_sizes: int = [3, 7, 11],
+            resblock_dilations: List[List[int]] = [[1, 3, 5], [1, 3, 5], [1, 3, 5]],
+            upsample_kernel_sizes: List[int] =[16, 16, 4, 4],
+            upsample_rates: List[int] = [8, 8, 2, 2],
+            output_channels: int = 1,
+            condition_channels: int = 0,
         ):
 
         super().__init__()
@@ -76,6 +81,13 @@ class HifiganGenerator(nn.Module):
             raise "invalid resblock type"
 
         self.conv_pre = weight_norm(nn.Conv1d(input_channels, upsample_initial_channels, 7, 1, 3))
+        if condition_channels > 0:
+            self.with_condition = True
+            self.conv_cond = weight_norm(nn.Conv1d(condition_channels, upsample_initial_channels, 1, bias=False))
+        else:
+            self.with_condition = False
+            self.conv_cond = None
+
         self.ups = nn.ModuleList()
         for i, (u, k) in enumerate(zip(upsample_rates, upsample_kernel_sizes)):
             c1 = upsample_initial_channels//(2**i)
@@ -92,8 +104,11 @@ class HifiganGenerator(nn.Module):
 
         self.apply(init_weights)
 
-    def forward(self, x):
+
+    def forward(self, x: torch.Tensor, g: Optional[torch.Tensor] = None):
         x = self.conv_pre(x)
+        if g is not None:
+            x = x + self.conv_cond(g)
         for i in range(self.num_upsamples):
             x = self.ups[i](x)
             x = F.leaky_relu(x, 0.1)

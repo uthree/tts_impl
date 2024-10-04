@@ -11,10 +11,12 @@ from torch.nn.utils import spectral_norm
 
 from typing import List, Tuple
 
+from tts_impl.net.vocoder.base import GanVocoderDiscriminator
+
 LRELU_SLOPE = 0.1
 
 
-class PeriodDiscriminator(nn.Module):
+class DiscriminatorP(nn.Module):
     def __init__(
             self,
             period: int = 1,
@@ -77,7 +79,7 @@ class PeriodDiscriminator(nn.Module):
         return x, fmap
     
 
-class ScaleDiscriminator(nn.Module):
+class DiscriminatorS(nn.Module):
     def __init__(
             self,
             scale: int = 1,
@@ -116,7 +118,7 @@ class ScaleDiscriminator(nn.Module):
     
 
 
-class CombinedDiscriminator(nn.Module):
+class CombinedDiscriminator(GanVocoderDiscriminator):
     '''
     Combined multiple discriminators.
     '''
@@ -152,7 +154,7 @@ class MultiPeriodDiscriminator(CombinedDiscriminator):
         super().__init__()
         self.discriminators = nn.ModuleList()
         for p in periods:
-            self.discriminators.append(PeriodDiscriminator(p, kernel_size, stride, use_spectral_norm, channels, channels_max, channels_mul, num_layers))
+            self.discriminators.append(DiscriminatorP(p, kernel_size, stride, use_spectral_norm, channels, channels_max, channels_mul, num_layers))
 
 
 class MultiScaleDiscriminator(CombinedDiscriminator):
@@ -163,4 +165,4 @@ class MultiScaleDiscriminator(CombinedDiscriminator):
         super().__init__()
         self.discriminators = nn.ModuleList()
         for i, s in enumerate(scales):
-            self.discriminators.append(ScaleDiscriminator(s, i==0))
+            self.discriminators.append(DiscriminatorS(s, i==0))
