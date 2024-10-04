@@ -1,9 +1,9 @@
 import os
 import torch
-import torch.utils.data
-from scipy.io.wavfile import read
+import torch.nn as nn
 from librosa.filters import mel as librosa_mel_fn
 
+from typing import Optional
 
 def dynamic_range_compression_torch(x, C=1, clip_val=1e-5):
     return torch.log(torch.clamp(x, min=clip_val) * C)
@@ -62,3 +62,27 @@ def get_dataset_filelist(a):
         validation_files = [os.path.join(a.input_wavs_dir, x.split('|')[0] + '.wav')
                             for x in fi.read().split('\n') if len(x) > 0]
     return training_files, validation_files
+
+
+class LogMelSpectrogram(nn.Module):
+    def __init__(
+            self,
+            n_fft: int = 1024,
+            n_mels: int = 80,
+            sample_rate: int = 22050,
+            hop_size: int = 256,
+            win_size: Optional[int] = None,
+            fmin: float = 0.,
+            fmax: float = 8000.,
+    ):
+        super().__init__()
+        self.n_fft = n_fft
+        self.n_mels = n_mels
+        self.sample_rate = sample_rate
+        self.hop_size = hop_size
+        self.win_size = n_fft if win_size is None else win_size
+        self.fmin = fmin
+        self.fmax = fmax
+
+    def forward(self, x):
+        mel = mel_spectrogram(x, self.n_fft, self.n_mels, self.sample_rate, self.hop_size, self.win_size, self.fmin, self.fmax)

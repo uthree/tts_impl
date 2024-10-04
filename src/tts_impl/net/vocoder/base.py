@@ -1,6 +1,8 @@
 import torch
 import torch.nn as nn
 
+import lightning as L
+
 from typing import List, Tuple, Optional
 
 
@@ -27,3 +29,8 @@ class GanVocoderDiscriminator(nn.Module):
 
     def forwrad(self, x) -> Tuple[List[torch.Tensor], List[torch.Tensor]]:
         pass
+
+
+class GanVocoder(L.lightningModule):
+    generator: GanVocoderGenerator
+    discriminator: GanVocoderDiscriminator
