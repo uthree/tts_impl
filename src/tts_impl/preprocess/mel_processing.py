@@ -86,3 +86,4 @@ class LogMelSpectrogram(nn.Module):
 
     def forward(self, x):
         mel = mel_spectrogram(x, self.n_fft, self.n_mels, self.sample_rate, self.hop_size, self.win_size, self.fmin, self.fmax)
+        return mel
