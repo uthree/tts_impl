@@ -10,9 +10,6 @@ import attentions
 import monotonic_align
 
 from tts_impl.net.vocoder.hifigan import HifiganGenerator, HifiganDiscriminator
-from tts_impl.net.tts.base import GanTextToSpeechGenerator
-
-
 
 VitsDiscriminator = HifiganDiscriminator
 
@@ -321,11 +318,7 @@ class PosteriorEncoder(nn.Module):
         return z, m, logs, x_mask
 
 
-class VitsGenerator(GanTextToSpeechGenerator):
-    """
-    Synthesizer for Training
-    """
-
+class VitsGenerator(nn.Module):
     def __init__(self,
                  n_vocab,
                  spec_channels,

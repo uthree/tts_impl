@@ -36,7 +36,7 @@ pytorch lightningを使って学習できるようにする。これにより簡
 
 Vocoder:
 - HiFi-GAN ✅
-- HiFi-GAN Variants(NSF, Harmonic, SiFi-GAN, EVA-GAN) ❓
+- HiFi-GAN Variants(NSF, Harmonic, SiFi-GAN, EVA-GAN) 🚧
 - more discriminators(CQT, MRSD) ❓
 - BigVGAN ❓
 - DDSP❓
@@ -45,7 +45,7 @@ TTS: text to speech
 - via mel spectrogram
     - FastSpeech2 🚧
 - end-to-end
-    - VITS ❓
+    - VITS 🚧
     - JETS 🚧
 
 linguistic frontend
