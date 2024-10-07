@@ -7,9 +7,12 @@ from tts_impl.net.vocoder.base import GanVocoderDiscriminator, GanVocoderGenerat
 from tts_impl.net.vocoder.hifigan.loss import feature_loss, generator_loss, discriminator_loss
 
 from typing import Optional
+from .generator import HifiganGenerator
+from .discriminator import HifiganDiscriminator
 
 
 # HiFi-GAN from https://arxiv.org/abs/2010.05646
+# TODO: add loss scheduler
 class Hifigan(GanVocoder):
     def __init__(
             self,

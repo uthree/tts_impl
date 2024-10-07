@@ -17,9 +17,20 @@ class DiffusionVocoder(nn.Module):
 class GanVocoderGenerator(nn.Module):
     def __init__(self):
         self.with_condition: bool = False
+        self.requires_f0: bool = False
         super().__init__()
 
     def forward(self, x: torch.Tensor, g=Optional[torch.Tensor]) -> torch.Tensor:
+        pass
+
+
+class GanVocoderGeneratorNsf(nn.Module):
+    def __init__(self):
+        self.with_condition: bool = False
+        self.requires_f0: bool = True
+        super().__init__()
+
+    def forward(self, x: torch.Tensor, g=Optional[torch.Tensor], f0=Optional[torch.Tensor]) -> torch.Tensor:
         pass
 
 
@@ -31,6 +42,6 @@ class GanVocoderDiscriminator(nn.Module):
         pass
 
 
-class GanVocoder(L.lightningModule):
+class GanVocoder(L.LightningModule):
     generator: GanVocoderGenerator
     discriminator: GanVocoderDiscriminator

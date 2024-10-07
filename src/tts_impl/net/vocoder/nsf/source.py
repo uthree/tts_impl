@@ -4,6 +4,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+
 # HnNSF Module from https://arxiv.org/pdf/1904.12088
 class HarmonicNoiseOscillator(nn.Module):
     def __init__(

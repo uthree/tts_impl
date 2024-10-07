@@ -117,7 +117,6 @@ class DiscriminatorS(nn.Module):
         return x, fmap
     
 
-
 class CombinedDiscriminator(GanVocoderDiscriminator):
     '''
     Combined multiple discriminators.
@@ -160,9 +159,20 @@ class MultiPeriodDiscriminator(CombinedDiscriminator):
 class MultiScaleDiscriminator(CombinedDiscriminator):
     def __init__(
             self,
-            scales=[1, 2, 2]        
+            scales: List[int] = [1, 2, 4]
     ):
         super().__init__()
         self.discriminators = nn.ModuleList()
         for i, s in enumerate(scales):
             self.discriminators.append(DiscriminatorS(s, i==0))
+
+
+class HifiganDiscriminator(CombinedDiscriminator):
+    def __init__(
+            self,
+            scales: List[int] = [1, 2, 4],
+            periods: List[int] = [2, 3, 5, 7, 11],
+    ):
+        super().__init__()
+        self.discriminators.append(MultiPeriodDiscriminator(periods))
+        self.discriminators.append(MultiScaleDiscriminator(scales))

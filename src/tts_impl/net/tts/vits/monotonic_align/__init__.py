@@ -1,11 +1,7 @@
 """Maximum path calculation module.
 
 This code is based on https://github.com/jaywalnut310/vits.
-
 """
-
-import warnings
-
 import numpy as np
 import torch
 from numba import njit, prange
