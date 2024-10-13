@@ -1,11 +1,11 @@
 # tts_impl (仮)
-**わーくいんぷろぐれす**
+**わーくいんぷろぐれす** 
+このリポジトリは制作中です。MITライセンスで利用できますが、予告なく内容が変更される可能性があります。
 
 implementation of TTS models in PyTorch  
 TTSモデルのPyTorch実装集　なるべく依存関係を減らす
 pytorch lightningを使って学習できるようにする。これにより簡単に複数GPUを利用でき、TensorBoardでの進捗監視ができる。  
 モデル構造がほぼ同じなので、VITS派生の(S)VCもついでに実装。
-
 
 ## テスト
 `pytest` でテストを実行できる。
@@ -27,7 +27,9 @@ pytorch lightningを使って学習できるようにする。これにより簡
 - "recipe": モデルアーキテクチャを指定して、データセットを準備すれば前処理から学習まですべてできる
 ようにしたい。
 - 公式実装の学習済みモデルからインポート
-
+- 音声データから自動書き起こし、話者分類、BGMやノイズ、無音区間の除去など、データセット制作を補助する機能
+    - whisperによるASR,
+    - 話者特性をベクトルで表現できれば, k-meansなどでクラスタリングすることが可能かもしれない。
 
 ### モデル一覧
 ✅ : 実装済み
@@ -37,24 +39,29 @@ pytorch lightningを使って学習できるようにする。これにより簡
 Vocoder:
 - HiFi-GAN ✅
 - HiFi-GAN Variants(NSF, Harmonic, SiFi-GAN, EVA-GAN) 🚧
+- ISTFTNet, ISTFTNet2, Vocos, etc... ❓
 - more discriminators(CQT, MRSD) ❓
 - BigVGAN ❓
-- DDSP❓
+- DDSP (Additive, Subtractive)❓
+- WaveNeXt ❓
 
 TTS: text to speech
 - via mel spectrogram
     - FastSpeech2 🚧
 - end-to-end
     - VITS 🚧
+    - VITS2 ❓
     - JETS 🚧
+    
 
 linguistic frontend
 - g2p:
     - pyopenjtalk-plus ❓
-    - phonemizers ❓
+    - phonemizer ❓
+    - 中国語: いわゆるピンイン？というものをつかうとよさそうだが、ライブラリはまだ探していない。
 - alignment:
     - on-tye-fly alignment(monotonic-alignment-search, forward-sum, etc.) 🚧
-    - Montreal Forced Aligner
-- feature adapter
+    - Montreal Forced Aligner ❓
+- language models
     - BERT / RoBERTa ❓
     - predict accent classic (e.g. dictionary) method ❓

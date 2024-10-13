@@ -12,7 +12,9 @@ from .discriminator import HifiganDiscriminator
 
 
 # HiFi-GAN from https://arxiv.org/abs/2010.05646
-# TODO: add loss scheduler
+# TODO: add LR scheduler
+# TODO: improve mel spectrogram exitation
+# TODO: Add Config
 class Hifigan(GanVocoder):
     def __init__(
             self,

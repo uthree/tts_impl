@@ -11,7 +11,7 @@ class HarmonicNoiseOscillator(nn.Module):
             self,
             sample_rate,
             frame_size,
-            num_harmonics=8,
+            num_harmonics=1,
             noise_scale=0.03
         ):
         super().__init__()
