@@ -1,3 +1,3 @@
 from tts_impl.net.tts.base import GanTextToSpeech
 
-from .models import VitsDiscriminator, VitsGenerator
+from .models import VitsGenerator

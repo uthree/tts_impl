@@ -14,6 +14,7 @@ class AlignmentModule(nn.Module):
     """Alignment Learning Framework proposed for parallel TTS models in:
     https://arxiv.org/abs/2108.10447
     """
+
     def __init__(self, adim, odim):
         super().__init__()
         self.t_conv1 = nn.Conv1d(adim, adim, kernel_size=3, padding=1)
@@ -23,7 +24,7 @@ class AlignmentModule(nn.Module):
         self.f_conv2 = nn.Conv1d(adim, adim, kernel_size=3, padding=1)
         self.f_conv3 = nn.Conv1d(adim, adim, kernel_size=1, padding=0)
 
-    def forward(self, text, feats, x_masks = None):
+    def forward(self, text, feats, x_masks=None):
         """
         Args:
             text (Tensor): Batched text embedding (B, T_text, adim)
@@ -34,16 +35,16 @@ class AlignmentModule(nn.Module):
             Tensor: log probability of attention matrix (B, T_feats, T_text)
         """
 
-        text = text.transpose(1,2)
+        text = text.transpose(1, 2)
         text = F.relu(self.t_conv1(text))
         text = self.t_conv2(text)
-        text = text.transpose(1,2)
+        text = text.transpose(1, 2)
 
-        feats = feats.transpose(1,2)
+        feats = feats.transpose(1, 2)
         feats = F.relu(self.f_conv1(feats))
         feats = F.relu(self.f_conv2(feats))
         feats = self.f_conv3(feats)
-        feats = feats.transpose(1,2)
+        feats = feats.transpose(1, 2)
 
         dist = feats.unsqueeze(2) - text.unsqueeze(1)
         dist = torch.linalg.norm(dist, ord=2, dim=3)
@@ -56,6 +57,7 @@ class AlignmentModule(nn.Module):
         log_p_attn = F.log_softmax(score, dim=-1)
         return log_p_attn
 
+
 @jit(nopython=True)
 def _monotonic_alignment_search(log_p_attn):
     # https://arxiv.org/abs/2005.11129
@@ -63,30 +65,31 @@ def _monotonic_alignment_search(log_p_attn):
     T_inp = log_p_attn.shape[1]
     Q = np.full((T_inp, T_mel), fill_value=-np.inf)
 
-    log_prob = log_p_attn.transpose(1,0) # -> (T_inp,T_mel)
+    log_prob = log_p_attn.transpose(1, 0)  # -> (T_inp,T_mel)
     # 1.  Q <- init first row for all j
     for j in range(T_mel):
-        Q[0,j] = log_prob[0, :j+1].sum()
+        Q[0, j] = log_prob[0, : j + 1].sum()
 
-    # 2. 
+    # 2.
     for j in range(1, T_mel):
-        for i in range(1, min(j+1, T_inp)):
-            Q[i,j] = max(Q[i-1,j-1], Q[i,j-1]) + log_prob[i,j]
+        for i in range(1, min(j + 1, T_inp)):
+            Q[i, j] = max(Q[i - 1, j - 1], Q[i, j - 1]) + log_prob[i, j]
 
     # 3.
-    A = np.full((T_mel,), fill_value=T_inp-1)
-    for j in range(T_mel-2, -1, -1): # T_mel-2, ..., 0
+    A = np.full((T_mel,), fill_value=T_inp - 1)
+    for j in range(T_mel - 2, -1, -1):  # T_mel-2, ..., 0
         # 'i' in {A[j+1]-1, A[j+1]}
-        i_a = A[j+1]-1
-        i_b = A[j+1]
+        i_a = A[j + 1] - 1
+        i_b = A[j + 1]
         if i_b == 0:
             argmax_i = 0
-        elif Q[i_a,j] >= Q[i_b,j]:
+        elif Q[i_a, j] >= Q[i_b, j]:
             argmax_i = i_a
         else:
             argmax_i = i_b
         A[j] = argmax_i
     return A
+
 
 def viterbi_decode(log_p_attn, text_lengths, feats_lengths):
     """
@@ -103,17 +106,18 @@ def viterbi_decode(log_p_attn, text_lengths, feats_lengths):
     device = log_p_attn.device
 
     bin_loss = 0
-    ds = torch.zeros((B,T_text), device=device)
+    ds = torch.zeros((B, T_text), device=device)
     for b in range(B):
-        cur_log_p_attn = log_p_attn[b, :feats_lengths[b], :text_lengths[b]]
+        cur_log_p_attn = log_p_attn[b, : feats_lengths[b], : text_lengths[b]]
         viterbi = _monotonic_alignment_search(cur_log_p_attn.detach().cpu().numpy())
         _ds = np.bincount(viterbi)
-        ds[b, :len(_ds)] = torch.from_numpy(_ds).to(device)
+        ds[b, : len(_ds)] = torch.from_numpy(_ds).to(device)
 
         t_idx = torch.arange(feats_lengths[b])
         bin_loss = bin_loss - cur_log_p_attn[t_idx, viterbi].mean()
     bin_loss = bin_loss / B
     return ds, bin_loss
+
 
 @jit(nopython=True)
 def _average_by_duration(ds, xs, text_lengths, feats_lengths):
@@ -129,10 +133,11 @@ def _average_by_duration(ds, xs, text_lengths, feats_lengths):
         x = xs[b, :t_feats]
         for n, (start, end) in enumerate(zip(d_cumsum[:-1], d_cumsum[1:])):
             if len(x[start:end]) != 0:
-                xs_avg[b,n] = x[start:end].mean()
+                xs_avg[b, n] = x[start:end].mean()
             else:
-                xs_avg[b,n] = 0
+                xs_avg[b, n] = 0
     return xs_avg
+
 
 def average_by_duration(ds, xs, text_lengths, feats_lengths):
     """

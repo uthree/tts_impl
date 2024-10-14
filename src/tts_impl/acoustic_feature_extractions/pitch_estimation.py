@@ -16,7 +16,7 @@ def estimate_f0_dio(wf, sample_rate=48000, frame_size=480, f0_min=20, f0_max=200
         f0 = torch.from_numpy(f0).to(torch.float)
         f0 = f0.to(device)
         f0 = f0.unsqueeze(0).unsqueeze(0)
-        f0 = F.interpolate(f0, wf.shape[0] // frame_size, mode='linear')
+        f0 = F.interpolate(f0, wf.shape[0] // frame_size, mode="linear")
         f0 = f0.squeeze(0)
         return f0
     elif wf.ndim == 2:
@@ -35,18 +35,22 @@ def estimate_f0_harvest(wf, sample_rate=4800, frame_size=480, f0_min=20, f0_max=
         f0 = torch.from_numpy(f0).to(torch.float)
         f0 = f0.to(device)
         f0 = f0.unsqueeze(0).unsqueeze(0)
-        f0 = F.interpolate(f0, wf.shape[0] // frame_size, mode='linear')
+        f0 = F.interpolate(f0, wf.shape[0] // frame_size, mode="linear")
         f0 = f0.squeeze(0)
         return f0
     elif wf.ndim == 2:
         waves = wf.split(1, dim=0)
-        pitchs = [estimate_f0_harvest(wave[0], sample_rate, frame_size) for wave in waves]
+        pitchs = [
+            estimate_f0_harvest(wave[0], sample_rate, frame_size) for wave in waves
+        ]
         pitchs = torch.stack(pitchs, dim=0)
         return pitchs
 
 
 global torchfcpe_model
 torchfcpe_model = {}
+
+
 def estimate_f0_fcpe(wf, sample_rate=24000, frame_size=480, f0_min=20, f0_max=20000):
     if wf.device not in torchfcpe_model:
         torchfcpe_model[wf.device] = spawn_bundled_infer_model(wf.device)
@@ -54,13 +58,14 @@ def estimate_f0_fcpe(wf, sample_rate=24000, frame_size=480, f0_min=20, f0_max=20
     f0 = f0.transpose(1, 2)
     return f0
 
+
 # wf: [BatchSize, Length]
-def estimate_f0(wf, sample_rate=24000, frame_size=480, algorithm='fcpe'):
+def estimate_f0(wf, sample_rate=24000, frame_size=480, algorithm="fcpe"):
     l = wf.shape[1]
-    if algorithm == 'harvest':
+    if algorithm == "harvest":
         f0 = estimate_f0_harvest(wf, sample_rate)
-    elif algorithm == 'dio':
+    elif algorithm == "dio":
         f0 = estimate_f0_dio(wf, sample_rate)
-    elif algorithm == 'fcpe':
+    elif algorithm == "fcpe":
         f0 = estimate_f0_fcpe(wf, sample_rate)
-    return F.interpolate(f0, l // frame_size, mode='linear')
+    return F.interpolate(f0, l // frame_size, mode="linear")

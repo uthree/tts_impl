@@ -5,22 +5,31 @@ import torch
 import torch.nn as nn
 
 
-class DiffusionVocoder(nn.Module):
-    def __init__(self):
-        super().__init__()
-
-    def sample(self):
-        pass
-
-
-class GanVocoderGenerator(nn.Module):
+class VocoderGenerator(nn.Module):
     def __init__(self):
         self.with_condition: bool = False
         self.requires_f0: bool = False
         super().__init__()
 
-    def forward(self, x: torch.Tensor, g=Optional[torch.Tensor]) -> torch.Tensor:
+    """
+    forward pass for training
+    """
+
+    def forward(
+        self, x: torch.Tensor, g=Optional[torch.Tensor], *args, **kwargs
+    ) -> torch.Tensor:
         pass
+
+    def infer_vocoder(self, *args, **kwargs) -> torch.Tensor:
+        return self.forward(*args, **kwargs)
+
+
+class GanVocoderGenerator(VocoderGenerator):
+    pass
+
+
+class ODEVocoderGenerator(VocoderGenerator):
+    pass
 
 
 class GanVocoderDiscriminator(nn.Module):
@@ -34,3 +43,13 @@ class GanVocoderDiscriminator(nn.Module):
 class GanVocoder(L.LightningModule):
     generator: GanVocoderGenerator
     discriminator: GanVocoderDiscriminator
+
+    def infer_vocoder(self, *args, **kwargs) -> torch.Tensor:
+        return self.generator.vocode(*args, **kwargs)
+
+
+class ODEVocoder(L.LightningModule):
+    generator: ODEVocoderGenerator
+
+    def infer_vocoder(self, *args, **kwargs) -> torch.Tensor:
+        return self.generator.vocode(*args, **kwargs)

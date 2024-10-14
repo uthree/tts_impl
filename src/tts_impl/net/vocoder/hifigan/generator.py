@@ -1,13 +1,13 @@
 # HiFi-GAN from https://arxiv.org/abs/2010.05646
 
 from dataclasses import dataclass, field
-from typing import List, Optional, Literal
+from typing import List, Literal, Optional
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.nn.utils.parametrizations import weight_norm
 from torch.nn.utils import remove_weight_norm
+from torch.nn.utils.parametrizations import weight_norm
 
 from tts_impl.net.vocoder.base import GanVocoderGenerator
 
@@ -23,13 +23,37 @@ def init_weights(m, mean=0.0, std=0.01):
 
 
 class ResBlock1(nn.Module):
-    def __init__(self, channels: int, kernel_size: int = 3, dilations: List[int] = [1, 3, 5]):
+    def __init__(
+        self, channels: int, kernel_size: int = 3, dilations: List[int] = [1, 3, 5]
+    ):
         super().__init__()
         self.convs1 = nn.ModuleList()
         self.convs2 = nn.ModuleList()
         for d in dilations:
-            self.convs1.append(weight_norm(nn.Conv1d(channels, channels, kernel_size, 1, get_padding(kernel_size, d), d)))
-            self.convs2.append(weight_norm(nn.Conv1d(channels, channels, kernel_size, 1, get_padding(kernel_size, 1), 1)))
+            self.convs1.append(
+                weight_norm(
+                    nn.Conv1d(
+                        channels,
+                        channels,
+                        kernel_size,
+                        1,
+                        get_padding(kernel_size, d),
+                        d,
+                    )
+                )
+            )
+            self.convs2.append(
+                weight_norm(
+                    nn.Conv1d(
+                        channels,
+                        channels,
+                        kernel_size,
+                        1,
+                        get_padding(kernel_size, 1),
+                        1,
+                    )
+                )
+            )
 
     def forward(self, x):
         for c1, c2 in zip(self.convs1, self.convs2):
@@ -39,19 +63,32 @@ class ResBlock1(nn.Module):
             xt = c2(xt)
             x = x + xt
         return x
-    
+
     def remove_weight_norm(self):
         for c1, c2 in zip(self.convs1, self.convs2):
             remove_weight_norm(c1)
             remove_weight_norm(c2)
-    
+
 
 class ResBlock2(nn.Module):
-    def __init__(self, channels: int, kernel_size: int = 3, dilations: List[int] = [1, 3]):
+    def __init__(
+        self, channels: int, kernel_size: int = 3, dilations: List[int] = [1, 3]
+    ):
         super().__init__()
         self.convs1 = nn.ModuleList()
         for d in dilations:
-            self.convs1.append(weight_norm(nn.Conv1d(channels, channels, kernel_size, 1, get_padding(kernel_size, d), d)))
+            self.convs1.append(
+                weight_norm(
+                    nn.Conv1d(
+                        channels,
+                        channels,
+                        kernel_size,
+                        1,
+                        get_padding(kernel_size, d),
+                        d,
+                    )
+                )
+            )
 
     def forward(self, x):
         for c1 in self.convs1:
@@ -59,28 +96,27 @@ class ResBlock2(nn.Module):
             xt = c1(xt)
             x = x + xt
         return x
-    
+
     def remove_weight_norm(self):
         for c1 in self.convs1:
             remove_weight_norm(c1)
-    
+
 
 class HifiganGenerator(GanVocoderGenerator):
     def __init__(
-            self,
-            input_channels: int = 80,
-            upsample_initial_channels: int = 512,
-            resblock_type: Literal["1", "2"] = "1",
-            resblock_kernel_sizes: List[int] = [3, 7, 11],
-            resblock_dilations: List[List[int]] = [[1, 3, 5], [1, 3, 5], [1, 3, 5]],
-            upsample_kernel_sizes: List[int] = [16, 16, 4, 4],
-            upsample_rates: List[int] = [8, 8, 2, 2],
-            output_channels: int = 1,
-            tanh_post_activation: bool = True,
-
-            # option for speaker conditioning in TTS task
-            condition_channels: Optional[int] = None,
-        ):
+        self,
+        input_channels: int = 80,
+        upsample_initial_channels: int = 512,
+        resblock_type: Literal["1", "2"] = "1",
+        resblock_kernel_sizes: List[int] = [3, 7, 11],
+        resblock_dilations: List[List[int]] = [[1, 3, 5], [1, 3, 5], [1, 3, 5]],
+        upsample_kernel_sizes: List[int] = [16, 16, 4, 4],
+        upsample_rates: List[int] = [8, 8, 2, 2],
+        output_channels: int = 1,
+        tanh_post_activation: bool = True,
+        # option for speaker conditioning in TTS task
+        condition_channels: Optional[int] = None,
+    ):
         super().__init__()
         if condition_channels == 0:
             condition_channels = None
@@ -88,7 +124,7 @@ class HifiganGenerator(GanVocoderGenerator):
         self.num_kernels = len(resblock_kernel_sizes)
         self.num_upsamples = len(upsample_rates)
         self.frame_size = 1
-        
+
         self.input_channels = input_channels
         self.upsample_initial_channels = upsample_initial_channels
         self.resblock_type = resblock_type
@@ -106,32 +142,35 @@ class HifiganGenerator(GanVocoderGenerator):
         else:
             raise "invalid resblock type"
 
-        self.conv_pre = weight_norm(nn.Conv1d(input_channels, upsample_initial_channels, 7, 1, 3))
+        self.conv_pre = weight_norm(
+            nn.Conv1d(input_channels, upsample_initial_channels, 7, 1, 3)
+        )
         if condition_channels is not None:
             self.with_condition = True
-            self.conv_cond = weight_norm(nn.Conv1d(condition_channels, upsample_initial_channels, 1, bias=False))
+            self.conv_cond = weight_norm(
+                nn.Conv1d(condition_channels, upsample_initial_channels, 1, bias=False)
+            )
         else:
             self.with_condition = False
             self.conv_cond = None
 
         self.ups = nn.ModuleList()
         for i, (u, k) in enumerate(zip(upsample_rates, upsample_kernel_sizes)):
-            c1 = upsample_initial_channels//(2**i)
-            c2 = upsample_initial_channels//(2**(i+1))
-            p = (k-u)//2
+            c1 = upsample_initial_channels // (2**i)
+            c2 = upsample_initial_channels // (2 ** (i + 1))
+            p = (k - u) // 2
             self.ups.append(weight_norm(nn.ConvTranspose1d(c1, c2, k, u, p)))
             self.frame_size *= u
-        
+
         self.resblocks = nn.ModuleList()
         for i in range(len(self.ups)):
-            ch = upsample_initial_channels//(2**(i+1))
+            ch = upsample_initial_channels // (2 ** (i + 1))
             for j, (k, d) in enumerate(zip(resblock_kernel_sizes, resblock_dilations)):
                 self.resblocks.append(resblock(ch, k, d))
 
         self.conv_post = weight_norm(nn.Conv1d(ch, output_channels, 7, 1, padding=3))
 
         self.apply(init_weights)
-
 
     def forward(self, x: torch.Tensor, g: Optional[torch.Tensor] = None):
         x = self.conv_pre(x)
@@ -143,16 +182,15 @@ class HifiganGenerator(GanVocoderGenerator):
             xs = None
             for j in range(self.num_kernels):
                 if xs is None:
-                    xs = self.resblocks[i*self.num_kernels+j](x)
+                    xs = self.resblocks[i * self.num_kernels + j](x)
                 else:
-                    xs += self.resblocks[i*self.num_kernels+j](x)
+                    xs += self.resblocks[i * self.num_kernels + j](x)
             x = xs / self.num_kernels
         x = F.leaky_relu(x, 0.1)
         x = self.conv_post(x)
         if self.tanh_post_activation:
             x = torch.tanh(x)
         return x
-    
 
     def remove_weight_norm(self):
         for up in self.ups:

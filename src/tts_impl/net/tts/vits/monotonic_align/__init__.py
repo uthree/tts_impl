@@ -2,6 +2,7 @@
 
 This code is based on https://github.com/jaywalnut310/vits.
 """
+
 import numpy as np
 import torch
 from numba import njit, prange
@@ -12,11 +13,11 @@ try:
     is_cython_avalable = True
 except ImportError:
     is_cython_avalable = False
-    #warnings.warn(
+    # warnings.warn(
     #    "Cython version is not available. Fallback to 'EXPERIMETAL' numba version. "
     #    "If you want to use the cython version, please build it as follows: "
     #    "`cd /monotonic_align; python setup.py build_ext --inplace`"
-    #)
+    # )
 
 
 def maximum_path(neg_x_ent: torch.Tensor, attn_mask: torch.Tensor) -> torch.Tensor:

@@ -6,28 +6,30 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 
+from tts_impl.acoustic_feature_extractions.mel_processing import LogMelSpectrogram
 from tts_impl.net.vocoder.base import GanVocoder
-from tts_impl.net.vocoder.hifigan.loss import (discriminator_loss,
-                                               feature_loss, generator_loss)
+from tts_impl.net.vocoder.hifigan.loss import (
+    discriminator_loss,
+    feature_loss,
+    generator_loss,
+)
 
 from .discriminator import HifiganDiscriminator
 from .generator import HifiganGenerator
-
-from tts_impl.acoustic_feature_extractions.mel_processing import LogMelSpectrogram
 
 
 # HiFi-GAN from https://arxiv.org/abs/2010.05646
 # TODO: add LR scheduler
 class Hifigan(GanVocoder):
     def __init__(
-            self,
-            config,
-        ):
+        self,
+        config,
+    ):
         super().__init__()
 
         self.config = config
         self.automatic_optimization = False
-        
+
         self.generator = HifiganGenerator(**config.generator)
         self.discriminator = HifiganDiscriminator(**config.discriminator)
         self.melspectrogram_extractor = LogMelSpectrogram(**config.mel)
@@ -67,7 +69,7 @@ class Hifigan(GanVocoder):
         self.clip_gradients(opt_d, 1.0, "norm")
         opt_d.step()
         self.untoggle_optimizer(opt_d)
-        
+
         # Logs
         self.log("loss/Mel Spectrogram", loss_mel.item())
         self.log("loss/Feature Matching", loss_feat.item())
@@ -75,6 +77,14 @@ class Hifigan(GanVocoder):
         self.log("loss/Discriminator Adversarial", loss_d.item())
 
     def configure_optimizers(self):
-        opt_g = optim.AdamW(self.generator.parameters(), lr=self.config.optimizer.lr, betas=self.config.optimizer.betas)
-        opt_d = optim.AdamW(self.discriminator.parameters(), lr=self.config.optimizer.lr, betas=self.config.optimizer.betas)
+        opt_g = optim.AdamW(
+            self.generator.parameters(),
+            lr=self.config.optimizer.lr,
+            betas=self.config.optimizer.betas,
+        )
+        opt_d = optim.AdamW(
+            self.discriminator.parameters(),
+            lr=self.config.optimizer.lr,
+            betas=self.config.optimizer.betas,
+        )
         return opt_g, opt_d

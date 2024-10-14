@@ -5,10 +5,23 @@
 implementation of TTS models in PyTorch  
 TTSモデルのPyTorch実装集　なるべく依存関係を減らす
 pytorch lightningを使って学習できるようにする。これにより簡単に複数GPUを利用でき、TensorBoardでの進捗監視ができる。  
-モデル構造がほぼ同じなので、VITS派生の(S)VCもついでに実装。
+モデル構造がほぼ同じなので、VITS派生の(S)VCもついでに実装
 
-## テスト
-`pytest` でテストを実行できる。
+## インストール
+```sh
+pip install uv # if uv is not installed
+uv venv # create new environment
+# install PyTorch with GPU (optional)
+# install dependencies
+uv pip install build
+uv pip install .
+```
+
+## コード検査
+`black src` でフォーマッタを実行。  
+`pytest` でテストを実行。  
+`mypy src` で型検査を実行。  
+
 
 ## 各ディレクトリの詳細
 - `src/tts_impl/net/` : ネットワークアーキテクチャの定義
@@ -52,7 +65,7 @@ TTS: text to speech
     - VITS 🚧
     - VITS2 ❓
     - JETS 🚧
-    
+
 
 linguistic frontend
 - g2p:
