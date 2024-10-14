@@ -1,17 +1,17 @@
 # HiFi-GAN Discriminator from https://arxiv.org/abs/2010.05646
 
+from dataclasses import dataclass, field
+from typing import List, Tuple
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
-from .utils import get_padding
-
-from torch.nn.utils.parametrizations import weight_norm
 from torch.nn.utils import spectral_norm
-
-from typing import List, Tuple
+from torch.nn.utils.parametrizations import weight_norm
 
 from tts_impl.net.vocoder.base import GanVocoderDiscriminator
+
+from .utils import get_padding
 
 LRELU_SLOPE = 0.1
 

@@ -5,6 +5,7 @@
 
 import torch
 
+
 class GaussianUpsampling(torch.nn.Module):
     """
     Gaussian upsampling with fixed temperature as in:

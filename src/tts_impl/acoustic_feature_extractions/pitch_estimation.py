@@ -1,12 +1,9 @@
+import numpy as np
+import pyworld as pw
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
-from torchaudio.functional import resample
 from torchfcpe import spawn_bundled_infer_model
-
-import numpy as np
-import pyworld as pw
 
 
 def estimate_f0_dio(wf, sample_rate=48000, frame_size=480, f0_min=20, f0_max=20000):

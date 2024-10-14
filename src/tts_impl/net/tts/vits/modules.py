@@ -2,17 +2,16 @@
 
 import copy
 import math
+
+import commons
 import numpy as np
 import scipy
 import torch
+from commons import get_padding, init_weights
 from torch import nn
-from torch.nn import functional as F
-
 from torch.nn import Conv1d
-from torch.nn.utils import weight_norm, remove_weight_norm
-
-import commons
-from commons import init_weights, get_padding
+from torch.nn import functional as F
+from torch.nn.utils import remove_weight_norm, weight_norm
 from transforms import piecewise_rational_quadratic_transform
 
 

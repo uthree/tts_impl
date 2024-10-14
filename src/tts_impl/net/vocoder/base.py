@@ -1,9 +1,8 @@
-import torch
-import torch.nn as nn
+from typing import List, Optional, Tuple
 
 import lightning as L
-
-from typing import List, Tuple, Optional
+import torch
+import torch.nn as nn
 
 
 class DiffusionVocoder(nn.Module):
@@ -21,16 +20,6 @@ class GanVocoderGenerator(nn.Module):
         super().__init__()
 
     def forward(self, x: torch.Tensor, g=Optional[torch.Tensor]) -> torch.Tensor:
-        pass
-
-
-class GanVocoderGeneratorNsf(nn.Module):
-    def __init__(self):
-        self.with_condition: bool = False
-        self.requires_f0: bool = True
-        super().__init__()
-
-    def forward(self, x: torch.Tensor, g=Optional[torch.Tensor], f0=Optional[torch.Tensor]) -> torch.Tensor:
         pass
 
 

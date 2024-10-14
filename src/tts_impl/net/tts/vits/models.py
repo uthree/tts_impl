@@ -1,15 +1,15 @@
 import copy
 import math
+
+import attentions
+import commons
+import modules
+import monotonic_align
 import torch
 from torch import nn
 from torch.nn import functional as F
 
-import commons
-import modules
-import attentions
-import monotonic_align
-
-from tts_impl.net.vocoder.hifigan import HifiganGenerator, HifiganDiscriminator
+from tts_impl.net.vocoder.hifigan import HifiganDiscriminator, HifiganGenerator
 
 VitsDiscriminator = HifiganDiscriminator
 

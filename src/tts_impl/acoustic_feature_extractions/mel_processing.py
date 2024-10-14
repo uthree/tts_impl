@@ -1,9 +1,10 @@
 import os
+from typing import Optional
+
 import torch
 import torch.nn as nn
 from librosa.filters import mel as librosa_mel_fn
 
-from typing import Optional
 
 def dynamic_range_compression_torch(x, C=1, clip_val=1e-5):
     return torch.log(torch.clamp(x, min=clip_val) * C)

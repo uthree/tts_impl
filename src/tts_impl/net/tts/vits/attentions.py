@@ -2,15 +2,15 @@
 
 import copy
 import math
-import numpy as np
-import torch
-from torch import nn
-from torch.nn import functional as F
 
 import commons
 import modules
+import numpy as np
+import torch
 from modules import LayerNorm
-	 
+from torch import nn
+from torch.nn import functional as F
+
 
 class Encoder(nn.Module):
 	def __init__(self, hidden_channels, filter_channels, n_heads, n_layers, kernel_size=1, p_dropout=0., window_size=4, **kwargs):

@@ -1,8 +1,11 @@
 import json
-import torch
 from pathlib import Path
+
+import torch
+
+from .discriminator import (CombinedDiscriminator, MultiPeriodDiscriminator,
+                            MultiScaleDiscriminator)
 from .generator import HifiganGenerator
-from .discriminator import CombinedDiscriminator, MultiPeriodDiscriminator, MultiScaleDiscriminator
 
 
 def load_discriminator_from_official_format(discriminator_path: Path, config_path: Path) -> CombinedDiscriminator:
