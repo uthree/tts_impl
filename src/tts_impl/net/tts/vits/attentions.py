@@ -3,12 +3,13 @@
 import copy
 import math
 
-from . import commons
 import numpy as np
 import torch
-from .modules import LayerNorm
 from torch import nn
 from torch.nn import functional as F
+
+from . import commons
+from .modules import LayerNorm
 
 
 class Encoder(nn.Module):

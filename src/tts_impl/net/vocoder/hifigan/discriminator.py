@@ -1,6 +1,6 @@
 # HiFi-GAN Discriminator from https://arxiv.org/abs/2010.05646
 
-from typing import List, Tuple, Protocol
+from typing import List, Protocol, Tuple
 
 import torch
 import torch.nn as nn

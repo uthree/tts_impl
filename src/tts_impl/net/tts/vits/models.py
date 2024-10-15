@@ -1,7 +1,6 @@
 import copy
 import math
 
-from . import attentions, commons, modules, monotonic_align
 import torch
 from torch import nn
 from torch.nn import functional as F
@@ -9,6 +8,8 @@ from torch.nn import functional as F
 from tts_impl.net.base import (GanTextToSpeechGenerator,
                                GanVoiceConersionGenerator)
 from tts_impl.net.vocoder.hifigan import HifiganDiscriminator, HifiganGenerator
+
+from . import attentions, commons, modules, monotonic_align
 
 
 class StochasticDurationPredictor(nn.Module):
@@ -388,7 +389,7 @@ class VitsGenerator(nn.Module, GanTextToSpeechGenerator, GanVoiceConersionGenera
             1,
             flow_num_layers,
             flow_num_blocks,
-            gin_channels
+            gin_channels,
         )
 
         if use_sdp:

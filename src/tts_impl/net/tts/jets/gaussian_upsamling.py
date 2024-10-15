@@ -1,10 +1,11 @@
 # based on https://github.com/imdanboy/jets/blob/main/espnet2/gan_tts/jets/length_regulator.py
 
 from typing import Optional
-from tts_impl.net.tts.base import Upsampler
-import torch.nn as nn
 
 import torch
+import torch.nn as nn
+
+from tts_impl.net.tts.base import Upsampler
 
 
 def gaussian_upsampling(

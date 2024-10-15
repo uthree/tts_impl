@@ -1,8 +1,9 @@
+from typing import Protocol
+
 import lightning as L
 import torch
 import torch.nn as nn
 
-from typing import Protocol
 
 class VoiceConversion(Protocol):
     pass

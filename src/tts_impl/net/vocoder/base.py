@@ -1,5 +1,4 @@
-
-from typing import List, Optional, Tuple, Protocol
+from typing import List, Optional, Protocol, Tuple
 
 import lightning as L
 import torch

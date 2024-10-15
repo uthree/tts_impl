@@ -1,11 +1,9 @@
-from typing import Protocol
+from typing import Optional, Protocol
 
 import lightning as L
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
-from typing import Optional
 
 
 class Upsampler(Protocol):
@@ -20,6 +18,7 @@ class Upsampler(Protocol):
     outputs:
         features: [BatchSize, Channels, Length_Upsampled]
     """
+
     def forward(
         self,
         hs: torch.Tensor,
@@ -39,10 +38,13 @@ class TextEncoder(Protocol):
         z: encoded features shape=[BatchSize, Channels, MaxLength], dtype=float
         mask: shape=[BatchSize, 1, MaxLength], 1=not masked, 0=masked
     """
-    def forward(self, phoneme_ids: torch.Tensor, lenghts: Optional[torch.Tensor]) -> tuple[torch.Tensor, torch.Tensor]:
+
+    def forward(
+        self, phoneme_ids: torch.Tensor, lenghts: Optional[torch.Tensor]
+    ) -> tuple[torch.Tensor, torch.Tensor]:
         raise NotImplementedError
-    
-    
+
+
 class AcousticFeatureEncoder(Protocol):
     """
     inputs:
@@ -52,8 +54,12 @@ class AcousticFeatureEncoder(Protocol):
         z: encoded features shape=[BatchSize, Channels, MaxLength], dtype=float
         mask: shape=[BatchSize, 1, MaxLength], 1=not masked, 0=masked
     """
-    def forward(self, features: torch.Tensor, lenghts: Optional[torch.Tensor]) -> tuple[torch.Tensor, torch.Tensor]:
+
+    def forward(
+        self, features: torch.Tensor, lenghts: Optional[torch.Tensor]
+    ) -> tuple[torch.Tensor, torch.Tensor]:
         raise NotImplementedError
+
 
 class VariationalTextEncoder(Protocol):
     """
@@ -66,11 +72,16 @@ class VariationalTextEncoder(Protocol):
         log_s: log-scaled standard deviation, shape=[BatchSize, Channels, MaxLength], dtype=float
         mask: shape=[BatchSize, 1, MaxLength], 1=not masked, 0=masked
     """
-    def forward(self, features: torch.Tensor, lenghts: Optional[torch.Tensor]) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
-        raise NotImplementedError
-    
 
-class VariationalAcousticFeatureEncoder(Protocol,):
+    def forward(
+        self, features: torch.Tensor, lenghts: Optional[torch.Tensor]
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+        raise NotImplementedError
+
+
+class VariationalAcousticFeatureEncoder(
+    Protocol,
+):
     """
     inputs:
         features: [BatchSize, Channels, MaxLength], dtype=float
@@ -81,9 +92,12 @@ class VariationalAcousticFeatureEncoder(Protocol,):
         log_s: log-scaled standard deviation, shape=[BatchSize, Channels, MaxLength], dtype=float
         mask: shape=[BatchSize, 1, MaxLength], 1=not masked, 0=masked
     """
-    def forward(self, features: torch.Tensor, lenghts: Optional[torch.Tensor]) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+
+    def forward(
+        self, features: torch.Tensor, lenghts: Optional[torch.Tensor]
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
         raise NotImplementedError
-    
+
 
 class TextToSpeech(Protocol):
     pass
