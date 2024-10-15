@@ -1,9 +1,10 @@
 import lightning as L
 import torch
 import torch.nn as nn
+from abc import ABC, abstractclassmethod
 
 
-class VoiceConversion(L.LightningModule):
+class VoiceConversion(ABC, L.LightningModule):
     pass
 
 
@@ -11,7 +12,7 @@ class GanVoiceConversion(VoiceConversion):
     pass
 
 
-class VoiceConersionGenerator(nn.Module):
+class VoiceConersionGenerator(ABC, nn.Module):
     def infer_vc(self, *args, **kwargs) -> torch.Tensor:
         pass
 

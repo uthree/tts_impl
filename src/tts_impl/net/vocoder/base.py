@@ -1,11 +1,12 @@
 from typing import List, Optional, Tuple
+from abc import ABC, abstractclassmethod
 
 import lightning as L
 import torch
 import torch.nn as nn
 
 
-class VocoderGenerator(nn.Module):
+class VocoderGenerator(ABC, nn.Module):
     def __init__(self):
         self.with_condition: bool = False
         self.requires_f0: bool = False
@@ -32,7 +33,7 @@ class ODEVocoderGenerator(VocoderGenerator):
     pass
 
 
-class GanVocoderDiscriminator(nn.Module):
+class GanVocoderDiscriminator(ABC, nn.Module):
     def __init__(self):
         super().__init__()
 
@@ -40,7 +41,7 @@ class GanVocoderDiscriminator(nn.Module):
         pass
 
 
-class GanVocoder(L.LightningModule):
+class GanVocoder(ABC, L.LightningModule):
     generator: GanVocoderGenerator
     discriminator: GanVocoderDiscriminator
 
@@ -48,7 +49,7 @@ class GanVocoder(L.LightningModule):
         return self.generator.vocode(*args, **kwargs)
 
 
-class ODEVocoder(L.LightningModule):
+class ODEVocoder(ABC, L.LightningModule):
     generator: ODEVocoderGenerator
 
     def infer_vocoder(self, *args, **kwargs) -> torch.Tensor:

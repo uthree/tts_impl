@@ -299,7 +299,8 @@ class PosteriorEncoder(nn.Module):
         return z, m, logs, x_mask
 
 
-class VitsGenerator(GanTextToSpeechGenerator):
+# SynthesizerTrn
+class VitsGenerator(GanTextToSpeechGenerator, GanVoiceConersionGenerator):
     def __init__(
         self,
         n_vocab,
@@ -329,7 +330,6 @@ class VitsGenerator(GanTextToSpeechGenerator):
         use_sdp=True,
         **kwargs,
     ):
-
         super().__init__()
         self.n_vocab = n_vocab
         self.spec_channels = spec_channels

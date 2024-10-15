@@ -1,0 +1,1 @@
+from hifigan.discriminator import HifiganDiscriminator, MultiPeriodDiscriminator, MultiScaleDiscriminator, CombinedDiscriminator

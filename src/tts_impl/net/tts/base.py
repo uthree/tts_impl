@@ -2,11 +2,13 @@ import lightning as L
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from abc import ABC, abstractclassmethod
+
 
 from tts_impl.net.vocoder.base import GanVocoderDiscriminator
 
 
-class TextToSpeech(L.LightningModule):
+class TextToSpeech(ABC, L.LightningModule):
     pass
 
 
@@ -14,7 +16,7 @@ class GanTextToSpeech(TextToSpeech):
     pass
 
 
-class GanTextToSpeechGenerator(nn.Module):
+class GanTextToSpeechGenerator(ABC, nn.Module):
     def forward(self, *args, **kwargs):
         pass
 

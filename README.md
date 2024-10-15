@@ -43,6 +43,8 @@ uv pip install .
 - 音声データから自動書き起こし、話者分類、BGMやノイズ、無音区間の除去など、データセット制作を補助する機能
     - whisperによるASR,
     - 話者特性をベクトルで表現できれば, k-meansなどでクラスタリングすることが可能かもしれない。
+- Transformerなどの多くのモデルでみられる類似する構造を、共通のインターフェースを実装して、組み換えができるようにする。
+- acoustic_feature_excitationsのMelSpectrogram, pitch estimation向けの共通のインターフェースを実装
 
 ### モデル一覧
 ✅ : 実装済み
