@@ -1,10 +1,7 @@
 import copy
 import math
 
-import attentions
-import commons
-import modules
-import monotonic_align
+from . import attentions, commons, modules, monotonic_align
 import torch
 from torch import nn
 from torch.nn import functional as F
@@ -301,7 +298,7 @@ class PosteriorEncoder(nn.Module):
 
 
 # SynthesizerTrn
-class VitsGenerator(GanTextToSpeechGenerator, GanVoiceConersionGenerator):
+class VitsGenerator(nn.Module, GanTextToSpeechGenerator, GanVoiceConersionGenerator):
     def __init__(
         self,
         n_vocab,
@@ -389,9 +386,9 @@ class VitsGenerator(GanTextToSpeechGenerator, GanVoiceConersionGenerator):
             hidden_channels,
             flow_kernel_size,
             1,
+            flow_num_layers,
             flow_num_blocks,
-            gin_channels=gin_channels,
-            n_layers=flow_num_layers,
+            gin_channels
         )
 
         if use_sdp:

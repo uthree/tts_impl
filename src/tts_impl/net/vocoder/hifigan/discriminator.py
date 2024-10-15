@@ -1,7 +1,6 @@
 # HiFi-GAN Discriminator from https://arxiv.org/abs/2010.05646
 
-from dataclasses import dataclass, field
-from typing import List, Tuple
+from typing import List, Tuple, Protocol
 
 import torch
 import torch.nn as nn
@@ -125,7 +124,7 @@ class DiscriminatorS(nn.Module):
         return x, fmap
 
 
-class CombinedDiscriminator(GanVocoderDiscriminator):
+class CombinedDiscriminator(nn.Module, GanVocoderDiscriminator):
     """
     Combined multiple discriminators.
     """

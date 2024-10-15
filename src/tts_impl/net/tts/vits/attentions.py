@@ -3,11 +3,10 @@
 import copy
 import math
 
-import commons
-import modules
+from . import commons
 import numpy as np
 import torch
-from modules import LayerNorm
+from .modules import LayerNorm
 from torch import nn
 from torch.nn import functional as F
 

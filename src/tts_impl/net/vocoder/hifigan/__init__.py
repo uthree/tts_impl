@@ -17,6 +17,7 @@ from .generator import HifiganGenerator
 
 
 # HiFi-GAN from https://arxiv.org/abs/2010.05646
+# TODO: improve configuration
 # TODO: add LR scheduler
 class Hifigan(GanVocoder):
     def __init__(

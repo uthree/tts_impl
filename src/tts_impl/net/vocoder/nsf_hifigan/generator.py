@@ -15,7 +15,7 @@ from .oscillator import HarmonicNoiseOscillator
 class NsfhifiganGenerator(GanVocoderGenerator):
     def __init__(
         self,
-        input_channels: int = 192,
+        input_channels: int = 80,
         upsample_initial_channels: int = 512,
         resblock_type: Literal["1", "2"] = "1",
         resblock_kernel_sizes: List[int] = [3, 7, 11],

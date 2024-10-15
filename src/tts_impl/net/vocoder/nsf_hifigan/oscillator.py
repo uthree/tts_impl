@@ -1,13 +1,11 @@
 import math
-from abc import ABC, abstractmethod
-
+from typing import Protocol
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
 
-class Oscillator(nn.Module, ABC):
-    @abstractmethod
+class Oscillator(nn.Module, Protocol):
     def forward(self, f0: torch.Tensor, uv: torch.Tensor) -> torch.Tensor:
         pass
 

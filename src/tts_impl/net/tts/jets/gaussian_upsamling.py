@@ -1,6 +1,8 @@
 # based on https://github.com/imdanboy/jets/blob/main/espnet2/gan_tts/jets/length_regulator.py
 
 from typing import Optional
+from tts_impl.net.tts.base import Upsampler
+import torch.nn as nn
 
 import torch
 
@@ -44,7 +46,7 @@ def gaussian_upsampling(
     return hs
 
 
-class GaussianUpsampling(torch.nn.Module):
+class GaussianUpsampling(nn.Module, Upsampler):
     """
     Gaussian upsampling with fixed temperature as in:
     https://arxiv.org/abs/2010.04301

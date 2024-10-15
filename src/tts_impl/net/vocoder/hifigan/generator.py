@@ -102,7 +102,7 @@ class ResBlock2(nn.Module):
             remove_weight_norm(c1)
 
 
-class HifiganGenerator(GanVocoderGenerator):
+class HifiganGenerator(nn.Module, GanVocoderGenerator):
     def __init__(
         self,
         input_channels: int = 80,

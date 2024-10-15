@@ -29,7 +29,6 @@ uv pip install .
         - `hifigan/`: HiFi-GANの実装。
 
 ## TODO List
-- 学習処理
 - pipでのインストール、何らかのプロジェクトへこのリポジトリを組み込んでの運用
 - モジュラー設計
     - end-to-endなTTSなど、ボコーダー部分を任意に差し替えることができる機構を備えたい
@@ -45,6 +44,7 @@ uv pip install .
     - 話者特性をベクトルで表現できれば, k-meansなどでクラスタリングすることが可能かもしれない。
 - Transformerなどの多くのモデルでみられる類似する構造を、共通のインターフェースを実装して、組み換えができるようにする。
 - acoustic_feature_excitationsのMelSpectrogram, pitch estimation向けの共通のインターフェースを実装
+- エンコードされた音素列をdurationによって引き延ばす処理の抽象化
 
 ### モデル一覧
 ✅ : 実装済み
