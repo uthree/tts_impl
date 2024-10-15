@@ -1,9 +1,9 @@
+from abc import ABC, abstractclassmethod
+
 import lightning as L
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from abc import ABC, abstractclassmethod
-
 
 from tts_impl.net.vocoder.base import GanVocoderDiscriminator
 

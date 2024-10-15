@@ -1,7 +1,7 @@
 from tts_impl.net.tts.base import GanTextToSpeech
+from tts_impl.net.vocoder.hifigan.discriminator import HifiganDiscriminator
 
 from .models import VitsGenerator
-from tts_impl.net.vocoder.hifigan.discriminator import HifiganDiscriminator
 
 
 class Vits(GanTextToSpeech):

@@ -1,7 +1,8 @@
+from abc import ABC, abstractclassmethod
+
 import lightning as L
 import torch
 import torch.nn as nn
-from abc import ABC, abstractclassmethod
 
 
 class VoiceConversion(ABC, L.LightningModule):

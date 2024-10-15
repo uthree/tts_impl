@@ -6,13 +6,11 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 
-from tts_impl.acoustic_feature_extractions.mel_processing import LogMelSpectrogram
+from tts_impl.acoustic_feature_extractions.mel_processing import \
+    LogMelSpectrogram
 from tts_impl.net.vocoder.base import GanVocoder
-from tts_impl.net.vocoder.hifigan.loss import (
-    discriminator_loss,
-    feature_loss,
-    generator_loss,
-)
+from tts_impl.net.vocoder.hifigan.loss import (discriminator_loss,
+                                               feature_loss, generator_loss)
 
 from .discriminator import HifiganDiscriminator
 from .generator import HifiganGenerator

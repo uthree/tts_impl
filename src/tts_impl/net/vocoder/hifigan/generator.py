@@ -115,11 +115,9 @@ class HifiganGenerator(GanVocoderGenerator):
         output_channels: int = 1,
         tanh_post_activation: bool = True,
         # option for speaker conditioning in TTS task
-        condition_channels: Optional[int] = None,
+        condition_channels: int = 0,
     ):
         super().__init__()
-        if condition_channels == 0:
-            condition_channels = None
 
         self.num_kernels = len(resblock_kernel_sizes)
         self.num_upsamples = len(upsample_rates)
@@ -145,7 +143,7 @@ class HifiganGenerator(GanVocoderGenerator):
         self.conv_pre = weight_norm(
             nn.Conv1d(input_channels, upsample_initial_channels, 7, 1, 3)
         )
-        if condition_channels is not None:
+        if condition_channels > 0:
             self.with_condition = True
             self.conv_cond = weight_norm(
                 nn.Conv1d(condition_channels, upsample_initial_channels, 1, bias=False)

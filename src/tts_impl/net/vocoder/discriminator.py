@@ -1,1 +1,3 @@
-from hifigan.discriminator import HifiganDiscriminator, MultiPeriodDiscriminator, MultiScaleDiscriminator, CombinedDiscriminator
+from hifigan.discriminator import (CombinedDiscriminator, HifiganDiscriminator,
+                                   MultiPeriodDiscriminator,
+                                   MultiScaleDiscriminator)

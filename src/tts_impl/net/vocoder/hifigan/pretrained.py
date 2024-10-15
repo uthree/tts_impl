@@ -3,11 +3,8 @@ from pathlib import Path
 
 import torch
 
-from .discriminator import (
-    CombinedDiscriminator,
-    MultiPeriodDiscriminator,
-    MultiScaleDiscriminator,
-)
+from .discriminator import (CombinedDiscriminator, MultiPeriodDiscriminator,
+                            MultiScaleDiscriminator)
 from .generator import HifiganGenerator
 
 

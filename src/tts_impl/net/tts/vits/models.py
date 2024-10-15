@@ -9,7 +9,8 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 
-from tts_impl.net.base import GanTextToSpeechGenerator, GanVoiceConersionGenerator
+from tts_impl.net.base import (GanTextToSpeechGenerator,
+                               GanVoiceConersionGenerator)
 from tts_impl.net.vocoder.hifigan import HifiganDiscriminator, HifiganGenerator
 
 

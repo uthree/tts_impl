@@ -1,10 +1,17 @@
 # based on https://github.com/imdanboy/jets/blob/main/espnet2/gan_tts/jets/length_regulator.py
 
-import torch
 from typing import Optional
 
+import torch
 
-def gaussian_upsampling(hs: torch.Tensor, ds: torch.Tensor, h_masks:Optional[torch.Tensor]=None, d_masks:Optional[torch.Tensor] = None, delta: int=0.1) -> torch.Tensor:
+
+def gaussian_upsampling(
+    hs: torch.Tensor,
+    ds: torch.Tensor,
+    h_masks: Optional[torch.Tensor] = None,
+    d_masks: Optional[torch.Tensor] = None,
+    delta: int = 0.1,
+) -> torch.Tensor:
     """
     Args:
         hs (Tensor): Batched hidden state to be expanded (B, T_text, adim)
@@ -47,7 +54,13 @@ class GaussianUpsampling(torch.nn.Module):
         super().__init__()
         self.delta = delta
 
-    def forward(self, hs: torch.Tensor, ds: torch.Tensor, h_masks:Optional[torch.Tensor]=None, d_masks:Optional[torch.Tensor] = None) -> torch.Tensor:
+    def forward(
+        self,
+        hs: torch.Tensor,
+        ds: torch.Tensor,
+        h_masks: Optional[torch.Tensor] = None,
+        d_masks: Optional[torch.Tensor] = None,
+    ) -> torch.Tensor:
         """
         Args:
             hs (Tensor): Batched hidden state to be expanded (B, T_text, adim)
