@@ -1,4 +1,8 @@
-from .tts.base import GanTextToSpeech, GanTextToSpeechGenerator, TextToSpeech
+from .tts.base import (AcousticFeatureEncoder, DurationDiscriminator,
+                       DurationPredictor, GanTextToSpeech,
+                       GanTextToSpeechGenerator, TextEncoder, TextToSpeech,
+                       VariationalAcousticFeatureEncoder,
+                       VariationalTextEncoder)
 from .vc.base import (GanVoiceConersionGenerator, GanVoiceConversion,
                       VoiceConersionGenerator, VoiceConversion)
 from .vocoder.base import (GanVocoder, GanVocoderDiscriminator,

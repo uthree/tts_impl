@@ -1,9 +1,7 @@
 # code from https://github.com/jaywalnut310/vits/blob/main/attentions.py
 
-import copy
 import math
 
-import numpy as np
 import torch
 from torch import nn
 from torch.nn import functional as F

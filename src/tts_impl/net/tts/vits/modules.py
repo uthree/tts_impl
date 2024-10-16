@@ -1,19 +1,14 @@
 # code from https://github.com/jaywalnut310/vits/blob/main/modules.py
 
-import copy
 import math
 
 import numpy as np
-import scipy
 import torch
 from torch import nn
-from torch.nn import Conv1d
 from torch.nn import functional as F
-from torch.nn.utils import remove_weight_norm
 from torch.nn.utils.parametrizations import weight_norm
 
 from . import commons
-from .commons import get_padding, init_weights
 from .transforms import piecewise_rational_quadratic_transform
 
 

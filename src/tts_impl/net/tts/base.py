@@ -1,9 +1,11 @@
-from typing import Optional, Protocol
+from typing import Optional, Protocol, TypeAlias
 
 import lightning as L
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+
+from tts_impl.net.vocoder.base import GanVocoderDiscriminator
 
 
 class Upsampler(Protocol):
@@ -11,10 +13,10 @@ class Upsampler(Protocol):
     protocol for upsampling encoded text by duration
 
     inputs:
-        hs: shape=[BatchSize, Channels, MaxLength]
-        ds: shape=[BatchSize, MaxLength]
-        h_masks: shape=[BatchSize, 1, MaxLength]
-        d_masks: shape=[BatchSize, 1, MaxLength]
+        hs: [BatchSize, Channels, MaxLength]
+        ds: [BatchSize, MaxLength]
+        h_masks: [BatchSize, 1, MaxLength]
+        d_masks: [BatchSize, 1, MaxLength]
     outputs:
         features: [BatchSize, Channels, Length_Upsampled]
     """
@@ -32,15 +34,19 @@ class Upsampler(Protocol):
 class TextEncoder(Protocol):
     """
     inputs:
-        phonemes: [BatchSize, MaxLength], dtype=int
+        phonemes_ids: [BatchSize, MaxLength], dtype=int
         lengths: [BatchSize], dtype=float
+        g: [BatchSize, 1, SpeakerEmbeddingdim] dtype=float
     returns:
-        z: encoded features shape=[BatchSize, Channels, MaxLength], dtype=float
-        mask: shape=[BatchSize, 1, MaxLength], 1=not masked, 0=masked
+        z: encoded features [BatchSize, Channels, MaxLength], dtype=float
+        mask: [BatchSize, 1, MaxLength], 1=not masked, 0=masked
     """
 
     def forward(
-        self, phoneme_ids: torch.Tensor, lenghts: Optional[torch.Tensor]
+        self,
+        phoneme_ids: torch.Tensor,
+        lenghts: Optional[torch.Tensor],
+        g: Optional[torch.Tensor],
     ) -> tuple[torch.Tensor, torch.Tensor]:
         raise NotImplementedError
 
@@ -50,13 +56,17 @@ class AcousticFeatureEncoder(Protocol):
     inputs:
         features: [BatchSize, Channels, MaxLength], dtype=float
         lengths: [BatchSize], dtype=float
+        g: [BatchSize, 1, SpeakerEmbeddingdim] dtype=float
     returns:
-        z: encoded features shape=[BatchSize, Channels, MaxLength], dtype=float
-        mask: shape=[BatchSize, 1, MaxLength], 1=not masked, 0=masked
+        z: encoded features [BatchSize, Channels, MaxLength], dtype=float
+        mask: [BatchSize, 1, MaxLength], 1=not masked, 0=masked
     """
 
     def forward(
-        self, features: torch.Tensor, lenghts: Optional[torch.Tensor]
+        self,
+        features: torch.Tensor,
+        lenghts: Optional[torch.Tensor],
+        g: Optional[torch.Tensor],
     ) -> tuple[torch.Tensor, torch.Tensor]:
         raise NotImplementedError
 
@@ -66,15 +76,19 @@ class VariationalTextEncoder(Protocol):
     inputs:
         phonemes: [BatchSize, MaxLength], dtype=int
         lengths: [BatchSize], dtype=float
+        g: [BatchSize, 1, SpeakerEmbeddingdim] dtype=float
     returns:
-        z: variational encoded features shape=[BatchSize, Channels, MaxLength], dtype=float
-        mean: shape=[BatchSize, Channels, MaxLength], dtype=float
-        log_s: log-scaled standard deviation, shape=[BatchSize, Channels, MaxLength], dtype=float
-        mask: shape=[BatchSize, 1, MaxLength], 1=not masked, 0=masked
+        z: variational encoded features [BatchSize, Channels, MaxLength], dtype=float
+        mean: [BatchSize, Channels, MaxLength], dtype=float
+        log_s: log-scaled standard deviation, [BatchSize, Channels, MaxLength], dtype=float
+        mask: [BatchSize, 1, MaxLength], 1=not masked, 0=masked
     """
 
     def forward(
-        self, features: torch.Tensor, lenghts: Optional[torch.Tensor]
+        self,
+        features: torch.Tensor,
+        lenghts: Optional[torch.Tensor],
+        g: Optional[torch.Tensor],
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
         raise NotImplementedError
 
@@ -86,15 +100,19 @@ class VariationalAcousticFeatureEncoder(
     inputs:
         features: [BatchSize, Channels, MaxLength], dtype=float
         lengths: [BatchSize], dtype=float
+        g: [BatchSize, 1, SpeakerEmbeddingdim] dtype=float
     returns:
-        z: variational encoded features shape=[BatchSize, Channels, MaxLength], dtype=float
-        mean: shape=[BatchSize, Channels, MaxLength], dtype=float
-        log_s: log-scaled standard deviation, shape=[BatchSize, Channels, MaxLength], dtype=float
-        mask: shape=[BatchSize, 1, MaxLength], 1=not masked, 0=masked
+        z: variational encoded features [BatchSize, Channels, MaxLength], dtype=float
+        mean: [BatchSize, Channels, MaxLength], dtype=float
+        log_s: log-scaled standard deviation, [BatchSize, Channels, MaxLength], dtype=float
+        mask: [BatchSize, 1, MaxLength], 1=not masked, 0=masked
     """
 
     def forward(
-        self, features: torch.Tensor, lenghts: Optional[torch.Tensor]
+        self,
+        features: torch.Tensor,
+        lenghts: Optional[torch.Tensor],
+        g: Optional[torch.Tensor],
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
         raise NotImplementedError
 
@@ -113,3 +131,14 @@ class GanTextToSpeechGenerator(Protocol):
 
     def infer_tts(self, *args, **kwargs) -> torch.Tensor:
         pass
+
+
+class DurationPredictor(Protocol):
+    pass
+
+
+class DurationDiscriminator(Protocol):
+    pass
+
+
+WaveformDiscriminator: TypeAlias = GanVocoderDiscriminator
