@@ -136,6 +136,9 @@ class CombinedDiscriminator(nn.Module, GanVocoderDiscriminator):
         super().__init__()
         self.discriminators = nn.ModuleList(discriminators)
 
+    def append(self, d: GanVocoderDiscriminator):
+        self.discriminators.append(d)
+
     def forward(self, x: torch.Tensor) -> Tuple[List[torch.Tensor], List[torch.Tensor]]:
         fmap = []
         logits = []
@@ -232,3 +235,14 @@ class MultiResolutionStftDiscriminator(CombinedDiscriminator):
         super().__init__()
         for r in resolutions:
             self.discriminators.append(DiscriminatorR(r))
+
+
+__all__ = [
+    "MultiScaleDiscriminator",
+    "MultiPeriodDiscriminator",
+    "MultiResolutionStftDiscriminator",
+    "DiscriminatorR",
+    "DiscriminatorP",
+    "DiscriminatorS",
+    "CombinedDiscriminator",
+]

@@ -35,11 +35,15 @@ class GanVocoderDiscriminator(Protocol):
         pass
 
 
-class GanVocoder(Protocol):
+class Vocoder(Protocol):
     pass
 
 
-class OdeVocoder(Protocol):
+class GanVocoder(Vocoder):
+    pass
+
+
+class OdeVocoder(Vocoder):
     pass
 
 
@@ -49,4 +53,6 @@ __all__ = [
     "OdeVocoderDiscriminator",
     "GanVocoderGenerator",
     "VocoderGenerator",
+    "VocoderGenerator",
+    "Vocoder",
 ]
