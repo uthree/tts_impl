@@ -3,7 +3,7 @@ from pathlib import Path
 
 import torch
 
-from .discriminator import (CombinedDiscriminator, MultiPeriodDiscriminator,
+from ..discriminator import (CombinedDiscriminator, MultiPeriodDiscriminator,
                             MultiScaleDiscriminator)
 from .generator import HifiganGenerator
 
@@ -43,3 +43,9 @@ def load_generator_from_official_format(
     generator_dict = torch.load(generator_path, map_location="cpu")["generator"]
     generator.load_state_dict(generator_dict)
     return generator
+
+
+__all__ = [
+    'load_generator_from_official_format',
+    'load_discriminator_from_official_format'
+]

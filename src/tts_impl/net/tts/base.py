@@ -1,12 +1,6 @@
-from typing import Optional, Protocol, TypeAlias
+from typing import Optional, Protocol
 
-import lightning as L
 import torch
-import torch.nn as nn
-import torch.nn.functional as F
-
-from tts_impl.net.vocoder.base import GanVocoderDiscriminator
-
 
 class Upsampler(Protocol):
     """
@@ -141,4 +135,14 @@ class DurationDiscriminator(Protocol):
     pass
 
 
-WaveformDiscriminator: TypeAlias = GanVocoderDiscriminator
+__all__ = [
+    'Upsampler',
+    'TextEncoder',
+    'VariationalTextEncoder',
+    'AcousticFeatureEncoder',
+    'VariationalAcousticFeatureEncoder',
+    'DurationPredictor',
+    'DurationDiscriminator',
+    'GanTextToSpeech',
+    'GanTextToSpeechGenerator'
+]

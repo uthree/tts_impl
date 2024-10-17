@@ -1,8 +1,6 @@
 from typing import List, Optional, Protocol, Tuple
 
-import lightning as L
 import torch
-import torch.nn as nn
 
 
 class VocoderGenerator(Protocol):
@@ -28,7 +26,7 @@ class GanVocoderGenerator(VocoderGenerator):
     pass
 
 
-class ODEVocoderGenerator(VocoderGenerator):
+class OdeVocoderGenerator(VocoderGenerator):
     pass
 
 
@@ -41,5 +39,14 @@ class GanVocoder(Protocol):
     pass
 
 
-class ODEVocoder(Protocol):
+class OdeVocoder(Protocol):
     pass
+
+
+__all__ = [
+    'GanVocoder',
+    'OdeVocoder',
+    'OdeVocoderDiscriminator',
+    'GanVocoderGenerator',
+    'VocoderGenerator'
+]

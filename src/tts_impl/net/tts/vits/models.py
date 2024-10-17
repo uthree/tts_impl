@@ -1,6 +1,5 @@
-import copy
 import math
-from typing import Optional
+from typing import Optional, TypeAlias
 
 import torch
 from torch import nn
@@ -335,7 +334,7 @@ class VitsGenerator(nn.Module, GanTextToSpeechGenerator, GanVoiceConersionGenera
         flow_num_blocks: int = 4,
         n_speakers: int = 0,
         gin_channels: int = 192,
-        use_dp: bool = True,
+        use_dp: bool = False,
         use_sdp: bool = True,
         dp_kernel_size: int = 3,
         sdp_kernel_size: int = 3,

@@ -6,13 +6,13 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
-class Oscillator(nn.Module, Protocol):
+class Oscillator(Protocol):
     def forward(self, f0: torch.Tensor, uv: torch.Tensor) -> torch.Tensor:
         pass
 
 
 # HnNSF Module from https://arxiv.org/pdf/1904.12088
-class HarmonicNoiseOscillator(Oscillator):
+class HarmonicNoiseOscillator(nn.Module, Oscillator):
     def __init__(self, sample_rate, frame_size, num_harmonics=1, noise_scale=0.03):
         super().__init__()
         self.sample_rate = sample_rate
@@ -53,7 +53,7 @@ class HarmonicNoiseOscillator(Oscillator):
         return source
 
 
-class ImpulseOscillator(Oscillator):
+class ImpulseOscillator(nn.Module, Oscillator):
     def __init__(
         self,
         sample_rate,
@@ -83,7 +83,7 @@ class ImpulseOscillator(Oscillator):
 
 
 # Cyclic noise oscillator from https://arxiv.org/abs/2004.02191
-class CyclicNoiseOscillator(Oscillator):
+class CyclicNoiseOscillator(nn.Module, Oscillator):
     def __init__(self, sample_rate, frame_size, base_frequency=440.0, beta=0.78):
         super().__init__()
         self.sample_rate = sample_rate

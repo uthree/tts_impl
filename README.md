@@ -1,20 +1,20 @@
 # tts_impl (仮)
-**わーくいんぷろぐれす** 
-このリポジトリは制作中です。MITライセンスで利用できますが、予告なく内容が変更される可能性があります。
+[![pytorch](https://img.shields.io/badge/PyTorch_2.0+-ee4c2c?logo=pytorch&logoColor=white)](https://pytorch.org/get-started/locally/)
+[![lightning](https://img.shields.io/badge/-Lightning_2.0+-792ee5?logo=pytorchlightning&logoColor=white)](https://pytorchlightning.ai/)
+[![black](https://img.shields.io/badge/Code%20Style-Black-black.svg?labelColor=gray)](https://black.readthedocs.io/en/stable/)
+[![isort](https://img.shields.io/badge/%20imports-isort-%231674b1?style=flat&labelColor=ef8336)](https://pycqa.github.io/isort/)
+[![python](https://img.shields.io/badge/-Python_3.11-blue?logo=python&logoColor=white)](https://www.python.org/downloads/release/python-3119/)
 
-implementation of TTS models in PyTorch  
-TTSモデルのPyTorch実装集　なるべく依存関係を減らす
-pytorch lightningを使って学習できるようにする。これにより簡単に複数GPUを利用でき、TensorBoardでの進捗監視ができる。  
-モデル構造がほぼ同じなので、VITS派生の(S)VCもついでに実装
+
+このリポジトリは制作中です。MITライセンスで利用できますが、予告なく内容が変更される可能性があります。
 
 ## インストール
 ```sh
-pip install uv # if uv is not installed
-uv venv # create new environment
-# install PyTorch with GPU (optional)
-# install dependencies
-uv pip install build
-uv pip install .
+pip install git+https://github.com/uthree/tts_impl.git
+```
+または、このリポジトリをクローンして
+```sh
+pip install -e .
 ```
 
 ## コード検査
@@ -30,21 +30,11 @@ uv pip install .
 
 ## TODO List
 - pipでのインストール、何らかのプロジェクトへこのリポジトリを組み込んでの運用
-- モジュラー設計
-    - end-to-endなTTSなど、ボコーダー部分を任意に差し替えることができる機構を備えたい
-    - 共通のインターフェイスを多くのボコーダーに実装すれば可能そう。
-    - ボコーダーに関してはDiscriminatorを差し替えたりなど
 - また、TTSのText Encoderに言語モデルの特徴量を入力する機構をつけたい。
 - Onnxエクスポート: Python, PyTorchがない環境で推論できるようにしたい。(e.g. Rust+ort)
 - "recipe": モデルアーキテクチャを指定して、データセットを準備すれば前処理から学習まですべてできる
 ようにしたい。
-- 公式実装の学習済みモデルからインポート
 - 音声データから自動書き起こし、話者分類、BGMやノイズ、無音区間の除去など、データセット制作を補助する機能
-    - whisperによるASR,
-    - 話者特性をベクトルで表現できれば, k-meansなどでクラスタリングすることが可能かもしれない。
-- Transformerなどの多くのモデルでみられる類似する構造を、共通のインターフェースを実装して、組み換えができるようにする。
-- acoustic_feature_excitationsのMelSpectrogram, pitch estimation向けの共通のインターフェースを実装
-- エンコードされた音素列をdurationによって引き延ばす処理の抽象化
 
 ### モデル一覧
 ✅ : 実装済み
@@ -68,15 +58,16 @@ TTS: text to speech
     - VITS2 ❓
     - JETS 🚧
 
+alignment:
+    - on-tye-fly alignment(monotonic-alignment-search, forward-sum, etc.) 🚧
+    - Montreal Forced Aligner ❓
 
 linguistic frontend
 - g2p:
     - pyopenjtalk-plus ❓
     - phonemizer ❓
     - 中国語: いわゆるピンイン？というものをつかうとよさそうだが、ライブラリはまだ探していない。
-- alignment:
-    - on-tye-fly alignment(monotonic-alignment-search, forward-sum, etc.) 🚧
-    - Montreal Forced Aligner ❓
+
 - language models
-    - BERT / RoBERTa ❓
+    - BERT, GPT 等おそらくあらゆる言語モデルに対応可能？ ❓
     - predict accent classic (e.g. dictionary) method ❓

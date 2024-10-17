@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-from omegaconf import DictConfig, OmegaConf
+from omegaconf import DictConfig
 
 from tts_impl.acoustic_feature_extractions.mel_processing import \
     LogMelSpectrogram
@@ -96,3 +96,10 @@ class Hifigan(L.LightningModule, GanVocoder):
             betas=self.config.optimizer.betas,
         )
         return opt_g, opt_d
+
+
+__all__ = [
+    'HifiganGenerator',
+    'Hifigan',
+    'HifiganDiscriminator'
+]

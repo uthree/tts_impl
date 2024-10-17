@@ -1,1 +1,5 @@
-from generator import NsfhifiganGenerator
+from .generator import NsfhifiganGenerator
+
+__all__ = [
+    'NsfhifiganGenerator'
+]

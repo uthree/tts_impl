@@ -38,4 +38,4 @@ build-backend = "hatchling.build"
 pythonpath = ["src/"]
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/"]
+packages = ["src/tts_impl/"]
