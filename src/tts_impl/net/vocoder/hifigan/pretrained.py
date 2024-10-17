@@ -4,7 +4,7 @@ from pathlib import Path
 import torch
 
 from ..discriminator import (CombinedDiscriminator, MultiPeriodDiscriminator,
-                            MultiScaleDiscriminator)
+                             MultiScaleDiscriminator)
 from .generator import HifiganGenerator
 
 
@@ -46,6 +46,6 @@ def load_generator_from_official_format(
 
 
 __all__ = [
-    'load_generator_from_official_format',
-    'load_discriminator_from_official_format'
+    "load_generator_from_official_format",
+    "load_discriminator_from_official_format",
 ]

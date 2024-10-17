@@ -2,6 +2,7 @@ from typing import Optional, Protocol
 
 import torch
 
+
 class Upsampler(Protocol):
     """
     protocol for upsampling encoded text by duration
@@ -136,13 +137,13 @@ class DurationDiscriminator(Protocol):
 
 
 __all__ = [
-    'Upsampler',
-    'TextEncoder',
-    'VariationalTextEncoder',
-    'AcousticFeatureEncoder',
-    'VariationalAcousticFeatureEncoder',
-    'DurationPredictor',
-    'DurationDiscriminator',
-    'GanTextToSpeech',
-    'GanTextToSpeechGenerator'
+    "Upsampler",
+    "TextEncoder",
+    "VariationalTextEncoder",
+    "AcousticFeatureEncoder",
+    "VariationalAcousticFeatureEncoder",
+    "DurationPredictor",
+    "DurationDiscriminator",
+    "GanTextToSpeech",
+    "GanTextToSpeechGenerator",
 ]

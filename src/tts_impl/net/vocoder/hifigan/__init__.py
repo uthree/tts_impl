@@ -98,8 +98,4 @@ class Hifigan(L.LightningModule, GanVocoder):
         return opt_g, opt_d
 
 
-__all__ = [
-    'HifiganGenerator',
-    'Hifigan',
-    'HifiganDiscriminator'
-]
+__all__ = ["HifiganGenerator", "Hifigan", "HifiganDiscriminator"]

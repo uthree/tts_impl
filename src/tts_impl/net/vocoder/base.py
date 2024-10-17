@@ -44,9 +44,9 @@ class OdeVocoder(Protocol):
 
 
 __all__ = [
-    'GanVocoder',
-    'OdeVocoder',
-    'OdeVocoderDiscriminator',
-    'GanVocoderGenerator',
-    'VocoderGenerator'
+    "GanVocoder",
+    "OdeVocoder",
+    "OdeVocoderDiscriminator",
+    "GanVocoderGenerator",
+    "VocoderGenerator",
 ]

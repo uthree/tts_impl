@@ -10,7 +10,4 @@ class Vits(L.LightningModule, GanTextToSpeech):
         pass
 
 
-__all__ = [
-    'VitsGenerator',
-    'Vits'
-]
+__all__ = ["VitsGenerator", "Vits"]

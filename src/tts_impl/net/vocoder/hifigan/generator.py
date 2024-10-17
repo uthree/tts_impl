@@ -11,11 +11,12 @@ from torch.nn.utils.parametrizations import weight_norm
 
 from tts_impl.net.vocoder.base import GanVocoderGenerator
 
-
 LRELU_SLOPE = 0.1
+
 
 def get_padding(kernel_size, dilation=1):
     return int((kernel_size * dilation - dilation) / 2)
+
 
 def init_weights(m, mean=0.0, std=0.01):
     classname = m.__class__.__name__

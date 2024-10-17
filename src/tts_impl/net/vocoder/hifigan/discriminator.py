@@ -1,5 +1,9 @@
-from tts_impl.net.vocoder.discriminator import MultiPeriodDiscriminator, MultiScaleDiscriminator, CombinedDiscriminator
 from typing import List
+
+from tts_impl.net.vocoder.discriminator import (CombinedDiscriminator,
+                                                MultiPeriodDiscriminator,
+                                                MultiScaleDiscriminator)
+
 
 class HifiganDiscriminator(CombinedDiscriminator):
     def __init__(
@@ -11,6 +15,5 @@ class HifiganDiscriminator(CombinedDiscriminator):
         self.discriminators.append(MultiPeriodDiscriminator(periods))
         self.discriminators.append(MultiScaleDiscriminator(scales))
 
-__all__ = [
-    'HifiganDiscriminator'
-]
+
+__all__ = ["HifiganDiscriminator"]
