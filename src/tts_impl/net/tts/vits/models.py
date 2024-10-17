@@ -5,11 +5,11 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 
-from tts_impl.net.base import (GanTextToSpeechGenerator,
-                               GanVoiceConersionGenerator)
-from tts_impl.net.tts.base import (VariationalAcousticFeatureEncoder,
+from tts_impl.net.tts.base import (GanTextToSpeechGenerator,
+                                   VariationalAcousticFeatureEncoder,
                                    VariationalTextEncoder)
-from tts_impl.net.vocoder.hifigan import HifiganDiscriminator, HifiganGenerator
+from tts_impl.net.vc.base import GanVoiceConersionGenerator
+from tts_impl.net.vocoder.hifigan import HifiganGenerator
 
 from . import attentions, commons, modules, monotonic_align
 
