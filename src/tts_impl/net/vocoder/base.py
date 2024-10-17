@@ -11,7 +11,12 @@ class VocoderGenerator(Protocol):
     """
 
     def forward(
-        self, x: torch.Tensor, g=Optional[torch.Tensor], *args, **kwargs
+        self,
+        x: torch.Tensor,
+        g=Optional[torch.Tensor],
+        f0=Optional[torch.Tensor],
+        *args,
+        **kwargs,
     ) -> torch.Tensor:
         pass
 
@@ -33,10 +38,8 @@ class GanVocoderDiscriminator(Protocol):
 
 
 class GanVocoder(Protocol):
-    def infer_vocoder(self, *args, **kwargs) -> torch.Tensor:
-        pass
+    pass
 
 
 class ODEVocoder(Protocol):
-    def infer_vocoder(self, *args, **kwargs) -> torch.Tensor:
-        pass
+    pass

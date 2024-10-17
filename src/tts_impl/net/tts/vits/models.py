@@ -1,5 +1,6 @@
 import copy
 import math
+from typing import Optional
 
 import torch
 from torch import nn
@@ -17,10 +18,10 @@ from . import attentions, commons, modules, monotonic_align
 class StochasticDurationPredictor(nn.Module):
     def __init__(
         self,
-        in_channels,
-        filter_channels,
-        kernel_size,
-        p_dropout,
+        in_channels: int = 192,
+        filter_channels: int = 768,
+        kernel_size: int = 5,
+        p_dropout: float = 0.1,
         n_flows=4,
         gin_channels=0,
     ):
@@ -172,14 +173,15 @@ class DurationPredictor(nn.Module):
 class TextEncoder(nn.Module, VariationalTextEncoder):
     def __init__(
         self,
-        n_vocab,
-        out_channels,
-        hidden_channels,
-        filter_channels,
-        n_heads,
-        n_layers,
-        kernel_size,
-        p_dropout,
+        n_vocab: int,
+        out_channels: int,
+        hidden_channels: int,
+        filter_channels: int,
+        n_heads: int,
+        n_layers: int,
+        kernel_size: int,
+        p_dropout: int,
+        window_size: Optional[int] = 4,
     ):
         super().__init__()
         self.n_vocab = n_vocab
@@ -195,7 +197,13 @@ class TextEncoder(nn.Module, VariationalTextEncoder):
         nn.init.normal_(self.emb.weight, 0.0, hidden_channels**-0.5)
 
         self.encoder = attentions.Encoder(
-            hidden_channels, filter_channels, n_heads, n_layers, kernel_size, p_dropout
+            hidden_channels,
+            filter_channels,
+            n_heads,
+            n_layers,
+            kernel_size,
+            p_dropout,
+            window_size=window_size,
         )
         self.proj = nn.Conv1d(hidden_channels, out_channels * 2, 1)
 
@@ -306,29 +314,34 @@ class VitsGenerator(nn.Module, GanTextToSpeechGenerator, GanVoiceConersionGenera
         self,
         n_vocab,
         spec_channels,
-        segment_size,
+        segment_size=32,
         inter_channels=192,
         hidden_channels=192,
         filter_channels=768,
         n_heads=2,
         n_layers=6,
-        kernel_size=3,
-        p_dropout=0.1,
+        kernel_size: int = 3,
+        p_dropout: float = 0.1,
         resblock_type="1",
         resblock_kernel_sizes=[3, 7, 11],
         resblock_dilations=[[1, 3, 5], [1, 3, 5], [1, 3, 5]],
         upsample_rates=[8, 8, 2, 2],
         upsample_initial_channels=512,
         upsample_kernel_sizes=[16, 16, 4, 4],
-        posterior_encoder_num_layers=16,
-        posterior_encoder_kernel_size=5,
-        flow_kernel_size=5,
-        flow_num_layers=4,
-        flow_num_blocks=4,
-        n_speakers=0,
-        gin_channels=0,
-        use_dp=True,
-        use_sdp=True,
+        posterior_encoder_num_layers: int = 16,
+        posterior_encoder_kernel_size: int = 5,
+        flow_kernel_size: int = 5,
+        flow_num_layers: int = 4,
+        flow_num_blocks: int = 4,
+        n_speakers: int = 0,
+        gin_channels: int = 192,
+        use_dp: bool = True,
+        use_sdp: bool = True,
+        dp_kernel_size: int = 3,
+        sdp_kernel_size: int = 3,
+        dp_filter_size: int = 256,
+        sdp_filter_size: int = 192,
+        sdp_num_flows: int = 4,
         **kwargs,
     ):
         super().__init__()
@@ -396,11 +409,20 @@ class VitsGenerator(nn.Module, GanTextToSpeechGenerator, GanVoiceConersionGenera
 
         if use_sdp:
             self.sdp = StochasticDurationPredictor(
-                hidden_channels, 192, 3, 0.5, 4, gin_channels=gin_channels
+                hidden_channels,
+                sdp_filter_size,
+                sdp_kernel_size,
+                0.5,
+                sdp_num_flows,
+                gin_channels=gin_channels,
             )
         if use_dp:
             self.dp = DurationPredictor(
-                hidden_channels, 256, 3, 0.5, gin_channels=gin_channels
+                hidden_channels,
+                dp_filter_size,
+                dp_kernel_size,
+                0.5,
+                gin_channels=gin_channels,
             )
 
         if n_speakers > 1:
