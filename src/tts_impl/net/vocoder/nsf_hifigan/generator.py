@@ -12,7 +12,7 @@ from tts_impl.net.vocoder.hifigan.generator import (ResBlock1, ResBlock2,
 from .oscillator import HarmonicNoiseOscillator
 
 
-class NsfhifiganGenerator(GanVocoderGenerator):
+class NsfhifiganGenerator(nn.Module, GanVocoderGenerator):
     def __init__(
         self,
         input_channels: int = 80,
@@ -32,14 +32,13 @@ class NsfhifiganGenerator(GanVocoderGenerator):
     ):
         super().__init__()
         self.requires_f0 = True
-        if condition_channels == 0:
-            condition_channels = None
 
         self.num_kernels = len(resblock_kernel_sizes)
         self.num_upsamples = len(upsample_rates)
         self.frame_size = 1
 
         self.input_channels = input_channels
+        self.condition_channels = condition_channels
         self.upsample_initial_channels = upsample_initial_channels
         self.resblock_type = resblock_type
         self.resblock_kernel_sizes = resblock_kernel_sizes

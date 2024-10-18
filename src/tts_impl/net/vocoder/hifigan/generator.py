@@ -134,6 +134,7 @@ class HifiganGenerator(nn.Module, GanVocoderGenerator):
         self.upsample_rates = upsample_rates
         self.output_channels = output_channels
         self.tanh_post_activation = tanh_post_activation
+        self.condition_channels = condition_channels
 
         if resblock_type == "1":
             resblock = ResBlock1

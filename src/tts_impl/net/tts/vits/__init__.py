@@ -1,8 +1,13 @@
 import lightning as L
 
 from tts_impl.net.tts.base import GanTextToSpeech
+from tts_impl.net.vocoder.hifigan import \
+    HifiganDiscriminator as VitsDiscriminator
 
-from .models import VitsGenerator
+from .models import DurationPredictor
+from .models import HifiganGenerator as Decoder
+from .models import (PosteriorEncoder, ResidualCouplingBlock,
+                     StochasticDurationPredictor, TextEncoder, VitsGenerator)
 
 
 class Vits(L.LightningModule, GanTextToSpeech):
@@ -10,4 +15,14 @@ class Vits(L.LightningModule, GanTextToSpeech):
         pass
 
 
-__all__ = ["VitsGenerator", "Vits"]
+__all__ = [
+    "VitsGenerator",
+    "Vits",
+    "VitsDiscriminator",
+    "TextEncoder",
+    "ResidualCouplingBlock",
+    "PosteriorEncoder",
+    "DurationPredictor",
+    "StochasticDurationPredictor",
+    "Decoder",
+]
