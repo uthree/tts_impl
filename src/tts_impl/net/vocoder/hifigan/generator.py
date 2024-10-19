@@ -105,6 +105,9 @@ class ResBlock2(nn.Module):
 
 
 class HifiganGenerator(nn.Module, GanVocoderGenerator):
+    """
+    HiFi-GAN Generator purposed in https://arxiv.org/abs/2010.05646
+    """
     def __init__(
         self,
         in_channels: int = 80,
@@ -173,11 +176,19 @@ class HifiganGenerator(nn.Module, GanVocoderGenerator):
 
         self.apply(init_weights)
 
-    def forward(self, x: torch.Tensor, condition: Optional[torch.Tensor] = None):
-        x = self.conv_pre(x)
+
+    def forward(self, features: torch.Tensor, condition: Optional[torch.Tensor] = None):
+        """
+        inputs:
+            features: [batch_size, channels, num_frames], dtype=float
+            condition: [batch_size, 1, condition_dim] dtype=float, optional
+        returns:
+            waveform: [batch_size, channels, frames*frame_size]
+                where: frame_size is the number of samples per frame.
+        """
+        x = self.conv_pre(features)
         if condition is not None:
-            g = condition.unsqueeze(1)
-            x = x + self.conv_cond(g)
+            x = x + self.conv_cond(condition)
         for i in range(self.num_upsamples):
             x = self.ups[i](x)
             x = F.leaky_relu(x, 0.1)
