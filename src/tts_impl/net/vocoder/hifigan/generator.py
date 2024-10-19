@@ -107,14 +107,14 @@ class ResBlock2(nn.Module):
 class HifiganGenerator(nn.Module, GanVocoderGenerator):
     def __init__(
         self,
-        input_channels: int = 80,
+        in_channels: int = 80,
         upsample_initial_channels: int = 512,
         resblock_type: Literal["1", "2"] = "1",
         resblock_kernel_sizes: List[int] = [3, 7, 11],
         resblock_dilations: List[List[int]] = [[1, 3, 5], [1, 3, 5], [1, 3, 5]],
         upsample_kernel_sizes: List[int] = [16, 16, 4, 4],
         upsample_rates: List[int] = [8, 8, 2, 2],
-        output_channels: int = 1,
+        out_channels: int = 1,
         tanh_post_activation: bool = True,
         # option for speaker conditioning in TTS task
         condition_channels: int = 0,
@@ -125,14 +125,14 @@ class HifiganGenerator(nn.Module, GanVocoderGenerator):
         self.num_upsamples = len(upsample_rates)
         self.frame_size = 1
 
-        self.input_channels = input_channels
+        self.in_channels = in_channels
         self.upsample_initial_channels = upsample_initial_channels
         self.resblock_type = resblock_type
         self.resblock_kernel_sizes = resblock_kernel_sizes
         self.resblock_dilations = resblock_dilations
         self.upsample_kernel_sizes = upsample_kernel_sizes
         self.upsample_rates = upsample_rates
-        self.output_channels = output_channels
+        self.out_channels = out_channels
         self.tanh_post_activation = tanh_post_activation
         self.condition_channels = condition_channels
 
@@ -144,7 +144,7 @@ class HifiganGenerator(nn.Module, GanVocoderGenerator):
             raise "invalid resblock type"
 
         self.conv_pre = weight_norm(
-            nn.Conv1d(input_channels, upsample_initial_channels, 7, 1, 3)
+            nn.Conv1d(in_channels, upsample_initial_channels, 7, 1, 3)
         )
         if condition_channels > 0:
             self.with_condition = True
@@ -169,13 +169,14 @@ class HifiganGenerator(nn.Module, GanVocoderGenerator):
             for j, (k, d) in enumerate(zip(resblock_kernel_sizes, resblock_dilations)):
                 self.resblocks.append(resblock(ch, k, d))
 
-        self.conv_post = weight_norm(nn.Conv1d(ch, output_channels, 7, 1, padding=3))
+        self.conv_post = weight_norm(nn.Conv1d(ch, out_channels, 7, 1, padding=3))
 
         self.apply(init_weights)
 
-    def forward(self, x: torch.Tensor, g: Optional[torch.Tensor] = None):
+    def forward(self, x: torch.Tensor, condition: Optional[torch.Tensor] = None):
         x = self.conv_pre(x)
-        if g is not None:
+        if condition is not None:
+            g = condition.unsqueeze(1)
             x = x + self.conv_cond(g)
         for i in range(self.num_upsamples):
             x = self.ups[i](x)

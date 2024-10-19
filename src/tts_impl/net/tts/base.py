@@ -8,12 +8,12 @@ class Upsampler(Protocol):
     protocol for upsampling encoded text by duration
 
     inputs:
-        hs: [BatchSize, Channels, MaxLength]
-        ds: [BatchSize, MaxLength]
-        h_masks: [BatchSize, 1, MaxLength]
-        d_masks: [BatchSize, 1, MaxLength]
+        hs: [batch_size, channels, max_length]
+        ds: [batch_size, max_length]
+        h_masks: [batch_size, 1, max_length]
+        d_masks: [batch_size, 1, max_length]
     outputs:
-        features: [BatchSize, Channels, Length_Upsampled]
+        features: [batch_size, channels, length_upsampled]
     """
 
     def forward(
@@ -28,63 +28,97 @@ class Upsampler(Protocol):
 
 class TextEncoder(Protocol):
     """
-    inputs:
-        phonemes_ids: [BatchSize, MaxLength], dtype=int
-        lengths: [BatchSize], dtype=float
-        g: [BatchSize, 1, SpeakerEmbeddingdim] dtype=float
-    returns:
-        z: encoded features [BatchSize, Channels, MaxLength], dtype=float
-        mask: [BatchSize, 1, MaxLength], 1=not masked, 0=masked
+    A protocol for text encoders.
     """
+
+    def __init__(self, vocab_size: int, out_channels: int, condition_dim: int = 0):
+        """
+        vocab_size: Vocabulary size of encodable tokens
+        out_channel: Embedding dimensions per token
+        condition_dim: Dimensionality of the condition (e.g. speaker embedding). Set to 0 to ignore the condition.
+        """
+        pass
 
     def forward(
         self,
-        phoneme_ids: torch.Tensor,
+        tokens: torch.Tensor,
         lenghts: Optional[torch.Tensor],
-        g: Optional[torch.Tensor],
+        condition: Optional[torch.Tensor],
     ) -> tuple[torch.Tensor, torch.Tensor]:
+        """
+        inputs:
+            tokens: [batch_size, max_length], dtype=int
+            lengths: [batch_size], dtype=float
+            condition: [batch_size, 1, condition_dim] dtype=float
+        returns:
+            z: encoded features [batch_size, out_hannels, max_length], dtype=float
+            mask: [batch_size, 1, max_length], 1=not masked, 0=masked
+        """
         raise NotImplementedError
 
 
 class AcousticFeatureEncoder(Protocol):
     """
-    inputs:
-        features: [BatchSize, Channels, MaxLength], dtype=float
-        lengths: [BatchSize], dtype=float
-        g: [BatchSize, 1, SpeakerEmbeddingdim] dtype=float
-    returns:
-        z: encoded features [BatchSize, Channels, MaxLength], dtype=float
-        mask: [BatchSize, 1, MaxLength], 1=not masked, 0=masked
+    A protocol for acoustic feature encoders.
     """
+
+    def __init__(self, in_channels: int, out_channels: int, condition_dim: int = 0):
+        """
+        in_channels: The number of feature channels, such as fft_bin for spectrograms.
+        out_channel: Embedding dimensions per token
+        condition_dim: Dimensionality of the condition (e.g. speaker embedding). Set to 0 to ignore the condition.
+        """
+        pass
 
     def forward(
         self,
         features: torch.Tensor,
         lenghts: Optional[torch.Tensor],
-        g: Optional[torch.Tensor],
+        condition: Optional[torch.Tensor],
     ) -> tuple[torch.Tensor, torch.Tensor]:
+        """
+        inputs:
+            features: [batch_size, channels, max_length], dtype=float
+            lengths: [batch_size], dtype=float
+            condition: [batch_size, 1, condition_dim] dtype=float
+        returns:
+            z: encoded features [batch_size, channels, max_length], dtype=float
+            mask: [batch_size, 1, max_length], 1=not masked, 0=masked
+        """
         raise NotImplementedError
 
 
 class VariationalTextEncoder(Protocol):
     """
-    inputs:
-        phonemes: [BatchSize, MaxLength], dtype=int
-        lengths: [BatchSize], dtype=float
-        g: [BatchSize, 1, SpeakerEmbeddingdim] dtype=float
-    returns:
-        z: variational encoded features [BatchSize, Channels, MaxLength], dtype=float
-        mean: [BatchSize, Channels, MaxLength], dtype=float
-        log_s: log-scaled standard deviation, [BatchSize, Channels, MaxLength], dtype=float
-        mask: [BatchSize, 1, MaxLength], 1=not masked, 0=masked
+    A protocol for variational text encoders.
+    This protocol is intended to be used primarily as a TextEncoder for VITS-based models.
     """
+
+    def __init__(self, vocab_size: int, out_channels: int, condition_dim: int = 0):
+        """
+        vocab_size: Vocabulary size of encodable tokens
+        out_channel: Embedding dimensions per token
+        condition_dim: Dimensionality of the condition (e.g. speaker embedding). Set to 0 to ignore the condition.
+        """
+        pass
 
     def forward(
         self,
         features: torch.Tensor,
         lenghts: Optional[torch.Tensor],
-        g: Optional[torch.Tensor],
+        condition: Optional[torch.Tensor],
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+        """
+        inputs:
+            phonemes: [batch_size, max_length], dtype=int
+            lengths: [batch_size], dtype=float
+            condition: [batch_size, 1, condition_dim] dtype=float
+        returns:
+            z: variational encoded features [batch_size, channels, max_length], dtype=float
+            mean: [batch_size, channels, max_length], dtype=float
+            log_s: log-scaled standard deviation, [batch_size, channels, max_length], dtype=float
+            mask: [batch_size, 1, max_length], 1=not masked, 0=masked
+        """
         raise NotImplementedError
 
 
@@ -92,23 +126,35 @@ class VariationalAcousticFeatureEncoder(
     Protocol,
 ):
     """
-    inputs:
-        features: [BatchSize, Channels, MaxLength], dtype=float
-        lengths: [BatchSize], dtype=float
-        g: [BatchSize, 1, SpeakerEmbeddingdim] dtype=float
-    returns:
-        z: variational encoded features [BatchSize, Channels, MaxLength], dtype=float
-        mean: [BatchSize, Channels, MaxLength], dtype=float
-        log_s: log-scaled standard deviation, [BatchSize, Channels, MaxLength], dtype=float
-        mask: [BatchSize, 1, MaxLength], 1=not masked, 0=masked
+    A protocol for variational acoudic feature encoders.
+    This protocol is intended to be used primarily as a PosteriorEncoder for VITS-based models.
     """
+
+    def __init__(self, in_channels: int, out_channels: int, condition_dim: int = 0):
+        """
+        in_channels: The number of feature channels, such as fft_bin for spectrograms.
+        out_channel: Embedding dimensions per token
+        condition_dim: Dimensionality of the condition (e.g. speaker embedding). Set to 0 to ignore the condition.
+        """
+        pass
 
     def forward(
         self,
         features: torch.Tensor,
         lenghts: Optional[torch.Tensor],
-        g: Optional[torch.Tensor],
+        condition: Optional[torch.Tensor],
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+        """
+        inputs:
+            features: [batch_size, channels, max_length], dtype=float
+            lengths: [batch_size], dtype=float
+            condition: [batch_size, 1, condition_dim] dtype=float
+        returns:
+            z: variational encoded features [batch_size, channels, max_length], dtype=float
+            mean: [batch_size, channels, max_length], dtype=float
+            log_s: log-scaled standard deviation, [batch_size, channels, max_length], dtype=float
+            mask: [batch_size, 1, max_length], 1=not masked, 0=masked
+        """
         raise NotImplementedError
 
 
