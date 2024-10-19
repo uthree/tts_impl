@@ -23,11 +23,6 @@ pip install -e .
 `mypy src` で型検査を実行。  
 
 
-## 各ディレクトリの詳細
-- `src/tts_impl/net/` : ネットワークアーキテクチャの定義
-    - `vocoder/` 音響特徴量から音声波形を生成するモデル。
-        - `hifigan/`: HiFi-GANの実装。
-
 ## TODO List
 - pipでのインストール、何らかのプロジェクトへこのリポジトリを組み込んでの運用
 - また、TTSのText Encoderに言語モデルの特徴量を入力する機構をつけたい。
@@ -35,39 +30,3 @@ pip install -e .
 - "recipe": モデルアーキテクチャを指定して、データセットを準備すれば前処理から学習まですべてできる
 ようにしたい。
 - 音声データから自動書き起こし、話者分類、BGMやノイズ、無音区間の除去など、データセット制作を補助する機能
-
-### モデル一覧
-✅ : 実装済み
-🚧 : 実装着手中 
-❓ : 計画・構想中
-
-Vocoder:
-- HiFi-GAN ✅
-- HiFi-GAN Variants(NSF, Harmonic, SiFi-GAN, EVA-GAN) 🚧
-- ISTFTNet, ISTFTNet2, Vocos, etc... ❓
-- more discriminators(CQT, MRSD) ❓
-- BigVGAN ❓
-- DDSP (Additive, Subtractive)❓
-- WaveNeXt ❓
-
-TTS: text to speech
-- via mel spectrogram
-    - FastSpeech2 🚧
-- end-to-end
-    - VITS 🚧
-    - VITS2 ❓
-    - JETS 🚧
-
-alignment:
-    - on-tye-fly alignment(monotonic-alignment-search, forward-sum, etc.) 🚧
-    - Montreal Forced Aligner ❓
-
-linguistic frontend
-- g2p:
-    - pyopenjtalk-plus ❓
-    - phonemizer ❓
-    - 中国語: いわゆるピンイン？というものをつかうとよさそうだが、ライブラリはまだ探していない。
-
-- language models
-    - BERT, GPT 等おそらくあらゆる言語モデルに対応可能？ ❓
-    - predict accent classic (e.g. dictionary) method ❓

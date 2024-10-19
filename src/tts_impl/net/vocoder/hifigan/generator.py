@@ -1,6 +1,4 @@
 # HiFi-GAN from https://arxiv.org/abs/2010.05646
-
-from dataclasses import dataclass, field
 from typing import List, Literal, Optional
 
 import torch
