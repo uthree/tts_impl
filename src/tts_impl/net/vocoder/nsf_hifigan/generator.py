@@ -95,11 +95,21 @@ class NsfhifiganGenerator(nn.Module, GanVocoderGenerator):
 
     def forward(
         self,
-        x: torch.Tensor,
-        g: Optional[torch.Tensor] = None,
+        features: torch.Tensor,
+        condition: Optional[torch.Tensor] = None,
         f0: Optional[torch.Tensor] = None,
         uv: Optional[torch.Tensor] = None,
     ):
+        """
+        inputs:
+            features: [batch_size, in_channels, num_frames], dtype=float
+            condition: [batch_size, 1, condition_dim] dtype=float, optional
+            f0: [batch_size, 1, num_frames], dtype=float, optional
+            uv: [batch_size, 1, num_frames], dtype=float, optional
+        returns:
+            waveform: [batch_size, out_channels, frames*frame_size]
+                where: frame_size is the number of samples per frame.
+        """
         if f0 is None:
             f0 = torch.zeros((x.shape[0], 1, x.shape[2]), device=x.device)
         if uv is None:
@@ -113,9 +123,9 @@ class NsfhifiganGenerator(nn.Module, GanVocoderGenerator):
             source_signals.append(s)
         source_signals = list(reversed(source_signals))
 
-        x = self.conv_pre(x)
-        if g is not None:
-            x = x + self.conv_cond(g)
+        x = self.conv_pre(features)
+        if condition is not None:
+            x = x + self.conv_cond(condition)
         for i in range(self.num_upsamples):
             x = x + source_signals[i]
             x = self.ups[i](x)

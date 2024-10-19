@@ -108,6 +108,7 @@ class HifiganGenerator(nn.Module, GanVocoderGenerator):
     """
     HiFi-GAN Generator purposed in https://arxiv.org/abs/2010.05646
     """
+
     def __init__(
         self,
         in_channels: int = 80,
@@ -176,14 +177,13 @@ class HifiganGenerator(nn.Module, GanVocoderGenerator):
 
         self.apply(init_weights)
 
-
     def forward(self, features: torch.Tensor, condition: Optional[torch.Tensor] = None):
         """
         inputs:
-            features: [batch_size, channels, num_frames], dtype=float
+            features: [batch_size, in_channels, num_frames], dtype=float
             condition: [batch_size, 1, condition_dim] dtype=float, optional
         returns:
-            waveform: [batch_size, channels, frames*frame_size]
+            waveform: [batch_size, out_channels, frames*frame_size]
                 where: frame_size is the number of samples per frame.
         """
         x = self.conv_pre(features)
