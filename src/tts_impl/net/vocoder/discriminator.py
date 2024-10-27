@@ -8,8 +8,6 @@ import torch.nn.functional as F
 from torch.nn.utils import spectral_norm
 from torch.nn.utils.parametrizations import weight_norm
 
-from tts_impl.net.vocoder.base import GanVocoderDiscriminator
-
 
 def get_padding(kernel_size, dilation=1):
     return int((kernel_size * dilation - dilation) / 2)
@@ -127,7 +125,7 @@ class DiscriminatorS(nn.Module):
         return x, fmap
 
 
-class CombinedDiscriminator(nn.Module, GanVocoderDiscriminator):
+class CombinedDiscriminator(nn.Module):
     """
     Combined multiple discriminators.
     """
@@ -136,7 +134,7 @@ class CombinedDiscriminator(nn.Module, GanVocoderDiscriminator):
         super().__init__()
         self.discriminators = nn.ModuleList(discriminators)
 
-    def append(self, d: GanVocoderDiscriminator):
+    def append(self, d):
         self.discriminators.append(d)
 
     def forward(self, x: torch.Tensor) -> Tuple[List[torch.Tensor], List[torch.Tensor]]:
@@ -189,7 +187,7 @@ class MultiScaleDiscriminator(CombinedDiscriminator):
             self.discriminators.append(DiscriminatorS(s, i == 0))
 
 
-class DiscriminatorR(nn.Module, GanVocoderDiscriminator):
+class DiscriminatorR(nn.Module):
     def __init__(
         self, resolution=128, channels=32, num_layers=4, use_spectral_norm=False
     ):

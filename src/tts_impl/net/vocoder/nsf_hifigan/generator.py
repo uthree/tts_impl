@@ -5,14 +5,13 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn.utils.parametrizations import weight_norm
 
-from tts_impl.net.vocoder.base import GanVocoderGenerator
 from tts_impl.net.vocoder.hifigan.generator import (ResBlock1, ResBlock2,
                                                     init_weights)
 
 from .oscillator import HarmonicNoiseOscillator
 
 
-class NsfhifiganGenerator(nn.Module, GanVocoderGenerator):
+class NsfhifiganGenerator(nn.Module):
     def __init__(
         self,
         input_channels: int = 80,
@@ -25,7 +24,7 @@ class NsfhifiganGenerator(nn.Module, GanVocoderGenerator):
         output_channels: int = 1,
         tanh_post_activation: bool = True,
         # option for speaker conditioning in TTS task
-        condition_channels: int = 0,
+        gin_channels: int = 0,
         # for source module
         sample_rate: float = 22050.0,
         num_harmonics: int = 1,
@@ -38,7 +37,7 @@ class NsfhifiganGenerator(nn.Module, GanVocoderGenerator):
         self.frame_size = 1
 
         self.input_channels = input_channels
-        self.condition_channels = condition_channels
+        self.gin_channels = gin_channels
         self.upsample_initial_channels = upsample_initial_channels
         self.resblock_type = resblock_type
         self.resblock_kernel_sizes = resblock_kernel_sizes
@@ -58,10 +57,10 @@ class NsfhifiganGenerator(nn.Module, GanVocoderGenerator):
         self.conv_pre = weight_norm(
             nn.Conv1d(input_channels, upsample_initial_channels, 7, 1, 3)
         )
-        if condition_channels > 0:
+        if gin_channels > 0:
             self.with_condition = True
             self.conv_cond = weight_norm(
-                nn.Conv1d(condition_channels, upsample_initial_channels, 1, bias=False)
+                nn.Conv1d(gin_channels, upsample_initial_channels, 1, bias=False)
             )
         else:
             self.with_condition = False
@@ -95,15 +94,15 @@ class NsfhifiganGenerator(nn.Module, GanVocoderGenerator):
 
     def forward(
         self,
-        features: torch.Tensor,
-        condition: Optional[torch.Tensor] = None,
+        x: torch.Tensor,
+        g: Optional[torch.Tensor] = None,
         f0: Optional[torch.Tensor] = None,
         uv: Optional[torch.Tensor] = None,
     ):
         """
         inputs:
-            features: [batch_size, in_channels, num_frames], dtype=float
-            condition: [batch_size, 1, condition_dim] dtype=float, optional
+            x: [batch_size, in_channels, num_frames], dtype=float
+            g: [batch_size, 1, condition_dim] dtype=float, optional
             f0: [batch_size, 1, num_frames], dtype=float, optional
             uv: [batch_size, 1, num_frames], dtype=float, optional
         returns:
@@ -123,9 +122,9 @@ class NsfhifiganGenerator(nn.Module, GanVocoderGenerator):
             source_signals.append(s)
         source_signals = list(reversed(source_signals))
 
-        x = self.conv_pre(features)
-        if condition is not None:
-            x = x + self.conv_cond(condition)
+        x = self.conv_pre(x)
+        if g is not None:
+            x = x + self.conv_cond(g)
         for i in range(self.num_upsamples):
             x = x + source_signals[i]
             x = self.ups[i](x)

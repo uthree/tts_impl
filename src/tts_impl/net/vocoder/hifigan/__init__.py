@@ -1,5 +1,4 @@
 import lightning as L
-import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
@@ -7,7 +6,6 @@ from omegaconf import DictConfig
 
 from tts_impl.acoustic_feature_extractions.mel_processing import \
     LogMelSpectrogram
-from tts_impl.net.vocoder.base import GanVocoder
 from tts_impl.net.vocoder.hifigan.loss import (discriminator_loss,
                                                feature_loss, generator_loss)
 
@@ -17,7 +15,7 @@ from .generator import HifiganGenerator
 
 # HiFi-GAN from https://arxiv.org/abs/2010.05646
 # TODO: add LR scheduler
-class Hifigan(L.LightningModule, GanVocoder):
+class Hifigan(L.LightningModule):
     def __init__(self, config: DictConfig):
         super().__init__()
 

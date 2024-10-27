@@ -7,8 +7,6 @@ import torch.nn.functional as F
 from torch.nn.utils import remove_weight_norm
 from torch.nn.utils.parametrizations import weight_norm
 
-from tts_impl.net.vocoder.base import GanVocoderGenerator
-
 LRELU_SLOPE = 0.1
 
 
@@ -102,7 +100,7 @@ class ResBlock2(nn.Module):
             remove_weight_norm(c1)
 
 
-class HifiganGenerator(nn.Module, GanVocoderGenerator):
+class HifiganGenerator(nn.Module):
     """
     HiFi-GAN Generator purposed in https://arxiv.org/abs/2010.05646
     """
@@ -119,7 +117,7 @@ class HifiganGenerator(nn.Module, GanVocoderGenerator):
         out_channels: int = 1,
         tanh_post_activation: bool = True,
         # option for speaker conditioning in TTS task
-        condition_channels: int = 0,
+        gin_channels: int = 0,
     ):
         super().__init__()
 
@@ -136,7 +134,7 @@ class HifiganGenerator(nn.Module, GanVocoderGenerator):
         self.upsample_rates = upsample_rates
         self.out_channels = out_channels
         self.tanh_post_activation = tanh_post_activation
-        self.condition_channels = condition_channels
+        self.gin_channels = gin_channels
 
         if resblock_type == "1":
             resblock = ResBlock1
@@ -148,10 +146,10 @@ class HifiganGenerator(nn.Module, GanVocoderGenerator):
         self.conv_pre = weight_norm(
             nn.Conv1d(in_channels, upsample_initial_channels, 7, 1, 3)
         )
-        if condition_channels > 0:
+        if gin_channels > 0:
             self.with_condition = True
             self.conv_cond = weight_norm(
-                nn.Conv1d(condition_channels, upsample_initial_channels, 1, bias=False)
+                nn.Conv1d(gin_channels, upsample_initial_channels, 1, bias=False)
             )
         else:
             self.with_condition = False
@@ -175,18 +173,18 @@ class HifiganGenerator(nn.Module, GanVocoderGenerator):
 
         self.apply(init_weights)
 
-    def forward(self, features: torch.Tensor, condition: Optional[torch.Tensor] = None):
+    def forward(self, x: torch.Tensor, g: Optional[torch.Tensor] = None):
         """
         inputs:
-            features: [batch_size, in_channels, num_frames], dtype=float
-            condition: [batch_size, 1, condition_dim] dtype=float, optional
+            x: [batch_size, in_channels, num_frames], dtype=float
+            g: [batch_size, 1, condition_dim] dtype=float, optional
         returns:
             waveform: [batch_size, out_channels, frames*frame_size]
                 where: frame_size is the number of samples per frame.
         """
-        x = self.conv_pre(features)
-        if condition is not None:
-            x = x + self.conv_cond(condition)
+        x = self.conv_pre(x)
+        if g is not None:
+            x = x + self.conv_cond(g)
         for i in range(self.num_upsamples):
             x = self.ups[i](x)
             x = F.leaky_relu(x, 0.1)
