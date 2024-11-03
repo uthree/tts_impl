@@ -1,5 +1,6 @@
 from typing import List, Literal, Optional
 
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -67,16 +68,20 @@ class NsfhifiganGenerator(nn.Module):
             self.conv_cond = None
 
         self.ups = nn.ModuleList()
-        downs = []
+        self.source_convs = nn.ModuleList()
         for i, (u, k) in enumerate(zip(upsample_rates, upsample_kernel_sizes)):
             c1 = upsample_initial_channels // (2**i)
             c2 = upsample_initial_channels // (2 ** (i + 1))
-            p = (k - u) // 2
-            self.ups.append(weight_norm(nn.ConvTranspose1d(c1, c2, k, u, p)))
-            downs.append(weight_norm(nn.Conv1d(c2, c1, k, u, p)))
+            pad = (k - u) // 2
+            self.ups.append(weight_norm(nn.ConvTranspose1d(c1, c2, k, u, pad)))
+            prod = int(np.prod(upsample_rates[(i + 1) :]))
+            if prod != 1:
+                self.source_convs.append(
+                    weight_norm(nn.Conv1d(1, c2, prod * 2, prod, prod // 2))
+                )
+            else:
+                self.source_convs.append(weight_norm(nn.Conv1d(1, c2, 7, 1, 3)))
             self.frame_size *= u
-        downs.append(weight_norm(nn.Conv1d(1, c2, 7, 1, 3)))
-        self.downs = nn.ModuleList(list(reversed(downs)))
 
         self.resblocks = nn.ModuleList()
         for i in range(len(self.ups)):
@@ -100,12 +105,12 @@ class NsfhifiganGenerator(nn.Module):
         uv: Optional[torch.Tensor] = None,
     ):
         """
-        inputs:
+        args:
             x: [batch_size, in_channels, num_frames], dtype=float
             g: [batch_size, 1, condition_dim] dtype=float, optional
             f0: [batch_size, 1, num_frames], dtype=float, optional
             uv: [batch_size, 1, num_frames], dtype=float, optional
-        returns:
+        outputs:
             waveform: [batch_size, out_channels, frames*frame_size]
                 where: frame_size is the number of samples per frame.
         """
@@ -115,19 +120,13 @@ class NsfhifiganGenerator(nn.Module):
             uv = (f0 > 0.0).to(x.dtype)
 
         s = self.source_module.forward(f0, uv)
-        source_signals = []
-        for i in range(len(self.downs)):
-            s = self.downs[i](s)
-            s = F.leaky_relu(s, 0.1)
-            source_signals.append(s)
-        source_signals = list(reversed(source_signals))
 
         x = self.conv_pre(x)
         if g is not None:
             x = x + self.conv_cond(g)
         for i in range(self.num_upsamples):
-            x = x + source_signals[i]
             x = self.ups[i](x)
+            x = x + self.source_convs[i](s)
             x = F.leaky_relu(x, 0.1)
             xs = None
             for j in range(self.num_kernels):
@@ -136,7 +135,6 @@ class NsfhifiganGenerator(nn.Module):
                 else:
                     xs += self.resblocks[i * self.num_kernels + j](x)
             x = xs / self.num_kernels
-        x = x + source_signals[-1]
         x = F.leaky_relu(x, 0.1)
         x = self.conv_post(x)
         if self.tanh_post_activation:
