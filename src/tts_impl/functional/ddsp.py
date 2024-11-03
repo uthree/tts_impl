@@ -6,7 +6,11 @@ import torch.nn.functional as F
 
 
 def framewise_fir_filter(
-    signal: torch.Tensor, filter: torch.Tensor, n_fft: int, hop_length: int, center:bool=True
+    signal: torch.Tensor,
+    filter: torch.Tensor,
+    n_fft: int,
+    hop_length: int,
+    center: bool = True,
 ) -> torch.Tensor:
     """
     args:
@@ -20,10 +24,14 @@ def framewise_fir_filter(
 
     x = signal.to(torch.float)
     window = torch.hann_window(n_fft, device=x.device)
-    x_stft = torch.stft(x, n_fft, hop_length, n_fft, window, center, return_complex=True)
+    x_stft = torch.stft(
+        x, n_fft, hop_length, n_fft, window, center, return_complex=True
+    )
     filter_stft = torch.fft.rfft(filter, dim=1)
     x_stft = x_stft * filter_stft
-    x = torch.istft(x_stft, n_fft, hop_length, n_fft, window, center, return_complex=True)
+    x = torch.istft(
+        x_stft, n_fft, hop_length, n_fft, window, center, return_complex=True
+    )
     signal = x.to(dtype)
     return signal
 
