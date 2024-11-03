@@ -63,11 +63,11 @@ class DiscriminatorP(nn.Module):
 
     def forward(self, x: torch.Tensor) -> Tuple[torch.Tensor, List[torch.Tensor]]:
         """
-        shapes:
-            x: [batch_size, channels, time]
-            outputs:
-                x: [batch_size, channels, time]
-                fmap: [batch_size, channels, period, time]
+        args:
+            x: [batch_size, 1, time]
+        outputs:
+            x: [batch_size, 1, time]
+            fmap: [batch_size, channels, period, time]
         """
         fmap = []
 
@@ -113,6 +113,13 @@ class DiscriminatorS(nn.Module):
         self.conv_post = norm_f(nn.Conv1d(1024, 1, 3, 1, padding=1))
 
     def forward(self, x: torch.Tensor) -> Tuple[torch.Tensor, List[torch.Tensor]]:
+        """
+        args:
+            x: [batch_size, 1, time]
+        outputs:
+            x: [batch_size, 1, time]
+            fmap: [batch_size, channels, time]
+        """
         fmap = []
         for l in self.convs:
             x = l(x)
@@ -130,7 +137,7 @@ class CombinedDiscriminator(nn.Module):
     Combined multiple discriminators.
     """
 
-    def __init__(self, discriminators=[]):
+    def __init__(self, *discriminators: List[nn.Module]):
         super().__init__()
         self.discriminators = nn.ModuleList(discriminators)
 
@@ -189,7 +196,11 @@ class MultiScaleDiscriminator(CombinedDiscriminator):
 
 class DiscriminatorR(nn.Module):
     def __init__(
-        self, resolution=128, channels=32, num_layers=4, use_spectral_norm=False
+        self,
+        resolution: int = 128,
+        channels: int = 32,
+        num_layers: int = 4,
+        use_spectral_norm: bool = False,
     ):
         super().__init__()
         norm_f = (
@@ -206,10 +217,11 @@ class DiscriminatorR(nn.Module):
             self.convs.append(
                 norm_f(nn.Conv2d(channels, channels, (7, 3), (2, 1), (2, 1)))
             )
-        self.post = nn.Conv2d(channels, 1, 1, 0)
+        self.post = nn.Conv2d(channels, 1, 1)
 
     def spectrogram(self, x):
         # spectrogram
+        x = x.sum(dim=1)
         w = torch.hann_window(self.n_fft).to(x.device)
         x = torch.stft(
             x, self.n_fft, self.hop_size, window=w, return_complex=True
@@ -224,12 +236,12 @@ class DiscriminatorR(nn.Module):
             x = l(x)
             F.leaky_relu(x, 0.1)
             feats.append(x)
-        logit, dir = self.post(x)
-        return logit, dir, feats
+        logit = self.post(x)
+        return logit, feats
 
 
 class MultiResolutionStftDiscriminator(CombinedDiscriminator):
-    def __init__(self, resolutions=[240, 120, 60]):
+    def __init__(self, resolutions: List[int] = [240, 120, 60]):
         super().__init__()
         for r in resolutions:
             self.discriminators.append(DiscriminatorR(r))
