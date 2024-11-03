@@ -1,1 +1,1 @@
-from . import hifigan, nsf_hifigan
+from . import nsf_hifigan

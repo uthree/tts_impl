@@ -1,11 +1,12 @@
+import warnings
+from typing import Literal, Optional
+
 import numpy as np
 import pyworld as pw
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torchfcpe import spawn_bundled_infer_model
-from typing import Literal, Optional
-import warnings
 
 
 def estimate_f0_dio(wf, sample_rate=48000, frame_size=480, f0_min=20, f0_max=20000):
@@ -55,7 +56,9 @@ torchfcpe_model = {}
 
 def estimate_f0_fcpe(wf, sample_rate=24000, frame_size=480, f0_min=20, f0_max=20000):
     if wf.device not in torchfcpe_model:
-        warnings.warn("When you estimate f0 with torchfcpe, the model will remain in memory. To unload it, use unload_torchfcpe().")
+        warnings.warn(
+            "When you estimate f0 with torchfcpe, the model will remain in memory. To unload it, use unload_torchfcpe()."
+        )
         torchfcpe_model[wf.device] = spawn_bundled_infer_model(wf.device)
     f0 = torchfcpe_model[wf.device].infer(wf.unsqueeze(2), sample_rate)
     f0 = f0.transpose(1, 2)
@@ -70,7 +73,12 @@ def unload_torchfcpe(device: Optional[torch.device]):
 
 
 # wf: [BatchSize, Length]
-def estimate_f0(wf, sample_rate=24000, frame_size=480, algorithm: Literal["harvest", "dio", "fcpe"] = "harvest"):
+def estimate_f0(
+    wf,
+    sample_rate=24000,
+    frame_size=480,
+    algorithm: Literal["harvest", "dio", "fcpe"] = "harvest",
+):
     l = wf.shape[1]
     if algorithm == "harvest":
         f0 = estimate_f0_harvest(wf, sample_rate)

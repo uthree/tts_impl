@@ -30,12 +30,10 @@ def framewise_fir_filter(
     x_stft = torch.stft(
         x, n_fft, hop_length, n_fft, window, center, return_complex=True
     )
-    filter = F.pad(filter, (0, 1), mode='replicate')
+    filter = F.pad(filter, (0, 1), mode="replicate")
     filter_stft = torch.fft.rfft(filter, dim=1)
     x_stft = x_stft * filter_stft
-    x = torch.istft(
-        x_stft, n_fft, hop_length, n_fft, window, center
-    )
+    x = torch.istft(x_stft, n_fft, hop_length, n_fft, window, center)
     signal = x.to(dtype)
     return signal
 

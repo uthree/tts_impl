@@ -1,3 +1,4 @@
-from . import jets, vits, vits2
+from .vits import lightning
+from . import jets, vits2
 
-__all__ = ["jets", "vits", "vits2"]
+__all__ = ["jets", "lightning", "vits2"]

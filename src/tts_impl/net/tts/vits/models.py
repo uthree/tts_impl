@@ -5,7 +5,7 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 
-from tts_impl.net.vocoder.hifigan import HifiganGenerator
+from tts_impl.net.vocoder.hifigan.lightning import HifiganGenerator
 
 from . import attentions, commons, modules, monotonic_align
 
