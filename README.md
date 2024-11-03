@@ -9,6 +9,14 @@ pytorch implementation of speech synthesis methods
 
 Work in progress
 
+### Models
+- Vocoders
+    - HiFi-GAN
+    - HnNSF-HiFi-GAN
+- TTS
+    - VITS
+    - JETS
+
 ## Installation
 ```sh
 pip install git+https://github.com/uthree/tts_impl.git
