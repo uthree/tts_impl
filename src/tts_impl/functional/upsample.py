@@ -15,14 +15,16 @@ def gaussian_upsampling(
     https://arxiv.org/abs/2010.04301
 
     Args:
-        hs (Tensor): Batched hidden state to be expanded (B, T_text, adim)
+        hs (Tensor): Batched hidden state to be expanded (B, adim, T_text)
         ds (Tensor): Batched token duration (B, T_text)
         h_masks (Tensor): Mask tensor (B, T_feats)
         d_masks (Tensor): Mask tensor (B, T_text)
         delta: (float), Temperature
     Returns:
-        Tensor: Expanded hidden state (B, T_feat, adim)
+        Tensor: Expanded hidden state (B, adim, T_feat)
     """
+    hs = hs.transpose(1, 2)
+
     B = ds.size(0)
     device = ds.device
 
@@ -43,4 +45,6 @@ def gaussian_upsampling(
 
     p_attn = torch.softmax(energy, dim=2)  # (B, T_feats, T_text)
     hs = torch.matmul(p_attn, hs)
+
+    hs = hs.transpose(1, 2)
     return hs
