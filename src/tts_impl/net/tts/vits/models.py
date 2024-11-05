@@ -64,7 +64,7 @@ class StochasticDurationPredictor(nn.Module):
         x = torch.detach(x)
         x = self.pre(x)
         if g is not None:
-            g = torch.detach(g)
+            #g = torch.detach(g)
             x = x + self.cond(g)
         x = self.convs(x, x_mask)
         x = self.proj(x) * x_mask
@@ -151,7 +151,7 @@ class DurationPredictor(nn.Module):
     def forward(self, x, x_mask, g=None):
         x = torch.detach(x)
         if g is not None:
-            g = torch.detach(g)
+            #g = torch.detach(g)
             x = x + self.cond(g)
         x = self.conv_1(x * x_mask)
         x = torch.relu(x)
