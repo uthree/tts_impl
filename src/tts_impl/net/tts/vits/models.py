@@ -64,7 +64,7 @@ class StochasticDurationPredictor(nn.Module):
         x = torch.detach(x)
         x = self.pre(x)
         if g is not None:
-            #g = torch.detach(g)
+            g = torch.detach(g)
             x = x + self.cond(g)
         x = self.convs(x, x_mask)
         x = self.proj(x) * x_mask
@@ -151,7 +151,7 @@ class DurationPredictor(nn.Module):
     def forward(self, x, x_mask, g=None):
         x = torch.detach(x)
         if g is not None:
-            #g = torch.detach(g)
+            g = torch.detach(g)
             x = x + self.cond(g)
         x = self.conv_1(x * x_mask)
         x = torch.relu(x)
@@ -486,7 +486,7 @@ class VitsGenerator(nn.Module):
             (z, z_p, m_p, logs_p, m_q, logs_q),
         )
 
-    def infer_tts(
+    def infer(
         self,
         x,
         x_lengths,
@@ -528,7 +528,7 @@ class VitsGenerator(nn.Module):
         o = self.dec((z * y_mask)[:, :, :max_len], g=g)
         return o, attn, y_mask, (z, z_p, m_p, logs_p)
 
-    def infer_vc(self, y, y_lengths, sid_src, sid_tgt):
+    def voice_conversion(self, y, y_lengths, sid_src, sid_tgt):
         assert self.n_speakers > 0, "n_speakers have to be larger than 0."
         g_src = self.emb_g(sid_src).unsqueeze(-1)
         g_tgt = self.emb_g(sid_tgt).unsqueeze(-1)
