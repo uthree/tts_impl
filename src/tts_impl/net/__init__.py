@@ -1,3 +1,3 @@
-from . import pe, tts, vocoder
+from . import tts, vocoder
 
-__all__ = ["vocoder", "tts", "pe"]
+__all__ = ["vocoder", "tts"]

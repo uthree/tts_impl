@@ -458,15 +458,21 @@ class VitsGenerator(nn.Module):
             )
 
         w = attn.sum(2)
+
+        l_length_all = 0
+
         if self.use_sdp:
-            l_length = self.dp(x, x_mask, w, g=g)
+            l_length = self.sdp(x, x_mask, w, g=g)
             l_length = l_length / torch.sum(x_mask)
-        else:
+            l_length_all += l_length
+
+        if self.use_dp:
             logw_ = torch.log(w + 1e-6) * x_mask
             logw = self.dp(x, x_mask, g=g)
             l_length = torch.sum((logw - logw_) ** 2, [1, 2]) / torch.sum(
                 x_mask
             )  # for averaging
+            l_length_all += l_length
 
         # expand prior
         m_p = torch.matmul(attn.squeeze(1), m_p.transpose(1, 2)).transpose(1, 2)
@@ -478,7 +484,7 @@ class VitsGenerator(nn.Module):
         o = self.dec(z_slice, g=g)
         return (
             o,
-            l_length,
+            l_length_all,
             attn,
             ids_slice,
             x_mask,
@@ -491,8 +497,8 @@ class VitsGenerator(nn.Module):
         x,
         x_lengths,
         sid=None,
-        noise_scale=1,
-        length_scale=1,
+        noise_scale=1.0,
+        length_scale=1.0,
         noise_scale_w=1.0,
         max_len=None,
         use_sdp=True,
@@ -507,6 +513,7 @@ class VitsGenerator(nn.Module):
             logw = self.sdp(x, x_mask, g=g, reverse=True, noise_scale=noise_scale_w)
         else:
             logw = self.dp(x, x_mask, g=g)
+
         w = torch.exp(logw) * x_mask * length_scale
         w_ceil = torch.ceil(w)
         y_lengths = torch.clamp_min(torch.sum(w_ceil, [1, 2]), 1).long()

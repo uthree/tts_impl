@@ -10,7 +10,6 @@ def framewise_fir_filter(
     filter: torch.Tensor,
     n_fft: int,
     hop_length: int,
-    center: bool = True,
 ) -> torch.Tensor:
     """
     args:
@@ -28,12 +27,12 @@ def framewise_fir_filter(
     x = signal.to(torch.float)
     window = torch.hann_window(n_fft, device=x.device)
     x_stft = torch.stft(
-        x, n_fft, hop_length, n_fft, window, center, return_complex=True
+        x, n_fft, hop_length, n_fft, window, center=True, return_complex=True
     )
     filter = F.pad(filter, (0, 1), mode="replicate")
     filter_stft = torch.fft.rfft(filter, dim=1)
     x_stft = x_stft * filter_stft
-    x = torch.istft(x_stft, n_fft, hop_length, n_fft, window, center)
+    x = torch.istft(x_stft, n_fft, hop_length, n_fft, window, center=True)
     signal = x.to(dtype)
     return signal
 
@@ -125,6 +124,8 @@ def sinusoidal_harmonics(
         num_harmonics: int
         hop_length: int
         sample_rate: int
+        fmin: float
+        fmax: float
     outputs:
         harmonics [batch_size, num_harmonics, length * hop_length]
     """

@@ -7,3 +7,6 @@ from tts_impl.net.tts.vits.lightning import VitsGenerator
 
 def test_vits_generator():
     G = VitsGenerator(256, 513, 32)
+    x = torch.randint(0, 255, (1, 20))
+    x_lengths = torch.IntTensor([20])
+    o, attn, y_mask, (z, z_p, m_p, logs_p) = G.infer(x, x_lengths)

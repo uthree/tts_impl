@@ -2,8 +2,11 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from tts_impl.net.vocoder.hifigan.lightning import HifiganDiscriminator, HifiganGenerator
-from tts_impl.net.vocoder.discriminator import CombinedDiscriminator, MultiPeriodDiscriminator, MultiResolutionStftDiscriminator, MultiScaleDiscriminator
+from tts_impl.net.vocoder.discriminator import (
+    CombinedDiscriminator, MultiPeriodDiscriminator,
+    MultiResolutionStftDiscriminator, MultiScaleDiscriminator)
+from tts_impl.net.vocoder.hifigan.lightning import (HifiganDiscriminator,
+                                                    HifiganGenerator)
 
 
 def test_hifigan_generator():
@@ -24,6 +27,6 @@ def test_custom_discriminator():
     D = CombinedDiscriminator(
         MultiPeriodDiscriminator([2, 3, 5, 7, 11]),
         MultiScaleDiscriminator([1, 2]),
-        MultiResolutionStftDiscriminator([240, 120, 60])
+        MultiResolutionStftDiscriminator([240, 120, 60]),
     )
     logits, fmap = D(wf)

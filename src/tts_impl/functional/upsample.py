@@ -48,3 +48,22 @@ def gaussian_upsampling(
 
     hs = hs.transpose(1, 2)
     return hs
+
+
+def upsample_by_duration(
+    hs: torch.Tensor,
+    ds: torch.Tensor,
+    h_masks: Optional[torch.Tensor] = None,
+    d_masks: Optional[torch.Tensor] = None,
+) -> torch.Tensor:
+    """
+    Args:
+        hs (Tensor): Batched hidden state to be expanded (B, adim, T_text)
+        ds (Tensor): Batched token duration (B, T_text)
+        h_masks (Tensor): Mask tensor (B, T_feats)
+        d_masks (Tensor): Mask tensor (B, T_text)
+        delta: (float), Temperature
+    Returns:
+        Tensor: Expanded hidden state (B, adim, T_feat)
+    """
+    return gaussian_upsampling(hs, ds, h_masks, d_masks, delta=0.0)
