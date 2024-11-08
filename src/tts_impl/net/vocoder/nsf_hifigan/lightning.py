@@ -4,12 +4,12 @@ import torch.nn.functional as F
 import torch.optim as optim
 from omegaconf import DictConfig
 
+from tts_impl.net.vocoder.hifigan import HifiganDiscriminator
 from tts_impl.net.vocoder.hifigan.loss import (discriminator_loss,
                                                feature_loss, generator_loss)
 from tts_impl.transforms import LogMelSpectrogram
 
-from .discriminator import HifiganDiscriminator
-from .generator import HifiganGenerator
+from .generator import NsfhifiganGenerator
 
 
 # HiFi-GAN from https://arxiv.org/abs/2010.05646
@@ -20,14 +20,14 @@ class HifiganLightningModule(L.LightningModule):
         self.config = config
         self.automatic_optimization = False
 
-        self.generator = HifiganGenerator(**config.generator)
+        self.generator = NsfhifiganGenerator(**config.generator)
         self.discriminator = HifiganDiscriminator(**config.discriminator)
         self.melspectrogram_extractor = LogMelSpectrogram(**config.mel)
 
         self.save_hyperparameters()
 
     def training_step(self, batch):
-        waveform, input_features = batch
+        waveform, input_features, f0 = batch
         spec_real = self.spectrogram(waveform.sum(1)).detach()
         opt_g, opt_d = self.optimizers()
 
@@ -36,7 +36,7 @@ class HifiganLightningModule(L.LightningModule):
         weight_adv = self.config.get("weight_adv", 1.0)
 
         # Train G.
-        fake = self.generator(input_features)
+        fake = self.generator(input_features, f0=f0)
         logits, fmap_fake = self.generator(fake)
         _, fmap_real = self.discriminator(waveform)
         loss_adv, loss_adv_list = generator_loss(logits)
