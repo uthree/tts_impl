@@ -9,13 +9,30 @@ pytorch implementation of speech synthesis methods
 
 Work in progress
 
-### Models
+## Models
+implemented: ✅  
+work in progress: 🚧  
+
 - Vocoders
-    - HiFi-GAN
-    - HnNSF-HiFi-GAN
-- TTS
-    - VITS
-    - JETS
+    - HiFi-GAN ✅
+    - HnNSF-HiFi-GAN ✅
+    - ISTFTNet
+    - WaveNeXt 🚧
+    - Vocos 🚧
+    - DDSP (Subtractive / Additive)
+- TTS: Text to speech
+    - VITS ✅
+    - VITS2 🚧
+    - JETS 🚧
+    - FastSpeech
+    - Diffusion TTS Models
+    - Flow Matching TTS Models
+- VC: Voice Conversion
+    - VITS-SVC
+- SVS: Speech Voice Synthesis
+- PE: Pitch Estimation
+- Aligner:
+    - ForcedAlign ✅
 
 ## Installation
 ```sh
@@ -27,6 +44,6 @@ pip install -e .
 ```
 
 ## code check
-`black src; isort src` to run formatter 
-`pytest` to run test
-`mypy src` to run type check 
+`black src; isort src` to run formatter   
+`pytest` to run test  
+`mypy src` to run type check   
