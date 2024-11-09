@@ -129,7 +129,7 @@ class DurationPredictor(nn.Module):
         filter_channels: int = 256,
         kernel_size: int = 5,
         p_dropout: float = 0.1,
-        gin_channels=0
+        gin_channels=0,
     ):
         super().__init__()
 
