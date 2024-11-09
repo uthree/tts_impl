@@ -17,7 +17,7 @@ class VocoderDataset(Dataset):
             self.feature_paths.append(path.with_suffix(".pt"))
 
     def __getitem__(self, idx):
-        wf, sr = torchaudio.load(self.audio_file_paths[idx])
+        wf, _ = torchaudio.load(self.audio_file_paths[idx])
         features = torch.load(self.feature_paths[idx])
         return wf.mean(dim=0), features
 

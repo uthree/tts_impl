@@ -1,5 +1,5 @@
 import math
-from typing import Optional, TypeAlias
+from typing import List, Literal, Optional
 
 import torch
 from torch import nn
@@ -17,8 +17,9 @@ class StochasticDurationPredictor(nn.Module):
         filter_channels: int = 768,
         kernel_size: int = 5,
         p_dropout: float = 0.1,
-        n_flows=4,
-        gin_channels=0,
+        n_flows: int = 4,
+        gin_channels: int = 0,
+        backward_g: bool = True,
     ):
         super().__init__()
         # it needs to be removed from future version.
@@ -29,6 +30,7 @@ class StochasticDurationPredictor(nn.Module):
         self.p_dropout = p_dropout
         self.n_flows = n_flows
         self.gin_channels = gin_channels
+        self.backward_g = backward_g
 
         self.log_flow = modules.Log()
         self.flows = nn.ModuleList()
@@ -64,7 +66,8 @@ class StochasticDurationPredictor(nn.Module):
         x = torch.detach(x)
         x = self.pre(x)
         if g is not None:
-            g = torch.detach(g)
+            if not self.backward_g:
+                g = torch.detach(g)
             x = x + self.cond(g)
         x = self.convs(x, x_mask)
         x = self.proj(x) * x_mask
@@ -124,7 +127,13 @@ class StochasticDurationPredictor(nn.Module):
 
 class DurationPredictor(nn.Module):
     def __init__(
-        self, in_channels, filter_channels, kernel_size, p_dropout, gin_channels=0
+        self,
+        in_channels: int = 192,
+        filter_channels: int = 256,
+        kernel_size: int = 5,
+        p_dropout: float = 0.1,
+        gin_channels=0,
+        backward_g=True,
     ):
         super().__init__()
 
@@ -133,6 +142,7 @@ class DurationPredictor(nn.Module):
         self.kernel_size = kernel_size
         self.p_dropout = p_dropout
         self.gin_channels = gin_channels
+        self.backward_g = backward_g
 
         self.drop = nn.Dropout(p_dropout)
         self.conv_1 = nn.Conv1d(
@@ -151,7 +161,8 @@ class DurationPredictor(nn.Module):
     def forward(self, x, x_mask, g=None):
         x = torch.detach(x)
         if g is not None:
-            g = torch.detach(g)
+            if not self.backward_g:
+                g = torch.detach(g)
             x = x + self.cond(g)
         x = self.conv_1(x * x_mask)
         x = torch.relu(x)
@@ -219,11 +230,11 @@ class TextEncoder(nn.Module):
 class ResidualCouplingBlock(nn.Module):
     def __init__(
         self,
-        channels,
-        hidden_channels,
-        kernel_size,
-        dilation_rate,
-        n_layers,
+        channels: int = 192,
+        hidden_channels: int = 192,
+        kernel_size: int = 5,
+        dilation_rate: int = 1,
+        n_layers: int = 4,
         n_flows=4,
         gin_channels=0,
     ):
@@ -264,12 +275,12 @@ class ResidualCouplingBlock(nn.Module):
 class PosteriorEncoder(nn.Module):
     def __init__(
         self,
-        in_channels,
-        out_channels,
-        hidden_channels,
-        kernel_size,
-        dilation_rate,
-        n_layers,
+        in_channels: int = 80,
+        out_channels: int = 192,
+        hidden_channels: int = 192,
+        kernel_size: int = 5,
+        dilation_rate: int = 1,
+        n_layers: int = 16,
         gin_channels=0,
     ):
         super().__init__()
@@ -307,21 +318,21 @@ class PosteriorEncoder(nn.Module):
 class VitsGenerator(nn.Module):
     def __init__(
         self,
-        n_vocab,
-        spec_channels,
-        segment_size=32,
-        inter_channels=192,
-        hidden_channels=192,
-        filter_channels=768,
-        n_heads=2,
-        n_layers=6,
+        n_vocab: int,
+        spec_channels: int,
+        segment_size: int = 32,
+        inter_channels: int = 192,
+        hidden_channels: int = 192,
+        filter_channels: int = 768,
+        n_heads: int = 2,
+        n_layers: int = 6,
         kernel_size: int = 3,
         p_dropout: float = 0.1,
-        resblock_type="1",
-        resblock_kernel_sizes=[3, 7, 11],
-        resblock_dilations=[[1, 3, 5], [1, 3, 5], [1, 3, 5]],
-        upsample_rates=[8, 8, 2, 2],
-        upsample_initial_channels=512,
+        resblock_type: Literal["1", "2"] = "1",
+        resblock_kernel_sizes: List[int] = [3, 7, 11],
+        resblock_dilations: List[List[int]] = [[1, 3, 5], [1, 3, 5], [1, 3, 5]],
+        upsample_rates: List[int] = [8, 8, 2, 2],
+        upsample_initial_channels: int = 512,
         upsample_kernel_sizes=[16, 16, 4, 4],
         posterior_encoder_num_layers: int = 16,
         posterior_encoder_kernel_size: int = 5,

@@ -1,61 +1,10 @@
 # Code from https://github.com/imdanboy/jets/blob/main/espnet2/gan_tts/jets/alignments.py
 
-# Copyright 2022 Dan Lim
-#  Apache 2.0  (http://www.apache.org/licenses/LICENSE-2.0)
-
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from numba import jit
-
-
-class AlignmentModule(nn.Module):
-    """Alignment Learning Framework proposed for parallel TTS models in:
-    https://arxiv.org/abs/2108.10447
-    """
-
-    def __init__(self, adim, odim):
-        super().__init__()
-        self.t_conv1 = nn.Conv1d(adim, adim, kernel_size=3, padding=1)
-        self.t_conv2 = nn.Conv1d(adim, adim, kernel_size=1, padding=0)
-
-        self.f_conv1 = nn.Conv1d(odim, adim, kernel_size=3, padding=1)
-        self.f_conv2 = nn.Conv1d(adim, adim, kernel_size=3, padding=1)
-        self.f_conv3 = nn.Conv1d(adim, adim, kernel_size=1, padding=0)
-
-    def forward(self, text, feats, x_masks=None):
-        """
-        Args:
-            text (Tensor): Batched text embedding (B, T_text, adim)
-            feats (Tensor): Batched acoustic feature (B, T_feats, odim)
-            x_masks (Tensor): Mask tensor (B, T_text)
-
-        Returns:
-            Tensor: log probability of attention matrix (B, T_feats, T_text)
-        """
-
-        text = text.transpose(1, 2)
-        text = F.relu(self.t_conv1(text))
-        text = self.t_conv2(text)
-        text = text.transpose(1, 2)
-
-        feats = feats.transpose(1, 2)
-        feats = F.relu(self.f_conv1(feats))
-        feats = F.relu(self.f_conv2(feats))
-        feats = self.f_conv3(feats)
-        feats = feats.transpose(1, 2)
-
-        dist = feats.unsqueeze(2) - text.unsqueeze(1)
-        dist = torch.linalg.norm(dist, ord=2, dim=3)
-        score = -dist
-
-        if x_masks is not None:
-            x_masks = x_masks.unsqueeze(-2)
-            score = score.masked_fill(x_masks, -np.inf)
-
-        log_p_attn = F.log_softmax(score, dim=-1)
-        return log_p_attn
 
 
 @jit(nopython=True)
