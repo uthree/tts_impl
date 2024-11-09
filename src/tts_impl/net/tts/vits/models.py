@@ -19,7 +19,6 @@ class StochasticDurationPredictor(nn.Module):
         p_dropout: float = 0.1,
         n_flows: int = 4,
         gin_channels: int = 0,
-        backward_g: bool = True,
     ):
         super().__init__()
         # it needs to be removed from future version.
@@ -30,7 +29,6 @@ class StochasticDurationPredictor(nn.Module):
         self.p_dropout = p_dropout
         self.n_flows = n_flows
         self.gin_channels = gin_channels
-        self.backward_g = backward_g
 
         self.log_flow = modules.Log()
         self.flows = nn.ModuleList()
@@ -66,8 +64,7 @@ class StochasticDurationPredictor(nn.Module):
         x = torch.detach(x)
         x = self.pre(x)
         if g is not None:
-            if not self.backward_g:
-                g = torch.detach(g)
+            g = torch.detach(g)
             x = x + self.cond(g)
         x = self.convs(x, x_mask)
         x = self.proj(x) * x_mask
@@ -132,8 +129,7 @@ class DurationPredictor(nn.Module):
         filter_channels: int = 256,
         kernel_size: int = 5,
         p_dropout: float = 0.1,
-        gin_channels=0,
-        backward_g=True,
+        gin_channels=0
     ):
         super().__init__()
 
@@ -142,7 +138,6 @@ class DurationPredictor(nn.Module):
         self.kernel_size = kernel_size
         self.p_dropout = p_dropout
         self.gin_channels = gin_channels
-        self.backward_g = backward_g
 
         self.drop = nn.Dropout(p_dropout)
         self.conv_1 = nn.Conv1d(
@@ -161,8 +156,7 @@ class DurationPredictor(nn.Module):
     def forward(self, x, x_mask, g=None):
         x = torch.detach(x)
         if g is not None:
-            if not self.backward_g:
-                g = torch.detach(g)
+            g = torch.detach(g)
             x = x + self.cond(g)
         x = self.conv_1(x * x_mask)
         x = torch.relu(x)
