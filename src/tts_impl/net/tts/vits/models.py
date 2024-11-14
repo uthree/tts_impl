@@ -9,6 +9,8 @@ from tts_impl.net.vocoder.hifigan.lightning import HifiganGenerator
 
 from . import attentions, commons, modules, monotonic_align
 
+from tts_impl.net.protocol.tts import VariationalAcousticFeatureEncoder, VariationalTextEncoder, Flow
+
 
 class StochasticDurationPredictor(nn.Module):
     def __init__(
@@ -170,7 +172,7 @@ class DurationPredictor(nn.Module):
         return x * x_mask
 
 
-class TextEncoder(nn.Module):
+class TextEncoder(nn.Module, VariationalTextEncoder):
     def __init__(
         self,
         n_vocab: int,
@@ -266,7 +268,7 @@ class ResidualCouplingBlock(nn.Module):
         return x
 
 
-class PosteriorEncoder(nn.Module):
+class PosteriorEncoder(nn.Module, VariationalAcousticFeatureEncoder):
     def __init__(
         self,
         in_channels: int = 80,
