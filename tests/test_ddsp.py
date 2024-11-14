@@ -33,4 +33,4 @@ def test_impulse_train():
 def test_spectral_envelope_filter():
     senv = torch.randn(1, 513, 256)
     noi = torch.randn(1, 65536)
-    filterd = spectral_envelope_filter(noi, senv, 1024, 256)
+    filtered = spectral_envelope_filter(noi, senv, 1024, 256)

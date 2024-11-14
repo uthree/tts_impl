@@ -1,6 +1,6 @@
 """Maximum path calculation module with cython optimization.
 
-This code is copied from https://github.com/jaywalnut310/vits and modifed code format.
+This code is copied from https://github.com/jaywalnut310/vits and modified code format.
 
 """
 

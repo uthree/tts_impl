@@ -319,24 +319,34 @@ class VitsGenerator(nn.Module):
         segment_size: int = 32,
         inter_channels: int = 192,
         hidden_channels: int = 192,
+
+        # Text Encoder
         filter_channels: int = 768,
         n_heads: int = 2,
         n_layers: int = 6,
         kernel_size: int = 3,
         p_dropout: float = 0.1,
+
+        # Hifi-GAN Configuration
         resblock_type: Literal["1", "2"] = "1",
         resblock_kernel_sizes: List[int] = [3, 7, 11],
         resblock_dilations: List[List[int]] = [[1, 3, 5], [1, 3, 5], [1, 3, 5]],
         upsample_rates: List[int] = [8, 8, 2, 2],
         upsample_initial_channels: int = 512,
         upsample_kernel_sizes=[16, 16, 4, 4],
+
+        # Posterior Encoder
         posterior_encoder_num_layers: int = 16,
         posterior_encoder_kernel_size: int = 5,
+
+        # Normalizing Flow
         flow_kernel_size: int = 5,
         flow_num_layers: int = 4,
         flow_num_blocks: int = 4,
         n_speakers: int = 0,
         gin_channels: int = 192,
+
+        # Duration Predictor
         use_dp: bool = False,
         use_sdp: bool = True,
         dp_kernel_size: int = 3,

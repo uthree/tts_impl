@@ -13,7 +13,7 @@ class LayerNorm1d(nn.Module):
         self.gamma = nn.Parameter(torch.ones(channels))
         self.beta = nn.Parameter(torch.zeros(channels))
 
-    # x: [BatchSize, cnannels, *]
+    # x: [BatchSize, channels, *]
     def forward(self, x: torch.Tensor):
         x = F.layer_norm(
             x.transpose(1, 2), (self.channels,), self.gamma, self.beta, self.eps

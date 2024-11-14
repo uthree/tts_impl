@@ -75,7 +75,7 @@ class ForcedAligner(nn.Module):
 
         Returns:
             ds: (Tensor) durations (B, T_text)
-            loss: (Tensor) aligment loss, ()
+            loss: (Tensor) alignment loss, ()
         """
         x_masks = sequence_mask(text_lengths, text.shape[2]).unsqueeze(1)
         log_p_attn = self.forward(text, feats, x_masks=x_masks)

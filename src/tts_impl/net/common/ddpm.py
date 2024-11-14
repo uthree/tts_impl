@@ -26,13 +26,13 @@ class DDPM(nn.Module):
         self.num_timesteps = num_timesteps
         self.loss_function = loss_function
 
-        # caluclate alpha_bar
+        # calculate alpha_bar
         self.alpha_bar = []
         for t in range(1, num_timesteps + 1):
             self.alpha_bar.append(torch.prod(self.alpha[:t]))
         self.alpha_bar = torch.Tensor(self.alpha_bar)
 
-        # calculate beta_tilde ( for caluclate sigma[t] )
+        # calculate beta_tilde ( for calculate sigma_t )
         self.beta_tilde = [1]
         for t in range(1, num_timesteps):
             self.beta_tilde.append(
