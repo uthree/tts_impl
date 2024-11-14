@@ -5,44 +5,27 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
-
     "torchaudio>=2.5.1",
-
     "numpy<2",
-
     "lightning>=2.4.0",
-
     "tensorboard>=2.18.0",
-
     "tqdm>=4.66.5",
-
     "safetensors>=0.4.5",
-
     "alias-free-torch>=0.0.6",
-
     "hydra-core>=1.3.2",
-
     "pytest>=8.3.3",
-
     "mypy>=1.11.2",
-
     "numba>=0.60.0",
-
     "isort>=5.13.2",
-
     "omegaconf>=2.3.0",
-
     "transformers>=4.45.2",
-
     "pylint>=3.3.1",
-
     "torch>=2.5.1",
-
     "black>=24.10.0",
-
     "jaxtyping>=0.2.34",
-
     "codespell>=2.3.0",
+    "pysen>=0.11.0",
+    "frake8>=7.1.1"
 ]
 
 [build-system]
@@ -54,3 +37,32 @@ pythonpath = ["src/"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/tts_impl/"]
+
+
+[tool.pysen]
+version = "0.11"
+
+[tool.pysen.lint]
+enable_black = true
+enable_flake8 = true
+enable_isort = true
+enable_mypy = true
+mypy_preset = "strict"
+isort_known_third_party = ["numpy"]
+isort_known_first_party = ["pysen"]
+mypy_ignore_packages = ["pysen.generated.*"]
+mypy_path = ["stubs"]
+[[tool.pysen.lint.mypy_targets]]
+  paths = [".", "tests/"]
+
+[tool.pysen.lint.source]
+  includes = ["."]
+  include_globs = ["**/*.template"]
+  excludes = ["third_party/"]
+  exclude_globs = ["**/*_grpc.py"]
+
+[tool.pysen.lint.mypy_modules."pysen.scripts"]
+  preset = "entry"
+
+[tool.pysen.lint.mypy_modules."numpy"]
+  ignore_errors = true

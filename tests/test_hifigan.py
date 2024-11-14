@@ -1,12 +1,16 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
 from tts_impl.net.vocoder.discriminator import (
-    CombinedDiscriminator, MultiPeriodDiscriminator,
-    MultiResolutionStftDiscriminator, MultiScaleDiscriminator)
-from tts_impl.net.vocoder.hifigan.lightning import (HifiganDiscriminator,
-                                                    HifiganGenerator)
+    CombinedDiscriminator,
+    MultiPeriodDiscriminator,
+    MultiResolutionStftDiscriminator,
+    MultiScaleDiscriminator,
+)
+from tts_impl.net.vocoder.hifigan.lightning import (
+    HifiganDiscriminator,
+    HifiganGenerator,
+)
 
 
 def test_hifigan_generator():

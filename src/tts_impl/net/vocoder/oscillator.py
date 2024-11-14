@@ -1,5 +1,4 @@
 import math
-from typing import Protocol
 
 import torch
 import torch.nn as nn

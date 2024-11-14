@@ -1,8 +1,11 @@
 from typing import List
 
 from tts_impl.net.vocoder.discriminator import (
-    CombinedDiscriminator, MultiPeriodDiscriminator,
-    MultiResolutionStftDiscriminator, MultiScaleDiscriminator)
+    CombinedDiscriminator,
+    MultiPeriodDiscriminator,
+    MultiResolutionStftDiscriminator,
+    MultiScaleDiscriminator,
+)
 
 
 class HifiganDiscriminator(CombinedDiscriminator):

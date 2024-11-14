@@ -44,10 +44,8 @@ pip install -e .
 ```
 
 ## code check
-`black src; isort src` to run formatter   
-`pytest` to run test  
-`mypy src` to run type check   
-
+- `pysen run format`
+- `pysen run lint`
 
 ## References
 - VITS

@@ -4,9 +4,10 @@ from typing import List, Literal, Optional
 import torch
 from torch import nn
 from torch.nn import functional as F
-
-from tts_impl.net.protocol.tts import (VariationalAcousticFeatureEncoder,
-                                       VariationalTextEncoder)
+from tts_impl.net.protocol.tts import (
+    VariationalAcousticFeatureEncoder,
+    VariationalTextEncoder,
+)
 from tts_impl.net.vocoder.hifigan.lightning import HifiganGenerator
 
 from . import attentions, commons, modules, monotonic_align
@@ -16,7 +17,7 @@ class StochasticDurationPredictor(nn.Module):
     def __init__(
         self,
         in_channels: int = 192,
-        filter_channels: int = 768,
+        filter_channels: int = 192,
         kernel_size: int = 5,
         p_dropout: float = 0.1,
         n_flows: int = 4,
@@ -347,7 +348,7 @@ class VitsGenerator(nn.Module):
         dp_kernel_size: int = 3,
         sdp_kernel_size: int = 3,
         dp_filter_size: int = 256,
-        sdp_filter_size: int = 256,
+        sdp_filter_size: int = 192,
         sdp_num_flows: int = 4,
         **kwargs,
     ):

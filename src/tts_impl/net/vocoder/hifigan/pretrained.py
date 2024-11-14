@@ -2,10 +2,11 @@ import json
 from pathlib import Path
 
 import torch
-
-from tts_impl.net.vocoder.discriminator import (CombinedDiscriminator,
-                                                MultiPeriodDiscriminator,
-                                                MultiScaleDiscriminator)
+from tts_impl.net.vocoder.discriminator import (
+    CombinedDiscriminator,
+    MultiPeriodDiscriminator,
+    MultiScaleDiscriminator,
+)
 
 from .generator import HifiganGenerator
 
