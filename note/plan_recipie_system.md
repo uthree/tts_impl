@@ -14,27 +14,18 @@ Omegaconf, Hydraとの兼ね合いも考慮して、YAMLを採用する可能性
 ~~正直、 この設計思想はPythonのような動的言語でやるようなものではないのはわかっているが、こうでもしないと少し構造を変更するたびに変更すべき箇所が多すぎてまともに実験ができないのだ。~~
 
 ### モデル組み換え例
-例えば、VITS2をベースにデコーダー部分をBigVGANに変更、テキストエンコーダーの設計を独自のものにする、といった処理をする。  
+例えば、VITS2をベースにデコーダー部分をBigVGANに変更、length reguratorをgaussian upsamplingにする、といった処理をする。  
 ライブラリを使う側としては、差し替えるモデルを選択or実装するだけで簡単に複合モデルを設計できる
 
 ```py
 #警告: このコードは構想・計画段階のメモです。実際に動作するわけではありません。
 
-generator = Vits2Generator()
-generator.decoder = BigvganGenerator()
-generator.text_encoder = MyTextEncoder()
+from tts_impl.net.tts.vits import VitsGenerator
 
-# or
-
-class CustomVits(Vits2GeneratorBase):
-    def __init__(self):
-        super().__init__()
-
-    def vits_forward(self, ...):
-        ...
-
-# もっと良い書き方があればそっちに変更するかも。
-# ハイパーパラメータ config との兼ね合いとか。
+custom_vits = VitsGenerator(
+    vocoder="bigvgan", # default = "hifigan"
+    length_regurator="gaussian", # default = "duplicate"
+)
 ```
 
 ## 前処理

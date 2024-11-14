@@ -80,7 +80,7 @@ def generate_path(duration, mask):
     return path
 
 
-def length_regurator(
+def duplicate_by_duration(
     x: torch.Tensor,
     w: torch.Tensor,
     x_mask: Optional[torch.Tensor] = None,

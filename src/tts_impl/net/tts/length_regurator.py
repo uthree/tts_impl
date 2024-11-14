@@ -4,10 +4,11 @@ import torch
 import torch.nn as nn
 
 from tts_impl.functional.length_regurator import (gaussian_upsampling,
-                                                  length_regurator)
+                                                  duplicate_by_duration)
+from tts_impl.net.protocol.tts import LengthRegurator
 
 
-class LengthRegurator(nn.Module):
+class DuplicateByDuration(nn.Module, LengthRegurator):
     def __init__(self):
         super().__init__()
 
@@ -20,17 +21,17 @@ class LengthRegurator(nn.Module):
     ):
         """
         Args:
-            x (Tensor): Batched hidden state to be expanded (B, channels, T_text)
-            w (Tensor): Batched token duration (B, T_text)
-            x_masks (Tensor): Mask tensor (B, T_feats)
-            y_masks (Tensor): Mask tensor (B, T_text)
+            x: Batched hidden state to be expanded (B, channels, T_text)
+            w: Batched token duration (B, T_text)
+            x_masks: Mask tensor (B, T_feats)
+            y_masks: Mask tensor (B, T_text)
         Returns:
-            Tensor: Expanded hidden state (B, channels, T_feat)
+            x(Tensor): Expanded hidden state (B, channels, T_feat)
         """
-        return length_regurator(x, w, x_mask=x_mask, y_mask=y_mask)
+        return duplicate_by_duration(x, w, x_mask=x_mask, y_mask=y_mask)
 
 
-class GaussianUpsampling(nn.Module):
+class GaussianUpsampling(nn.Module, LengthRegurator):
     def __init__(self, temperature=0.1):
         super().__init__()
         self.temperature = temperature
@@ -47,12 +48,12 @@ class GaussianUpsampling(nn.Module):
         https://arxiv.org/abs/2010.04301
 
         Args:
-            x (Tensor): Batched hidden state to be expanded (B, channels, T_text)
-            w (Tensor): Batched token duration (B, T_text)
-            x_masks (Tensor): Mask tensor (B, T_feats)
-            y_masks (Tensor): Mask tensor (B, T_text)
+            x: Batched hidden state to be expanded (B, channels, T_text)
+            w: Batched token duration (B, T_text)
+            x_masks: Mask tensor (B, T_feats)
+            y_masks: Mask tensor (B, T_text)
         Returns:
-            Tensor: Expanded hidden state (B, channels, T_feat)
+            x: Expanded hidden state (B, channels, T_feat)
         """
         return gaussian_upsampling(
             x, w, x_mask=x_mask, y_mask=y_mask, delta=self.temperature

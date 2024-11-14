@@ -1,1 +1,1 @@
-from .alginment_module import AlignmentModule
+from .forced_align import ForcedAligner

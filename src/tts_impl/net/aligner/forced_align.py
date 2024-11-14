@@ -16,7 +16,7 @@ def sequence_mask(length, max_length=None):
     return x.unsqueeze(0) < length.unsqueeze(1)
 
 
-class AlignmentModule(nn.Module):
+class ForcedAligner(nn.Module):
     """Alignment Learning Framework proposed for parallel TTS models in:
     https://arxiv.org/abs/2108.10447
     """
