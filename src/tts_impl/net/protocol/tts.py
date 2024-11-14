@@ -102,6 +102,7 @@ class Flow(Protocol):
     """
     Flow model
     """
+
     def forward(x: torch.Tensor, reverse: bool, *args, **kwargs) -> torch.Tensor:
         """
         Args:

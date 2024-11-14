@@ -47,3 +47,10 @@ pip install -e .
 `black src; isort src` to run formatter   
 `pytest` to run test  
 `mypy src` to run type check   
+
+
+## References
+- VITS
+- VITS2
+- JETS
+- HiFi-GAN

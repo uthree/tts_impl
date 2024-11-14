@@ -27,8 +27,8 @@ class NsfhifiganGenerator(nn.Module):
         # option for speaker conditioning in TTS task
         gin_channels: int = 0,
         # for source module
-        sample_rate: float = 22050.0,
-        num_harmonics: int = 1,
+        sample_rate: int = 22050,
+        num_harmonics: int = 8,
     ):
         super().__init__()
         self.requires_f0 = True

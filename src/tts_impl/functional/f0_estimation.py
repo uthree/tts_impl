@@ -46,7 +46,9 @@ def estimate_f0_dio(
             return f0
         elif wf.ndim == 2:
             waves = wf.split(1, dim=0)
-            pitchs = [estimate_f0_dio(wave[0], sample_rate, frame_size) for wave in waves]
+            pitchs = [
+                estimate_f0_dio(wave[0], sample_rate, frame_size) for wave in waves
+            ]
             pitchs = torch.stack(pitchs, dim=0)
             return pitchs.detach()
 
