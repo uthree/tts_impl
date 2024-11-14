@@ -161,7 +161,13 @@ cython_debug/
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
 
-weights/
+
+# mac OS
+*.DS_Store
+
+# generated files
+weight/
 lightning_logs/
 flagged/
 dataset_cache/
+onnx/

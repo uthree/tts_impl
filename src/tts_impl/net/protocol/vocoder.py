@@ -1,4 +1,5 @@
-from typing import Protocol, Optional, Tuple, List
+from typing import List, Optional, Protocol, Tuple
+
 import torch
 
 
@@ -6,7 +7,14 @@ class GanVocoderGenerator(Protocol):
     """
     GAN-based vocoder
     """
-    def forward(self, x: torch.Tensor, g=Optional[torch.Tensor], f0=Optional[torch.Tensor], uv=Optional[torch.Tensor]) -> torch.Tensor:
+
+    def forward(
+        self,
+        x: torch.Tensor,
+        g=Optional[torch.Tensor],
+        f0=Optional[torch.Tensor],
+        uv=Optional[torch.Tensor],
+    ) -> torch.Tensor:
         """
         Args:
             x: acoustic feature (batch_size, in_channels, length)
@@ -22,6 +30,7 @@ class GanVocoderDiscriminator(Protocol):
     """
     GAN-based vocoder discriminator
     """
+
     def forward(self, x: torch.Tensor) -> Tuple[List[torch.Tensor], List[torch.Tensor]]:
         """
         Args:
@@ -32,13 +41,15 @@ class GanVocoderDiscriminator(Protocol):
         """
 
 
-    
 class SanVocoderDiscriminator(Protocol):
     """
     SAN-based vocoder discriminator
     purposed in https://arxiv.org/abs/2309.02836
     """
-    def forward(self, x: torch.Tensor) -> Tuple[List[torch.Tensor], List[torch.Tensor], List[torch.Tensor]]:
+
+    def forward(
+        self, x: torch.Tensor
+    ) -> Tuple[List[torch.Tensor], List[torch.Tensor], List[torch.Tensor]]:
         """
         Args:
             x: waveform (batch_size, in_channels, length)

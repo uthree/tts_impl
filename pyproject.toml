@@ -7,8 +7,6 @@ requires-python = ">=3.11"
 dependencies = [
     "torchaudio>=2.5.1",
     "numpy<2",
-    "pyworld>=0.3.4",
-    "torchfcpe>=0.0.4",
     "lightning>=2.4.0",
     "tensorboard>=2.18.0",
     "tqdm>=4.66.5",
@@ -18,9 +16,6 @@ dependencies = [
     "pytest>=8.3.3",
     "mypy>=1.11.2",
     "numba>=0.60.0",
-    "cython>=3.0.11",
-    "pyopenjtalk-plus>=0.3.4.post5",
-    "phonemizer>=3.3.0",
     "isort>=5.13.2",
     "omegaconf>=2.3.0",
     "transformers>=4.45.2",

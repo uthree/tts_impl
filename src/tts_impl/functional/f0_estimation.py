@@ -2,14 +2,35 @@ import warnings
 from typing import Literal, Optional
 
 import numpy as np
-import pyworld as pw
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torchfcpe import spawn_bundled_infer_model
+
+try:
+    import pyworld as pw
+
+    PYWORLD_AVAILABLE = True
+except ModuleNotFoundError:
+    PYWORLD_AVAILABLE = False
+
+try:
+    from torchfcpe import spawn_bundled_infer_model
+
+    TORCHFCPE_AVAILABLE = True
+except ModuleNotFoundError:
+    TORCHFCPE_AVAILABLE = False
 
 
-def estimate_f0_dio(wf, sample_rate=48000, frame_size=480, f0_min=20, f0_max=20000):
+def estimate_f0_dio(
+    wf,
+    sample_rate: int,
+    frame_size: int = 480,
+    f0_min: float = 20.0,
+    f0_max: float = 20000.0,
+):
+    if not PYWORLD_AVAILABLE:
+        raise "pyworld is not installed in this python environment. install pyworld if you need use this F0 estimation method."
+
     if wf.ndim == 1:
         device = wf.device
         signal = wf.detach().cpu().numpy()
@@ -29,7 +50,16 @@ def estimate_f0_dio(wf, sample_rate=48000, frame_size=480, f0_min=20, f0_max=200
         return pitchs
 
 
-def estimate_f0_harvest(wf, sample_rate=4800, frame_size=480, f0_min=20, f0_max=20000):
+def estimate_f0_harvest(
+    wf,
+    sample_rate: int,
+    frame_size: int = 480,
+    f0_min: float = 20.0,
+    f0_max: float = 20000.0,
+):
+    if not PYWORLD_AVAILABLE:
+        raise "pyworld is not installed in this python environment. install pyworld if you need use this F0 estimation method."
+
     if wf.ndim == 1:
         device = wf.device
         signal = wf.detach().cpu().numpy()
@@ -55,6 +85,9 @@ torchfcpe_model = {}
 
 
 def estimate_f0_fcpe(wf, sample_rate=24000, frame_size=480, f0_min=20, f0_max=20000):
+    if not TORCHFCPE_AVAILABLE:
+        raise "torchfcpe is not installed in this python environment. install torchfcpe if you need use this F0 estimation method."
+
     if wf.device not in torchfcpe_model:
         warnings.warn(
             "When you estimate f0 with torchfcpe, the model will remain in memory. To unload it, use unload_torchfcpe()."
@@ -75,8 +108,8 @@ def unload_torchfcpe(device: Optional[torch.device]):
 # wf: [BatchSize, Length]
 def estimate_f0(
     wf,
-    sample_rate=24000,
-    frame_size=480,
+    sample_rate: int,
+    frame_size: int,
     algorithm: Literal["harvest", "dio", "fcpe"] = "harvest",
 ):
     l = wf.shape[1]
