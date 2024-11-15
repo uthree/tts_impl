@@ -29,7 +29,11 @@ class HifiganLightningModule(L.LightningModule):
         self.save_hyperparameters()
 
     def training_step(self, batch):
-        waveform, input_features, f0 = batch
+        waveform, data = batch
+
+        acoustic_features = data["acoustic_features"]
+        f0 = data["f0"]
+
         spec_real = self.spectrogram(waveform.sum(1)).detach()
         opt_g, opt_d = self.optimizers()
 
@@ -38,7 +42,7 @@ class HifiganLightningModule(L.LightningModule):
         weight_adv = self.config.get("weight_adv", 1.0)
 
         # Train G.
-        fake = self.generator(input_features, f0=f0)
+        fake = self.generator(acoustic_features, f0=f0)
         logits, fmap_fake = self.generator(fake)
         _, fmap_real = self.discriminator(waveform)
         loss_adv, loss_adv_list = generator_loss(logits)

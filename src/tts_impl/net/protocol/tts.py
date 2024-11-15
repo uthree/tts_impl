@@ -98,9 +98,9 @@ class VariationalAcousticFeatureEncoder(Protocol):
         """
 
 
-class Flow(Protocol):
+class Invertible(Protocol):
     """
-    Flow model
+    Invertible module (e.g. Flow, Glow)
     """
 
     def forward(x: torch.Tensor, reverse: bool, *args, **kwargs) -> torch.Tensor:

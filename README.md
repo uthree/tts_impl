@@ -33,6 +33,7 @@ work in progress: 🚧
 - PE: Pitch Estimation
 - Aligner:
     - ForcedAlign ✅
+- Codec
 
 ## Installation
 ```sh
@@ -43,9 +44,11 @@ or clone this repository,
 pip install -e .
 ```
 
-## code check
-- `pysen run format`
-- `pysen run lint`
+## type check / lint / test
+- `pysen run format` : automatic formatting
+- `pysen run lint` : linter
+- `pytest` : test
+- `codespell` : detect typos
 
 ## References
 - VITS
