@@ -6,6 +6,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn.utils import remove_weight_norm
 from torch.nn.utils.parametrizations import weight_norm
+
 from tts_impl.net.protocol.vocoder import GanVocoderGenerator
 
 LRELU_SLOPE = 0.1

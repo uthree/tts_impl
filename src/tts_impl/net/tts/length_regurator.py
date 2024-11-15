@@ -2,10 +2,9 @@ from typing import Optional
 
 import torch
 import torch.nn as nn
-from tts_impl.functional.length_regurator import (
-    duplicate_by_duration,
-    gaussian_upsampling,
-)
+
+from tts_impl.functional.length_regurator import (duplicate_by_duration,
+                                                  gaussian_upsampling)
 from tts_impl.net.protocol.tts import LengthRegurator
 
 

@@ -4,10 +4,9 @@ from typing import List, Literal, Optional
 import torch
 from torch import nn
 from torch.nn import functional as F
-from tts_impl.net.protocol.tts import (
-    VariationalAcousticFeatureEncoder,
-    VariationalTextEncoder,
-)
+
+from tts_impl.net.protocol.tts import (VariationalAcousticFeatureEncoder,
+                                       VariationalTextEncoder)
 from tts_impl.net.vocoder.hifigan.lightning import HifiganGenerator
 
 from . import attentions, commons, modules, monotonic_align

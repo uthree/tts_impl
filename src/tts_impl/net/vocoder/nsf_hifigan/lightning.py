@@ -3,12 +3,10 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 from omegaconf import DictConfig
+
 from tts_impl.net.vocoder.hifigan import HifiganDiscriminator
-from tts_impl.net.vocoder.hifigan.loss import (
-    discriminator_loss,
-    feature_loss,
-    generator_loss,
-)
+from tts_impl.net.vocoder.hifigan.loss import (discriminator_loss,
+                                               feature_loss, generator_loss)
 from tts_impl.transforms import LogMelSpectrogram
 
 from .generator import NsfhifiganGenerator

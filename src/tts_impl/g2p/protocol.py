@@ -1,4 +1,4 @@
-from typing import Protocol, List
+from typing import List, Protocol
 
 
 class Grapheme2PhonemeModule(Protocol):
