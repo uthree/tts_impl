@@ -7,14 +7,14 @@ import torch.nn.functional as F
 
 # HnNSF Module from https://arxiv.org/pdf/1904.12088
 class HarmonicNoiseOscillator(nn.Module):
-    def __init__(self, sample_rate, frame_size, num_harmonics=1, noise_scale=0.03):
+    def __init__(self, sample_rate, frame_size, num_harmonics=8, noise_scale=0.03):
         super().__init__()
         self.sample_rate = sample_rate
         self.frame_size = frame_size
         self.num_harmonics = num_harmonics
         self.noise_scale = noise_scale
 
-        self.weights = nn.Parameter(torch.zeros(1, num_harmonics, 1))
+        self.weights = nn.Parameter(torch.rand(1, num_harmonics, 1))
 
     def forward(self, f0, uv):
         """
@@ -40,7 +40,7 @@ class HarmonicNoiseOscillator(nn.Module):
             voiced_part = harmonics + noise * self.noise_scale
             unvoiced_part = noise * 0.333
             source = voiced_part * voiced_mask + unvoiced_part * (1 - voiced_mask)
-        source = (source * torch.exp(self.weights)).sum(dim=1, keepdim=True)
+        source = (source * torch.softmax(self.weights, dim=1)).sum(dim=1, keepdim=True)
         return source
 
 
