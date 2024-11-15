@@ -1,1 +1,1 @@
-from . import nsf_hifigan
+from . import ddsp, hifigan, nsf_hifigan, vocos

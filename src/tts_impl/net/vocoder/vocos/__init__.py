@@ -1,1 +1,1 @@
-from . import Generator
+from .generator import VocosGenerator

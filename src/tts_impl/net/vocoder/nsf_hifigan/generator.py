@@ -8,7 +8,7 @@ from torch.nn.utils.parametrizations import weight_norm
 
 from tts_impl.net.vocoder.hifigan.generator import (ResBlock1, ResBlock2,
                                                     init_weights)
-from tts_impl.net.vocoder.nsf import HarmonicNoiseOscillator
+from tts_impl.net.vocoder.nsf_hifigan.oscillator import HarmonicNoiseOscillator
 
 
 class NsfhifiganGenerator(nn.Module):
