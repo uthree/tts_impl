@@ -14,7 +14,7 @@ class HarmonicNoiseOscillator(nn.Module):
         self.num_harmonics = num_harmonics
         self.noise_scale = noise_scale
 
-        self.weights = nn.Parameter(torch.rand(1, num_harmonics, 1))
+        self.weights = nn.Parameter(torch.ones(1, num_harmonics, 1))
 
     def forward(self, f0, uv):
         """
@@ -35,12 +35,15 @@ class HarmonicNoiseOscillator(nn.Module):
             fs = f0 * mul
             integrated = torch.cumsum(fs / self.sample_rate, dim=2)
             rad = 2 * math.pi * ((integrated) % 1)
-            noise = torch.randn_like(rad)
+            noise = torch.rand(rad.shape[0], 1, rad.shape[2], device=rad.device).expand(
+                rad.shape
+            )
             harmonics = torch.sin(rad) * voiced_mask + noise * self.noise_scale
             voiced_part = harmonics + noise * self.noise_scale
             unvoiced_part = noise * 0.333
             source = voiced_part * voiced_mask + unvoiced_part * (1 - voiced_mask)
-        source = (source * torch.softmax(self.weights, dim=1)).sum(dim=1, keepdim=True)
+        source = (source * F.normalize(self.weights, dim=1)).sum(dim=1, keepdim=True)
+        source = torch.tanh(source)
         return source
 
 
