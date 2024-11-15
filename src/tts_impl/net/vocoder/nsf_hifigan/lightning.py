@@ -71,18 +71,18 @@ class HifiganLightningModule(L.LightningModule):
         self.untoggle_optimizer(opt_d)
 
         # Logs
-        self.log("loss/Generator")
+        self.log("loss/Generator All", loss_g.item())
         self.log("loss/Mel Spectrogram", loss_mel.item())
         self.log("loss/Feature Matching", loss_feat.item())
         self.log("loss/Generator Adversarial", loss_adv.item())
         self.log("loss/Discriminator Adversarial", loss_d.item())
 
         for i, l in enumerate(loss_adv_list):
-            self.log(f"loss/Generator Adversarial/{i}", l)
+            self.log(f"Generator Adversarial/{i}", l.item())
         for i, l in enumerate(loss_d_list_f):
-            self.log(f"loss/Discriminator Adversarial/fake {i}", l)
+            self.log(f"Discriminator Adversarial/fake {i}", l.item())
         for i, l in enumerate(loss_d_list_r):
-            self.log(f"loss/Discriminator Adversarial/real {i}", l)
+            self.log(f"Discriminator Adversarial/real {i}", l.item())
 
     def configure_optimizers(self):
         opt_g = optim.AdamW(
