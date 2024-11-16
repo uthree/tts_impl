@@ -35,7 +35,7 @@ class HarmonicNoiseOscillator(nn.Module):
             fs = f0 * mul
             integrated = torch.cumsum(fs / self.sample_rate, dim=2)
             rad = 2 * math.pi * ((integrated) % 1)
-            noise = torch.rand(rad.shape[0], 1, rad.shape[2], device=rad.device).expand(
+            noise = torch.randn(rad.shape[0], 1, rad.shape[2], device=rad.device).expand(
                 rad.shape
             )
             harmonics = torch.sin(rad) * voiced_mask + noise * self.noise_scale

@@ -34,7 +34,6 @@ class NsfhifiganGenerator(nn.Module):
 
         self.num_kernels = len(resblock_kernel_sizes)
         self.num_upsamples = len(upsample_rates)
-        self.frame_size = 1
 
         self.input_channels = input_channels
         self.gin_channels = gin_channels
