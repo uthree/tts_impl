@@ -171,3 +171,4 @@ lightning_logs/
 flagged/
 dataset_cache/
 onnx/
+note_local/

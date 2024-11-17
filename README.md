@@ -49,9 +49,3 @@ pip install -e .
 - `pysen run lint` : linter
 - `pytest` : test
 - `codespell` : detect typos
-
-## References
-- VITS
-- VITS2
-- JETS
-- HiFi-GAN
