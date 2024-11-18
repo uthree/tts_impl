@@ -1,0 +1,2 @@
+class VocoderPreprocessor():
+    pass
