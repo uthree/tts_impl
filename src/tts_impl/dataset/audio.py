@@ -1,6 +1,6 @@
 import os
 from pathlib import Path
-from typing import List, Literal, Union
+from typing import Union
 
 import torch
 import torchaudio
@@ -15,7 +15,7 @@ class AudioDataset(Dataset):
     def __init__(
         self,
         root: Union[str, os.PathLike] = "dataset_cache",
-        format: Literal["wav", "flac", "mp3", "ogg"] = "flac",
+        format: str = "flac",
     ):
         super().__init__()
         self.root = Path(root)

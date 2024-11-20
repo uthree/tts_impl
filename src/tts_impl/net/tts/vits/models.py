@@ -9,7 +9,8 @@ from tts_impl.net.protocol.tts import (VariationalAcousticFeatureEncoder,
                                        VariationalTextEncoder)
 from tts_impl.net.vocoder.hifigan.lightning import HifiganGenerator
 
-from . import attentions, commons, modules, monotonic_align
+from . import attentions, commons, modules
+from tts_impl.functional.monotonic_align import maximum_path
 
 
 class StochasticDurationPredictor(nn.Module):
@@ -464,7 +465,7 @@ class VitsGenerator(nn.Module):
 
             attn_mask = torch.unsqueeze(x_mask, 2) * torch.unsqueeze(y_mask, -1)
             attn = (
-                monotonic_align.maximum_path(neg_cent, attn_mask.squeeze(1))
+                maximum_path(neg_cent, attn_mask.squeeze(1))
                 .unsqueeze(1)
                 .detach()
             )

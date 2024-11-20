@@ -20,20 +20,16 @@ work in progress: 🚧
     - WaveNeXt 🚧
     - Vocos 🚧
     - DDSP (Subtractive / Additive)
+    - SoundStream
 - TTS: Text to speech
     - VITS ✅
     - VITS2 🚧
     - JETS 🚧
     - FastSpeech
     - Diffusion TTS Models
-    - Flow Matching TTS Models
-- VC: Voice Conversion
-    - VITS-SVC
-- SVS: Speech Voice Synthesis
-- PE: Pitch Estimation
+    - Flow Matching TTS Modelss
 - Aligner:
     - ForcedAlign ✅
-- Codec
 
 ## Installation
 ```sh
