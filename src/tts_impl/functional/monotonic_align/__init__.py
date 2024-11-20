@@ -15,16 +15,6 @@ default_mas_alogirhtm = "naive"
 
 
 try:
-    from .mas_torch_jit import maximum_path_jit1, maximum_path_jit2
-
-    default_mas_alogirhtm = "jit1"
-    available_mas_algorithms.append("jit1")
-    available_mas_algorithms.append("jit2")
-    torch_jit_available = True
-except Exception as e:
-    torch_jit_available = False
-
-try:
     from .core import maximum_path_c  # type: ignore
 
     default_mas_alogirhtm = "cython"
@@ -38,13 +28,16 @@ except ImportError:
     #    "`cd /monotonic_align; python setup.py build_ext --inplace`"
     # )
 
-try:
-    from .mas_numba import maximum_path_numba
 
-    available_mas_algorithms.append("numba")
-    default_mas_alogirhtm = "numba"
-except Exception:
-    pass
+try:
+    from .mas_torch_jit import maximum_path_jit1, maximum_path_jit2
+
+    default_mas_alogirhtm = "jit1"
+    available_mas_algorithms.append("jit1")
+    available_mas_algorithms.append("jit2")
+    torch_jit_available = True
+except Exception as e:
+    torch_jit_available = False
 
 
 try:
@@ -54,6 +47,15 @@ try:
 
     default_mas_algorithm = "triton"
     available_mas_algorithms.append("triton")
+except Exception:
+    pass
+
+
+try:
+    from .mas_numba import maximum_path_numba
+
+    available_mas_algorithms.append("numba")
+    default_mas_alogirhtm = "numba"
 except Exception:
     pass
 
@@ -68,13 +70,24 @@ def maximum_path(
     """Calculate maximum path.
 
     Args:
-        neg_x_ent (Tensor): Negative X entropy tensor (B, T_feats, T_text).
+        attn (Tensor): Negative X entropy tensor (B, T_feats, T_text).
         attn_mask (Tensor): Attention mask (B, T_feats, T_text).
-        algorithm: (Optional(str)) The type of algorithm. If not specified, the most suitable algorithm will be chosen automatically.
+        algorithm: (Optional(str)) algorithm type.
 
     Returns:
         Tensor: Maximum path tensor (B, T_feats, T_text).
 
+    Algorithm Details:
+        'naive': naive python implementation with numpy.
+        'cython': cython implementation from official VITS implementation.
+        'numba': numba implementation.
+        'jit1': JIT v1 implementation proposed in super MAS.
+        'jit2': JIT v2 implementation proposed in super MAS paper.
+        'triton': Triton implementation in super MAS paper.
+
+    References:
+        [VITS](https://github.com/jaywalnut310/vits)
+        [Super Monotonic Alignment Search](https://github.com/supertone-inc/super-monotonic-align)
     """
     neg_x_ent = attn
     if attn_mask is None:
@@ -123,7 +136,7 @@ def maximum_path(
             neg_x_ent.transpose(1, 2), attn_mask.transpose(1, 2)
         ).transpose(1, 2)
     else:
-        raise ValueError("Invalid algorithm identifier.")
+        raise ValueError("Invalid algorithm")
 
 
 __all__ = ["maximum_path", "default_mas_alogorhtm", "available_mas_algorithms"]
