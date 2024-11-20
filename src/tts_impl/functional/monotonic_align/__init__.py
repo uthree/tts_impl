@@ -8,47 +8,44 @@ from typing import Literal, Optional
 import numpy as np
 import torch
 
-from .mas_numba import maximum_path_numba
+from .mas_naive import maximum_path_naive
 
-default_mas_alogirhtm = "numba"
-available_mas_algorithms = ["numba"]
-
+available_mas_algorithms = ["naive"]
+default_mas_alogirhtm = "naive"
 
 try:
-    from .core import maximum_path_c
+    from .mas_numba import maximum_path_numba
+    available_mas_algorithms.append("numba")
+    default_mas_alogirhtm("numba")
+except Exception:
+    pass
+
+try:
+    from .core import maximum_path_c # type: ignore
 
     default_mas_alogirhtm = "cython"
     is_cython_avalable = True
     available_mas_algorithms.append("cython")
 except ImportError:
     is_cython_avalable = False
-    default_mas_algorithm = "numba"
     # warnings.warn(
     #    "Cython version is not available. Fallback to 'EXPERIMETAL' numba version. "
     #    "If you want to use the cython version, please build it as follows: "
     #    "`cd /monotonic_align; python setup.py build_ext --inplace`"
     # )
 
-
-def simple_function(x):
-    return x + 1
-
-
 try:
-    scripted_function = torch.jit.script(simple_function)
-    torch_jit_available = True
-except Exception as e:
-    torch_jit_available = False
-
-if torch_jit_available:
     from .mas_torch_jit import maximum_path_jit1, maximum_path_jit2
 
     default_mas_alogirhtm = "jit1"
     available_mas_algorithms.append("jit1")
     available_mas_algorithms.append("jit2")
+    torch_jit_available = True
+except Exception as e:
+    torch_jit_available = False
 
 try:
-    import triton
+    import triton # type: ignore
 
     from .mas_triton import maximum_path_triton
 
@@ -61,7 +58,7 @@ except Exception:
 def maximum_path(
     neg_x_ent: torch.Tensor,
     attn_mask: torch.Tensor,
-    algorithm: Optional[Literal["numba", "cython", "jit1", "jit2", "triton"]] = None,
+    algorithm: Optional[Literal["naive", "numba", "cython", "jit1", "jit2", "triton"]] = None,
 ) -> torch.Tensor:
     """Calculate maximum path.
 
@@ -80,7 +77,15 @@ def maximum_path(
     if algorithm not in available_mas_algorithms:
         raise ValueError(f"MAS algorithm {algorithm} is not available.")
 
-    if algorithm == "cython":
+    if algorithm == "naive":
+        device, dtype = neg_x_ent.device, neg_x_ent.dtype
+        neg_x_ent = neg_x_ent.cpu().numpy().astype(np.float32)
+        path = np.zeros(neg_x_ent.shape, dtype=np.int32)
+        t_t_max = attn_mask.sum(1)[:, 0].cpu().numpy().astype(np.int32)
+        t_s_max = attn_mask.sum(2)[:, 0].cpu().numpy().astype(np.int32)
+        maximum_path_naive(path, neg_x_ent, t_t_max, t_s_max)
+        return torch.from_numpy(path).to(device=device, dtype=dtype)
+    elif algorithm == "cython":
         device, dtype = neg_x_ent.device, neg_x_ent.dtype
         neg_x_ent = neg_x_ent.cpu().numpy().astype(np.float32)
         path = np.zeros(neg_x_ent.shape, dtype=np.int32)
