@@ -4,6 +4,9 @@
     - [Super MAS](https://arxiv.org/abs/2409.07704
     )([公式実装](https://github.com/supertone-inc/super-monotonic-align))との統合を試みる
     - tritonが利用可能な場合はtriton, そうでなければpytorch JIT or numbaを使う。
+    - できたが、JITでは論文で提唱されているようなパフォーマンスが出なかった。環境が違うから？
+        - たとえば、windows環境だとjitが効かないとか。
+    - 自動的にベンチマークをとって、最も高速なMASを選択する機能を追加したい。
 
 
 ## 前処理の詳細

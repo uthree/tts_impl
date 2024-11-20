@@ -10,7 +10,7 @@ def match_features(
     metrics: Literal["IP", "L2", "cos"] = "L2",
 ):
     """
-    search simular k features and take mean them.
+    search similar k features and take mean them.
 
     Args:
         source: (batch_size, channels, length)

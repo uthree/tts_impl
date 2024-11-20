@@ -13,15 +13,19 @@ from .mas_naive import maximum_path_naive
 available_mas_algorithms = ["naive"]
 default_mas_alogirhtm = "naive"
 
-try:
-    from .mas_numba import maximum_path_numba
-    available_mas_algorithms.append("numba")
-    default_mas_alogirhtm("numba")
-except Exception:
-    pass
 
 try:
-    from .core import maximum_path_c # type: ignore
+    from .mas_torch_jit import maximum_path_jit1, maximum_path_jit2
+
+    default_mas_alogirhtm = "jit1"
+    available_mas_algorithms.append("jit1")
+    available_mas_algorithms.append("jit2")
+    torch_jit_available = True
+except Exception as e:
+    torch_jit_available = False
+
+try:
+    from .core import maximum_path_c  # type: ignore
 
     default_mas_alogirhtm = "cython"
     is_cython_avalable = True
@@ -35,17 +39,16 @@ except ImportError:
     # )
 
 try:
-    from .mas_torch_jit import maximum_path_jit1, maximum_path_jit2
+    from .mas_numba import maximum_path_numba
 
-    default_mas_alogirhtm = "jit1"
-    available_mas_algorithms.append("jit1")
-    available_mas_algorithms.append("jit2")
-    torch_jit_available = True
-except Exception as e:
-    torch_jit_available = False
+    available_mas_algorithms.append("numba")
+    default_mas_alogirhtm = "numba"
+except Exception:
+    pass
+
 
 try:
-    import triton # type: ignore
+    import triton  # type: ignore
 
     from .mas_triton import maximum_path_triton
 
@@ -56,9 +59,11 @@ except Exception:
 
 
 def maximum_path(
-    neg_x_ent: torch.Tensor,
-    attn_mask: torch.Tensor,
-    algorithm: Optional[Literal["naive", "numba", "cython", "jit1", "jit2", "triton"]] = None,
+    attn: torch.Tensor,
+    attn_mask: Optional[torch.Tensor] = None,
+    algorithm: Optional[
+        Literal["naive", "numba", "cython", "jit1", "jit2", "triton"]
+    ] = None,
 ) -> torch.Tensor:
     """Calculate maximum path.
 
@@ -71,8 +76,12 @@ def maximum_path(
         Tensor: Maximum path tensor (B, T_feats, T_text).
 
     """
+    neg_x_ent = attn
+    if attn_mask is None:
+        attn_mask = torch.ones_like(attn)
+
     if algorithm is None:
-        algorithm = default_mas_algorithm
+        algorithm = default_mas_alogirhtm
 
     if algorithm not in available_mas_algorithms:
         raise ValueError(f"MAS algorithm {algorithm} is not available.")
@@ -102,13 +111,19 @@ def maximum_path(
         maximum_path_numba(path, neg_x_ent, t_t_max, t_s_max)
         return torch.from_numpy(path).to(device=device, dtype=dtype)
     elif algorithm == "jit1":
-        return maximum_path_jit1(neg_x_ent, attn_mask)
+        return maximum_path_jit1(
+            neg_x_ent.transpose(1, 2), attn_mask.transpose(1, 2)
+        ).transpose(1, 2)
     elif algorithm == "jit2":
-        return maximum_path_jit2(neg_x_ent, attn_mask)
+        return maximum_path_jit2(
+            neg_x_ent.transpose(1, 2), attn_mask.transpose(1, 2)
+        ).transpose(1, 2)
     elif algorithm == "triton":
-        return maximum_path_triton(neg_x_ent, attn_mask)
+        return maximum_path_triton(
+            neg_x_ent.transpose(1, 2), attn_mask.transpose(1, 2)
+        ).transpose(1, 2)
     else:
         raise ValueError("Invalid algorithm identifier.")
 
 
-__all__ = ["maximum_path", "default_mas_alogirhtm", "available_mas_algorithms"]
+__all__ = ["maximum_path", "default_mas_alogorhtm", "available_mas_algorithms"]

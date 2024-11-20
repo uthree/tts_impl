@@ -1,5 +1,6 @@
 import numpy as np
 
+
 def maximum_path_each_naive(path, value, t_y, t_x, max_neg_val=-np.inf):
     """Calculate a single maximum path."""
     index = t_x - 1
