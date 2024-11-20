@@ -1,8 +1,3 @@
-"""Maximum path calculation module.
-
-This code is based on https://github.com/jaywalnut310/vits.
-"""
-
 from typing import Literal, Optional
 
 import numpy as np
@@ -70,9 +65,9 @@ def maximum_path(
     """Calculate maximum path.
 
     Args:
-        attn (Tensor): Negative X entropy tensor (B, T_feats, T_text).
+        attn (Tensor): Negative X entropy tensor (B, T_feats, T_text). should be T_feats >= T_text
         attn_mask (Tensor): Attention mask (B, T_feats, T_text).
-        algorithm: (Optional(str)) algorithm type.
+        algorithm: (str) algorithm type.
 
     Returns:
         Tensor: Maximum path tensor (B, T_feats, T_text).
@@ -90,14 +85,12 @@ def maximum_path(
         [Super Monotonic Alignment Search](https://github.com/supertone-inc/super-monotonic-align)
     """
     neg_x_ent = attn
+
     if attn_mask is None:
         attn_mask = torch.ones_like(attn)
 
     if algorithm is None:
         algorithm = default_mas_alogirhtm
-
-    if algorithm not in available_mas_algorithms:
-        raise ValueError(f"MAS algorithm {algorithm} is not available.")
 
     if algorithm == "naive":
         device, dtype = neg_x_ent.device, neg_x_ent.dtype

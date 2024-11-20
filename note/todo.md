@@ -1,17 +1,14 @@
 # TODO list
 - データ前処理
 - VITS, JITSに共通するmonotonic alignを統一する
-    - [Super MAS](https://arxiv.org/abs/2409.07704
-    )([公式実装](https://github.com/supertone-inc/super-monotonic-align))との統合を試みる
-    - tritonが利用可能な場合はtriton, そうでなければpytorch JIT or numbaを使う。
-    - できたが、JITでは論文で提唱されているようなパフォーマンスが出なかった。環境が違うから？
-        - たとえば、windows環境だとjitが効かないとか。
-    - 自動的にベンチマークをとって、最も高速なMASを選択する機能を追加したい。
-- VITS の引数をいい感じにまとめる
+- VITS の引数をいい感じにまとめる?
 - VITSのカスタムをサポートする
     - f0
     - 言語モデル特徴量
+    - length_regurator
+    - decoder
 - VITS2の実装
+    - VITSとあまり差がないのでこちらに統合するのはどうだろうか。
 - JETSの実装
 - FastSpeech2の実装
 - オーディコーデックの実装
@@ -37,3 +34,8 @@
 
 ### VC前処理の流れ
 ぼこーだーとほぼ同じだがspeaker情報とかがあると良い。
+
+## 抽象的に
+- 生データを集める: DataCollector
+- 特徴抽出・欠損データの補完・正規化: Preprocessor
+- キャッシュへ書き出し: CacheWriter

@@ -1,2 +1,2 @@
-from . import vits, vits2
+from . import vits
 from .length_regurator import GaussianUpsampling, LengthRegurator

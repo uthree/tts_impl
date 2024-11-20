@@ -311,7 +311,6 @@ class PosteriorEncoder(nn.Module, VariationalAcousticFeatureEncoder):
         return z, m, logs, x_mask
 
 
-# SynthesizerTrn
 class VitsGenerator(nn.Module):
     def __init__(
         self,
