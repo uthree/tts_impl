@@ -1,5 +1,6 @@
-from numba import njit, prange
 import numpy as np
+from numba import njit, prange
+
 
 @njit
 def maximum_path_each_numba(path, value, t_y, t_x, max_neg_val=-np.inf):

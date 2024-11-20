@@ -1,2 +1,2 @@
-class VocoderPreprocessor():
+class VocoderPreprocessor:
     pass

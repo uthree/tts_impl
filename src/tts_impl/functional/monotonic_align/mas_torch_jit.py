@@ -26,7 +26,9 @@ def maximum_path_jit1(logp: torch.Tensor, attn_mask: torch.Tensor):
         logp_prev_frame_1 = logp[:, :, ty - 1]  # [B, Tx]
         logp_prev_frame_2 = torch.roll(logp_prev_frame_1, shifts=1, dims=1)  # [B, Tx]
         logp_prev_frame_2[:, 0] = max_neg_val
-        logp_prev_frame_max = torch.where(logp_prev_frame_1 > logp_prev_frame_2, logp_prev_frame_1, logp_prev_frame_2)
+        logp_prev_frame_max = torch.where(
+            logp_prev_frame_1 > logp_prev_frame_2, logp_prev_frame_1, logp_prev_frame_2
+        )
         logp[:, :, ty] += logp_prev_frame_max
 
     ids = torch.ones_like(x_len, device=device) * (x_len - 1)  # [B]
@@ -69,10 +71,14 @@ def maximum_path_jit2(logp: torch.Tensor, attn_mask: torch.Tensor):
 
         for ty in range(1, Ty):
             logp_prev_frame_1 = logp[:, :, ty - 1]  # [B, Tx]
-            logp_prev_frame_2 = torch.roll(logp_prev_frame_1, shifts=1, dims=1)  # [B, Tx]
+            logp_prev_frame_2 = torch.roll(
+                logp_prev_frame_1, shifts=1, dims=1
+            )  # [B, Tx]
             logp_prev_frame_2[:, 0] = max_neg_val
             logp_prev_frame_max = torch.where(
-                logp_prev_frame_1 > logp_prev_frame_2, logp_prev_frame_1, logp_prev_frame_2
+                logp_prev_frame_1 > logp_prev_frame_2,
+                logp_prev_frame_1,
+                logp_prev_frame_2,
             )
             logp[:, :, ty] += logp_prev_frame_max
         return logp, x_len, y_len, path
