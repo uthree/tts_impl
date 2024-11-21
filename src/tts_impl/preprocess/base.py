@@ -1,4 +1,5 @@
 import os
+import shutil
 from pathlib import Path
 from typing import Any, Generator, List, Optional, Union
 
@@ -55,8 +56,16 @@ class CacheWriter:
     """
 
     def __init__(
-        self, cache_dir: Union[str, os.PathLike] = "./dataset_cache", *args, **kwargs
+        self,
+        cache_dir: Union[str, os.PathLike] = "./dataset_cache",
+        remove_old_cache=False,
+        *args,
+        **kwargs,
     ):
+        if remove_old_cache:
+            if self.cache_dir.exists():
+                shutil.rmtree(cache_dir)
+
         self.cache_dir = Path(cache_dir)
         if not self.cache_dir.exists():
             self.cache_dir.mkdir()

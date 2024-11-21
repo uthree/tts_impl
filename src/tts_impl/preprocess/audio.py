@@ -26,6 +26,8 @@ class AudioDataCollector(DataCollector):
             length: Waveform lengths (number of samples), If given, format to that length.
             formats: Target file extensions
             sample_rate: If given, resampling will be performed.
+
+        Warning: You cannot load a file that is longer than the memory capacity of your computer. If the audio file is too long, please split it in advance.
         """
         self.target = Path(target)
         self.length = length
