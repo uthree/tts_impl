@@ -15,6 +15,12 @@ class DataCollector:
     def __iter__(self) -> Generator[dict, None, None]:
         pass
 
+    def finalize(self):
+        """
+        Implement any processing you want to perform after preprocessing is complete.
+        """
+        pass
+
     def prepare(self):
         """
         This method is called only once before preprocessing is performed.
@@ -38,6 +44,12 @@ class Extractor:
         """
         This method is called only once before preprocessing is performed.
         Implement this if preparation processing is required.
+        """
+        pass
+
+    def finalize(self):
+        """
+        Implement any processing you want to perform after preprocessing is complete.
         """
         pass
 
@@ -76,6 +88,12 @@ class FunctionalExtractor(Extractor):
             output = self.fn(target_data)
         data[self.output_key] = output
         return data
+    
+    def finalize(self):
+        """
+        Implement any processing you want to perform after preprocessing is complete.
+        """
+        pass
 
 
 class CacheWriter:
@@ -96,7 +114,7 @@ class CacheWriter:
             remove_old_cache: bool
         """
         self.remove_old_cache = remove_old_cache
-        self.cache_dir = cache_dir
+        self.cache_dir = Path(cache_dir)
 
     def prepare(self):
         """
@@ -108,6 +126,7 @@ class CacheWriter:
         if self.remove_old_cache:
             if self.cache_dir.exists():
                 shutil.rmtree(self.cache_dir)
+                tqdm.write(f"Deleted cache directory: {self.cache_dir}")
 
         self.cache_dir = Path(self.cache_dir)
         if not self.cache_dir.exists():
@@ -177,21 +196,31 @@ class Preprocessor:
         """
         assert self.writer is not None, "CacheWriter required, but not given."
 
-        tqdm.write("Preparing submodules...")
-        for c in self.collectors:
-            c.prepare()
+        tqdm.write("Preparing submodules ...")
         for e in self.extractors:
+            tqdm.write(f"Preparing {e.__class__.__name__} ...")
             e.prepare()
+        tqdm.write(f"Preparing {self.writer.__class__.__name__} ...")
         self.writer.prepare()
 
-        tqdm.write("Start preprocessing...")
+        tqdm.write("Start preprocessing ...")
         for collector in self.collectors:
+            tqdm.write(f"Preparing {collector.__class__.__name__} ...")
+            collector.prepare()
             # start yield loop
-            for data in tqdm(collector):
+            for data in collector:
                 for ext in self.extractors:
                     data = ext(data)
                 # write cache
                 self.writer.write(data)
-        tqdm.write("Finalizing...")
+
+        tqdm.write("Finalizing submodules...")
+        for e in self.extractors:
+            tqdm.write(f"Finalizing {e.__class__.__name__} ...")
+            e.finalize()
+        for c in self.collectors:
+            tqdm.write(f"Finalizing {c.__class__.__name__} ...")
+            c.finalize()
+        tqdm.write(f"Finalizing {self.writer.__class__.__name__} ...")
         self.writer.finalize()
-        tqdm.write("Complete!")
+        tqdm.write("Preprocessing complete!")

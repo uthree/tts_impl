@@ -131,5 +131,5 @@ def adjust_size(
         return adjust_size_3d(x, size)
     else:
         raise RuntimeError(
-            f"adjust_size supports only 2 to 5 dimentional tensor, got shape={x.shape}, ndim={x.ndim}"
+            f"adjust_size supports only 2 to 5 dimensional tensor, got shape={x.shape}, ndim={x.ndim}"
         )

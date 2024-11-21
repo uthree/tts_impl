@@ -13,4 +13,4 @@
 - オーディコーデックの実装
     - SoundStream
     - 拡散モデル向けVAE
-- Recipie
+- Recipe
