@@ -1,6 +1,6 @@
 import os
 from pathlib import Path
-from typing import List, Optional, Union
+from typing import List, Literal, Optional, Union
 
 import torch
 import torchaudio
@@ -70,8 +70,15 @@ class AudioDataCollector(DataCollector):
 
 class AudioCacheWriter(CacheWriter):
     def __init__(
-        self, cache_dir: Union[str, os.PathLike] = "dataset_cache", format: str = "flac"
+        self,
+        cache_dir: Union[str, os.PathLike] = "dataset_cache",
+        format: Literal["flac", "wav", "mp3", "ogg"] = "flac",
     ):
+        """
+        Args:
+            cache_dir: The dataset cache directory. default: `"dataset_cache"`
+            format: Audio file extensions, default: `"flac"`
+        """
         super().__init__(cache_dir)
         self.format = format
         self.counter = 0

@@ -9,7 +9,7 @@ from tqdm import tqdm
 
 class DataCollector:
     """
-    Base class for collect raw data.
+    Base class for collecting raw data.
     """
 
     def __iter__(self) -> Generator[dict, None, None]:
@@ -18,7 +18,7 @@ class DataCollector:
 
 class Extractor:
     """
-    Base class for extract features from raw data.
+    Base class for extracting features from raw data.
     """
 
     def extract(data: dict) -> dict:
@@ -34,6 +34,13 @@ class FunctionalExtractor(Extractor):
     """
 
     def __init__(self, input_key: str, output_key: str, fn: callable, nograd=True):
+        """
+        Args:
+            input_key: str, The key to be processed
+            output_key: str, Key to save the processing result
+            fn: callable, A function that performs processing. The first argument is the input_key data.
+            nograd: bool, If True, gradients are not calculated. Preprocessing usually does not require gradients, so the default is True.
+        """
         self.input_key = input_key
         self.output_key = output_key
         self.fn = fn
@@ -57,7 +64,7 @@ class CacheWriter:
 
     def __init__(
         self,
-        cache_dir: Union[str, os.PathLike] = "./dataset_cache",
+        cache_dir: Union[str, os.PathLike] = "dataset_cache",
         remove_old_cache=False,
         *args,
         **kwargs,
@@ -102,15 +109,36 @@ class Preprocessor:
         self.writer = writer
 
     def with_collector(self, collector: DataCollector):
+        """
+        Add collector.
+
+        Args:
+            collector: DataCollector
+        """
         self.collectors.append(collector)
 
     def with_extractor(self, extractor: Extractor):
+        """
+        Add extractor.
+
+        Args:
+            extractor: Extractor
+        """
         self.extractors.append(extractor)
 
     def with_writer(self, writer: CacheWriter):
+        """
+        Set cache writer.
+
+        Args:
+            writer: CacheWriter
+        """
         self.writer = writer
 
     def run(self):
+        """
+        Execute preprocessing.
+        """
         assert self.writer is not None, "CacheWriter required, but not given."
 
         tqdm.write("Start preprocessing...")

@@ -36,3 +36,4 @@ class LogMelSpectrogram(nn.Module):
 
     def safe_log(self, x: torch.Tensor) -> torch.Tensor:
         x = torch.log(x + self.eps)
+        return x
