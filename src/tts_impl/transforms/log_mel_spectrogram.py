@@ -12,8 +12,8 @@ class LogMelSpectrogram(nn.Module):
         n_fft: int = 1024,
         hop_length: int = 256,
         n_mels: int = 80,
-        fmin: Optional[float] = None,
-        fmax: Optional[float] = None,
+        fmin: float = 0.,
+        fmax: float = 8000.,
         eps=1e-5,
     ):
         super().__init__()

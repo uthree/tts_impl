@@ -169,6 +169,8 @@ cython_debug/
 weight/
 lightning_logs/
 flagged/
+dataset_cache/*
 dataset_cache/
+dataset_cache
 onnx/
 note_local/

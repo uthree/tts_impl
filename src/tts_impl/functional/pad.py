@@ -18,7 +18,7 @@ def adjust_size_1d(
     Returns:
         torch.Tensor: Resized tensor.
     """
-    if size.type == tuple:
+    if type(size) is not int:
         size = size[0]
 
     if x.shape[2] < size:
@@ -103,7 +103,7 @@ def adjust_size_3d(
 
 
 def adjust_size(
-    x: torch.Tensor, size: Union[Tuple[int, int], List[int]]
+    x: torch.Tensor, size: Union[Tuple[int, int], List[int], int]
 ) -> torch.Tensor:
     """
     Adjust the size of a tensor.
@@ -129,3 +129,7 @@ def adjust_size(
         return adjust_size_2d(x, size)
     if x.ndim == 5:
         return adjust_size_3d(x, size)
+    else:
+        raise RuntimeError(
+            f"adjust_size supports only 2 to 5 dimentional tensor, got shape={x.shape}, ndim={x.ndim}"
+        )

@@ -51,10 +51,11 @@ class AudioDataset(Dataset):
         self.mix_down = mix_down
 
         # get all paths
-        for path in self.root.glob(f"*.{self.format}"):
-            if os.path.exists(path.with_suffix(".pt")):
-                self.audio_file_paths.append(path)
-                self.feature_paths.append(path.with_suffix(".pt"))
+        for paths in self.root.glob(f"**/*.{self.format}"):
+            for path in paths:
+                if os.path.exists(path.with_suffix(".pt")):
+                    self.audio_file_paths.append(path)
+                    self.feature_paths.append(path.with_suffix(".pt"))
 
     def __getitem__(self, idx):
         wf, sr = torchaudio.load(self.audio_file_paths[idx])
