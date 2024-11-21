@@ -13,23 +13,6 @@ from tts_impl.functional.pad import adjust_size
 class AudioDataset(Dataset):
     """
     dataset class for vocoder, codec, etc...
-
-    Args:
-        root: PathLike, root directory path.
-        format: str, audio file extension. default="frac"
-        sample_rate: Option[int], output sampling rate
-        lengths: Dict[str, int]
-
-    Details of lengths:
-        Option to adjust the length of data.
-        If the length exceeds the limit, the excess will be truncated, and if the length is insufficient, zero padding will be performed.
-        The key is the name of the data, and the value is the length.
-        Only supports tensors with (batch_size, channels, length).
-
-        Applied to data stored in .pt files.
-        The key for audio waveforms is "waveform".
-
-        for example: `{"waveform": 48000, "f0": 100, "spectrogram": 100}`
     """
 
     def __init__(
@@ -37,15 +20,35 @@ class AudioDataset(Dataset):
         root: Union[str, os.PathLike] = "dataset_cache",
         format: str = "flac",
         sample_rate: Optional[int] = 48000,
-        lengths: Dict[str, Union[int, Tuple[int], List[int]]] = {},
+        sizes: Dict[str, Union[int, Tuple[int], List[int]]] = {},
+        mix_down: bool = False,
     ):
+        """
+        Args:
+            root: PathLike, root directory path.
+            format: str, audio file extension. default="frac"
+            sample_rate: Option[int], output sampling rate
+            sizes: Dict[str, Union[int, Tuple[int], List[int]]]
+            mix_down: bool, When True, it will be mixed down to mono (channels=1).
+
+        Details of lengths:
+            Option to adjust the length of data.
+            If the length exceeds the limit, the excess will be truncated, and if the length is insufficient, zero padding will be performed.
+            The key is the name of the data, and the value is the size.
+
+            Applied to data stored in .pt files.
+            The key for audio waveforms is "waveform".
+
+            for example: `{"waveform": 48000, "f0": 100, "spectrogram": 100}`
+        """
         super().__init__()
         self.root = Path(root)
         self.audio_file_paths = []
         self.feature_paths = []
         self.format = format
-        self.lengths = lengths
+        self.sizes = sizes
         self.sample_rate = sample_rate
+        self.mix_down = mix_down
 
         # get all paths
         for path in self.root.glob(f"*.{self.format}"):
@@ -61,17 +64,17 @@ class AudioDataset(Dataset):
             if sr != self.sample_rate:
                 wf = resample(wf, sr, self.sample_rate)
 
-        # mix-down
-        wf = wf.sum(dim=0, keepdim=True)
+        if self.mix_down:
+            wf = wf.sum(dim=0, keepdim=True)
 
         # load other features
         data = torch.load(self.feature_paths[idx])
 
         data["waveform"] = wf
 
-        # adjust length
-        for k in self.lengths.keys:
-            v = self.lengths[k]
+        # adjust size
+        for k in self.sizes.keys:
+            v = self.sizes[k]
             if k in data:
                 if data[k].ndim == 3:
                     data[k] = adjust_size(data[k], v)
