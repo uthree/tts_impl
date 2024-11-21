@@ -1,9 +1,10 @@
-
-class DataCollector():
+class DataCollector:
     pass
 
-class Preprocessor():
+
+class Preprocessor:
     pass
 
-class CacheWriter():
+
+class CacheWriter:
     pass

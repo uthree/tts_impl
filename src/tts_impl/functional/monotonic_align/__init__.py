@@ -55,6 +55,20 @@ except Exception:
     pass
 
 
+@torch.no_grad()
+def _mas_on_cpu(attn, attn_mask, fn):
+    attn_mask = attn_mask.transpose(1, 2).contiguous()
+    neg_x_ent = attn.transpose(1, 2).contiguous()
+    device, dtype = neg_x_ent.device, neg_x_ent.dtype
+    neg_x_ent = neg_x_ent.cpu().numpy().astype(np.float32)
+    path = np.zeros(neg_x_ent.shape, dtype=np.int32)
+    t_t_max = attn_mask.sum(1)[:, 0].cpu().numpy().astype(np.int32)
+    t_s_max = attn_mask.sum(2)[:, 0].cpu().numpy().astype(np.int32)
+    fn(path, neg_x_ent, t_t_max, t_s_max)
+    output = torch.from_numpy(path).to(device=device, dtype=dtype).transpose(1, 2)
+    return output
+
+
 def maximum_path(
     attn: torch.Tensor,
     attn_mask: Optional[torch.Tensor] = None,
@@ -65,12 +79,12 @@ def maximum_path(
     """Calculate maximum path.
 
     Args:
-        attn (Tensor): Negative X entropy tensor (B, T_feats, T_text). should be T_feats >= T_text
-        attn_mask (Tensor): Attention mask (B, T_feats, T_text).
+        attn (Tensor): Negative X entropy tensor (B, T_text, T_feats). should be T_feats >= T_text
+        attn_mask (Tensor): Attention mask (B, T_text, T_feats,).
         algorithm: (str) algorithm type.
 
     Returns:
-        Tensor: Maximum path tensor (B, T_feats, T_text).
+        Tensor: Maximum path tensor (B, T_text, T_feats).
 
     Algorithm Details:
         'naive': naive python implementation with numpy.
@@ -93,41 +107,17 @@ def maximum_path(
         algorithm = default_mas_alogirhtm
 
     if algorithm == "naive":
-        device, dtype = neg_x_ent.device, neg_x_ent.dtype
-        neg_x_ent = neg_x_ent.cpu().numpy().astype(np.float32)
-        path = np.zeros(neg_x_ent.shape, dtype=np.int32)
-        t_t_max = attn_mask.sum(1)[:, 0].cpu().numpy().astype(np.int32)
-        t_s_max = attn_mask.sum(2)[:, 0].cpu().numpy().astype(np.int32)
-        maximum_path_naive(path, neg_x_ent, t_t_max, t_s_max)
-        return torch.from_numpy(path).to(device=device, dtype=dtype)
+        return _mas_on_cpu(attn, attn_mask, mas_naive)
     elif algorithm == "cython":
-        device, dtype = neg_x_ent.device, neg_x_ent.dtype
-        neg_x_ent = neg_x_ent.cpu().numpy().astype(np.float32)
-        path = np.zeros(neg_x_ent.shape, dtype=np.int32)
-        t_t_max = attn_mask.sum(1)[:, 0].cpu().numpy().astype(np.int32)
-        t_s_max = attn_mask.sum(2)[:, 0].cpu().numpy().astype(np.int32)
-        maximum_path_c(path, neg_x_ent, t_t_max, t_s_max)
-        return torch.from_numpy(path).to(device=device, dtype=dtype)
+        return _mas_on_cpu(attn, attn_mask, maximum_path_c)
     elif algorithm == "numba":
-        device, dtype = neg_x_ent.device, neg_x_ent.dtype
-        neg_x_ent = neg_x_ent.cpu().numpy().astype(np.float32)
-        path = np.zeros(neg_x_ent.shape, dtype=np.int32)
-        t_t_max = attn_mask.sum(1)[:, 0].cpu().numpy().astype(np.int32)
-        t_s_max = attn_mask.sum(2)[:, 0].cpu().numpy().astype(np.int32)
-        maximum_path_numba(path, neg_x_ent, t_t_max, t_s_max)
-        return torch.from_numpy(path).to(device=device, dtype=dtype)
+        return _mas_on_cpu(attn, attn_mask, maximum_path_numba)
     elif algorithm == "jit1":
-        return maximum_path_jit1(
-            neg_x_ent.transpose(1, 2), attn_mask.transpose(1, 2)
-        ).transpose(1, 2)
+        return maximum_path_jit1(attn, attn_mask)
     elif algorithm == "jit2":
-        return maximum_path_jit2(
-            neg_x_ent.transpose(1, 2), attn_mask.transpose(1, 2)
-        ).transpose(1, 2)
+        return maximum_path_jit2(attn, attn_mask)
     elif algorithm == "triton":
-        return maximum_path_triton(
-            neg_x_ent.transpose(1, 2), attn_mask.transpose(1, 2)
-        ).transpose(1, 2)
+        return maximum_path_triton(attn, attn_mask)
     else:
         raise ValueError("Invalid algorithm")
 

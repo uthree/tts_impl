@@ -65,5 +65,3 @@ def viterbi_decode(log_p_attn, text_lengths, feats_lengths):
         bin_loss = bin_loss - cur_log_p_attn[t_idx, viterbi].mean()
     bin_loss = bin_loss / B
     return ds, bin_loss
-
-

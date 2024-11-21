@@ -463,7 +463,11 @@ class VitsGenerator(nn.Module):
             neg_cent = neg_cent1 + neg_cent2 + neg_cent3 + neg_cent4
 
             attn_mask = torch.unsqueeze(x_mask, 2) * torch.unsqueeze(y_mask, -1)
-            attn = maximum_path(neg_cent, attn_mask.squeeze(1)).unsqueeze(1).detach()
+            attn_mask = attn_mask.squeeze(1).transpose(1, 2)
+            neg_cent = neg_cent.transpose(1, 2)
+            attn = (
+                maximum_path(neg_cent, attn_mask).transpose(1, 2).unsqueeze(1).detach()
+            )
 
         w = attn.sum(2)
 

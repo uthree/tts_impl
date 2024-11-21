@@ -18,8 +18,8 @@ for algorithm in algorithms:
         S = T * 4
         with torch.no_grad():
             device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-            attn = torch.randn(B, S, T, device=device)
+            attn = torch.randn(B, T, S, device=device)
             output = maximum_path(attn, algorithm=algorithm)
             test = (output == maximum_path(attn, algorithm="cython")).all()
             delta = timeit.timeit(lambda: maximum_path(attn, torch.ones_like(attn), algorithm), number=5)
-            print(f"[algorithm={algorithm}, B={B}, S={S} T={T}]: {delta} s, passed_check={test}")
+            print(f"[algorithm={algorithm}, B={B}, T={T}, S={S}]: {delta} s, passed_check={test}")
