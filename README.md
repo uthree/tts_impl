@@ -7,15 +7,13 @@
 
 pytorch implementation of speech synthesis methods
 
-Work in progress
-
 ## Models
 implemented: ✅  
 work in progress: 🚧  
 
 - Vocoders
     - HiFi-GAN ✅
-    - HnNSF-HiFi-GAN ✅
+    - NSF-HiFi-GAN ✅
     - ISTFTNet
     - WaveNeXt 🚧
     - Vocos 🚧

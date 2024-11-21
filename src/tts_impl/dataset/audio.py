@@ -1,13 +1,13 @@
 import os
 from pathlib import Path
-from typing import Dict, Optional, Union
+from typing import Dict, List, Optional, Tuple, Union
 
 import torch
 import torchaudio
 from torch.utils.data import Dataset
 from torchaudio.functional import resample
 
-from tts_impl.functional.pad import adjust_size_1d
+from tts_impl.functional.pad import adjust_size
 
 
 class AudioDataset(Dataset):
@@ -20,7 +20,7 @@ class AudioDataset(Dataset):
         sample_rate: Option[int], output sampling rate
         lengths: Dict[str, int]
 
-    details of lengths:
+    Details of lengths:
         Option to adjust the length of data.
         If the length exceeds the limit, the excess will be truncated, and if the length is insufficient, zero padding will be performed.
         The key is the name of the data, and the value is the length.
@@ -37,7 +37,7 @@ class AudioDataset(Dataset):
         root: Union[str, os.PathLike] = "dataset_cache",
         format: str = "flac",
         sample_rate: Optional[int] = 48000,
-        lengths: Dict[str, int] = {},
+        lengths: Dict[str, Union[int, Tuple[int], List[int]]] = {},
     ):
         super().__init__()
         self.root = Path(root)
@@ -74,7 +74,7 @@ class AudioDataset(Dataset):
             v = self.lengths[k]
             if k in data:
                 if data[k].ndim == 3:
-                    data[k] = adjust_size_1d(data[k], v)
+                    data[k] = adjust_size(data[k], v)
         return data
 
     def __len__(self):
