@@ -1,6 +1,7 @@
 import os
 from pathlib import Path
-from typing import Any, Generator, List, Union, Optional
+from typing import Any, Generator, List, Optional, Union
+
 import torch
 from tqdm import tqdm
 
@@ -9,6 +10,7 @@ class DataCollector:
     """
     Base class for collect raw data.
     """
+
     def __iter__(self) -> Generator[dict, None, None]:
         pass
 
@@ -17,6 +19,7 @@ class Extractor:
     """
     Base class for extract features from raw data.
     """
+
     def extract(data: dict) -> dict:
         pass
 
@@ -28,6 +31,7 @@ class FunctionalExtractor(Extractor):
     """
     Extractor for simple simple function (e.g. MelSpectrogram, estimate_f0)
     """
+
     def __init__(self, input_key: str, output_key: str, fn: callable, nograd=True):
         self.input_key = input_key
         self.output_key = output_key
@@ -49,6 +53,7 @@ class CacheWriter:
     """
     Base class for write data to cache
     """
+
     def __init__(
         self, cache_dir: Union[str, os.PathLike] = "./dataset_cache", *args, **kwargs
     ):
@@ -76,8 +81,12 @@ class Preprocessor:
     """
     Base class of preprocessor
     """
+
     def __init__(
-        self, collectors: List[DataCollector] = [], extractors: List[Extractor] = [], writer: Optional[CacheWriter] = None
+        self,
+        collectors: List[DataCollector] = [],
+        extractors: List[Extractor] = [],
+        writer: Optional[CacheWriter] = None,
     ):
         self.collectors = collectors
         self.extractors = extractors
