@@ -18,5 +18,12 @@ class PitchEstimation(nn.Module):
         self.algorithm = algorithm
         self.frame_size = frame_size
 
-    def forward(self, wf) -> torch.Tensor:
-        return estimate_f0(wf, self.sample_rate, self.frame_size, self.algorithm)
+    def forward(self, waveform) -> torch.Tensor:
+        """
+        Args:
+            waveform: Tensor, shape=[batch_size, channels, length]
+
+        Returns:
+            waveform: Tensor, shape=[batch_size, length // frame_size]
+        """
+        return estimate_f0(waveform, self.sample_rate, self.frame_size, self.algorithm)

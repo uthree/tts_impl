@@ -47,7 +47,9 @@ class AudioDataCollector(DataCollector):
         tqdm.write(f"Collected {len(audio_file_paths)} file(s).")
 
         # yield loop with tqdm progress bar
-        for path in tqdm(audio_file_paths):
+        for path in tqdm(
+            audio_file_paths, desc=f"Collecting audio files from {self.target}"
+        ):
             tqdm.write(f"Loading {path} ...")
             wf, orig_sr = torchaudio.load(path)
             # wf: [C, L]

@@ -53,17 +53,17 @@ class Extractor:
         """
         pass
 
-    def __call__(self, *args, **kwargs):
+    def __call__(self, data):
         """
         Alias.
         Same as the method `extract`.
         """
-        return self.extract(*args, **kwargs)
+        return self.extract(data)
 
 
 class FunctionalExtractor(Extractor):
     """
-    Extractor for simple simple function (e.g. MelSpectrogram, estimate_f0)
+    Extractor for simple simple function.
     """
 
     def __init__(self, input_key: str, output_key: str, fn: callable, nograd=True):
@@ -88,12 +88,6 @@ class FunctionalExtractor(Extractor):
             output = self.fn(target_data)
         data[self.output_key] = output
         return data
-    
-    def finalize(self):
-        """
-        Implement any processing you want to perform after preprocessing is complete.
-        """
-        pass
 
 
 class CacheWriter:
@@ -204,6 +198,7 @@ class Preprocessor:
         self.writer.prepare()
 
         tqdm.write("Start preprocessing ...")
+        data_count = 0
         for collector in self.collectors:
             tqdm.write(f"Preparing {collector.__class__.__name__} ...")
             collector.prepare()
@@ -213,14 +208,15 @@ class Preprocessor:
                     data = ext(data)
                 # write cache
                 self.writer.write(data)
+                data_count += 1
+            tqdm.write(f"Finalizing {collector.__class__.__name__} ...")
+            collector.finalize()
+        tqdm.write(f"Processed {data_count} data.")
 
-        tqdm.write("Finalizing submodules...")
+        tqdm.write("Finalizing Extractors...")
         for e in self.extractors:
             tqdm.write(f"Finalizing {e.__class__.__name__} ...")
             e.finalize()
-        for c in self.collectors:
-            tqdm.write(f"Finalizing {c.__class__.__name__} ...")
-            c.finalize()
         tqdm.write(f"Finalizing {self.writer.__class__.__name__} ...")
         self.writer.finalize()
         tqdm.write("Preprocessing complete!")

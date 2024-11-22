@@ -2,9 +2,18 @@ from tts_impl.preprocess import Preprocessor, AudioDataCollector, AudioCacheWrit
 from tts_impl.transforms import LogMelSpectrogram
 import torch.nn as nn
 
+# Initialize "Preprocessor"
 preprocess = Preprocessor()
-preprocess.with_collector(AudioDataCollector("D:\datasets\jvs_experimental", length=48000, sample_rate=48000))
-ext_fn_mel = LogMelSpectrogram(48000, 1920, 480)
+
+# add Collector
+preprocess.with_collector(AudioDataCollector("D:\datasets\jvs_experimental", length=65536, sample_rate=22050))
+
+# add extractor
+ext_fn_mel = LogMelSpectrogram()
 preprocess.with_extractor(FunctionalExtractor("waveform", "spectrogram", ext_fn_mel))
+
+# set cache writer
 preprocess.with_writer(AudioCacheWriter())
+
+# run preprocess
 preprocess.run()

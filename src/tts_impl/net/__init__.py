@@ -1,1 +1,1 @@
-from . import aligner, codec, common, pe, tts, vc, vocoder
+from . import aligner, common, tts, vc, vocoder
