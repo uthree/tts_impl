@@ -26,7 +26,7 @@ torch.set_float32_matmul_precision('medium')
 def run_training(cache_dir: str = "dataset_cache", batch_size: int = 1, config="config/hifigan/base.yml", epochs=1):
     model = HifiganLightningModule(OmegaConf.load(config))
     datamodule = AudioDataModule(cache_dir, batch_size)
-    trainer = Trainer(max_epochs=epochs)
+    trainer = Trainer(max_epochs=epochs, precision="bf16-mixed")
     trainer.fit(model, datamodule)
 
 if __name__ == "__main__":
