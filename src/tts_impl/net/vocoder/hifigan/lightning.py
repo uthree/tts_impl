@@ -20,15 +20,22 @@ class HifiganLightningModule(L.LightningModule):
         self.config = config
         self.automatic_optimization = False
 
+        self.use_acoustic_features = (
+            config.use_acoustic_features
+        )  # flag for using data[acoustic_features] instead of mel spectrogram
         self.generator = HifiganGenerator(**config.generator)
         self.discriminator = HifiganDiscriminator(**config.discriminator)
-        self.melspectrogram_extractor = LogMelSpectrogram(**config.mel)
+        self.spectrogram = LogMelSpectrogram(**config.mel)
 
         self.save_hyperparameters()
 
-    def training_step(self, batch):
-        waveform, data = batch
-        acoustic_features = data["acoustic_features"]
+    def training_step(self, data):
+        waveform = data["waveform"]
+
+        if self.use_acoustic_features:
+            acoustic_features = data["acoustic_features"]
+        else:
+            acoustic_features = self.spectrogram(waveform.sum(1)).detach()
 
         spec_real = self.spectrogram(waveform.sum(1)).detach()
         opt_g, opt_d = self.optimizers()
@@ -39,7 +46,7 @@ class HifiganLightningModule(L.LightningModule):
 
         # Train G.
         fake = self.generator(acoustic_features)
-        logits, fmap_fake = self.generator(fake)
+        logits, fmap_fake = self.discriminator(fake)
         _, fmap_real = self.discriminator(waveform)
         loss_adv, loss_adv_list = generator_loss(logits)
         loss_feat = feature_loss(fmap_real, fmap_fake)
@@ -56,8 +63,8 @@ class HifiganLightningModule(L.LightningModule):
 
         # Train D.
         fake = fake.detach()
-        logits_fake = self.discriminator(fake)
-        logits_real = self.discriminator(waveform)
+        logits_fake, fmap_fake = self.discriminator(fake)
+        logits_real, fmap_real = self.discriminator(waveform)
         loss_d, loss_d_list_r, loss_d_list_f = discriminator_loss(
             logits_real, logits_fake
         )
@@ -69,18 +76,33 @@ class HifiganLightningModule(L.LightningModule):
         self.untoggle_optimizer(opt_d)
 
         # Logs
-        self.log("loss/Generator All", loss_g.item())
-        self.log("loss/Mel Spectrogram", loss_mel.item())
-        self.log("loss/Feature Matching", loss_feat.item())
-        self.log("loss/Generator Adversarial", loss_adv.item())
-        self.log("loss/Discriminator Adversarial", loss_d.item())
+        self.log("loss/Generator All", loss_g)
+        self.log("loss/Mel Spectrogram", loss_mel)
+        self.log("loss/Feature Matching", loss_feat)
+        self.log("loss/Generator Adversarial", loss_adv)
+        self.log("loss/Discriminator Adversarial", loss_d)
 
         for i, l in enumerate(loss_adv_list):
-            self.log(f"Generator Adversarial/{i}", l.item())
+            self.log(f"Generator Adversarial/{i}", l)
         for i, l in enumerate(loss_d_list_f):
-            self.log(f"Discriminator Adversarial/fake {i}", l.item())
+            self.log(f"Discriminator Adversarial/fake {i}", l)
         for i, l in enumerate(loss_d_list_r):
-            self.log(f"Discriminator Adversarial/real {i}", l.item())
+            self.log(f"Discriminator Adversarial/real {i}", l)
+
+    def validation_step(self, batch):
+        waveform = batch[waveform]
+
+        if self.use_acoustic_feature:
+            acoustic_features = batch["acoustic_features"]
+        else:
+            acoustic_features = self.spectrogram(waveform.sum(1)).detach()
+
+        spec_real = self.spectrogram(waveform.sum(1)).detach()
+        fake = self.generator(acoustic_features)
+        spec_fake = self.spectrogram(fake.sum(1))
+        loss_mel = F.l1_loss(spec_fake, spec_real)
+
+        self.log("Validation loss/Mel Spectrogram", loss_mel)
 
     def configure_optimizers(self):
         opt_g = optim.AdamW(

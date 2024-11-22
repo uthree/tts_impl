@@ -122,7 +122,7 @@ def adjust_size(
         torch.Tensor: Resized tensor.
     """
     if x.ndim == 2:
-        return adjust_size_1d(x.unsqueeze(1), size).squeeze(1)
+        return adjust_size_1d(x.unsqueeze(0), size).squeeze(0)
     if x.ndim == 3:
         return adjust_size_1d(x, size)
     if x.ndim == 4:

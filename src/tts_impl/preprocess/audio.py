@@ -80,13 +80,14 @@ class AudioCacheWriter(CacheWriter):
         self,
         cache_dir: Union[str, os.PathLike] = "dataset_cache",
         format: Literal["flac", "wav", "mp3", "ogg"] = "flac",
+        delete_old_cache=True,
     ):
         """
         Args:
             cache_dir: The dataset cache directory. default: `"dataset_cache"`
             format: Audio file extensions, default: `"flac"`
         """
-        super().__init__(cache_dir)
+        super().__init__(cache_dir, delete_old_cache=delete_old_cache)
         self.format = format
         self.counter = 0
 

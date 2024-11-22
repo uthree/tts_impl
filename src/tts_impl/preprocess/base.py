@@ -98,7 +98,7 @@ class CacheWriter:
     def __init__(
         self,
         cache_dir: Union[str, os.PathLike] = "dataset_cache",
-        remove_old_cache=True,
+        delete_old_cache=True,
         *args,
         **kwargs,
     ):
@@ -107,7 +107,7 @@ class CacheWriter:
             cache_dir: Union[str, os.PathLike], Directory for caching datasets.
             remove_old_cache: bool
         """
-        self.remove_old_cache = remove_old_cache
+        self.delete_old_cache = delete_old_cache
         self.cache_dir = Path(cache_dir)
 
     def prepare(self):
@@ -117,7 +117,7 @@ class CacheWriter:
 
         The default implementation is to delete old caches and create a directory for the cache.
         """
-        if self.remove_old_cache:
+        if self.delete_old_cache:
             if self.cache_dir.exists():
                 shutil.rmtree(self.cache_dir)
                 tqdm.write(f"Deleted cache directory: {self.cache_dir}")
@@ -205,13 +205,13 @@ class Preprocessor:
             # start yield loop
             for data in collector:
                 for ext in self.extractors:
-                    data = ext(data)
+                    data = ext.extract(data)
                 # write cache
                 self.writer.write(data)
                 data_count += 1
             tqdm.write(f"Finalizing {collector.__class__.__name__} ...")
             collector.finalize()
-        tqdm.write(f"Processed {data_count} data.")
+        tqdm.write(f"Processed total {data_count} item(s).")
 
         tqdm.write("Finalizing Extractors...")
         for e in self.extractors:

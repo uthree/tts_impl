@@ -33,9 +33,11 @@ def match_features(
             )
         best = torch.topk(sims, k, dim=2)
 
-    result = torch.stack(
-        [reference[n][best.indices[n]] for n in range(source.shape[0])], dim=0
-    ).mean(dim=2)
+        result = torch.stack(
+            [reference[n][best.indices[n]] for n in range(source.shape[0])], dim=0
+        )
+
+    result = result.mean(dim=2)
     result = result.transpose(1, 2)
 
     return result

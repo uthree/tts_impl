@@ -1,0 +1,8 @@
+use_acoustic_features: false
+generator: {}
+discriminator: {}
+mel:
+  sample_rate: 22050
+optimizer:
+  lr: 2e-4
+  betas: [0.8, 0.99]

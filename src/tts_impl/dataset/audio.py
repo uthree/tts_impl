@@ -1,6 +1,6 @@
 import os
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Mapping, Optional, Tuple, Union
 
 import torch
 import torchaudio
@@ -19,7 +19,7 @@ class AudioDataset(Dataset):
         self,
         root: Union[str, os.PathLike] = "dataset_cache",
         format: str = "flac",
-        sample_rate: Optional[int] = 48000,
+        sample_rate: Optional[int] = None,
         sizes: Dict[str, Union[int, Tuple[int], List[int]]] = {},
         mix_down: bool = False,
     ):
@@ -51,11 +51,10 @@ class AudioDataset(Dataset):
         self.mix_down = mix_down
 
         # get all paths
-        for paths in self.root.glob(f"**/*.{self.format}"):
-            for path in paths:
-                if os.path.exists(path.with_suffix(".pt")):
-                    self.audio_file_paths.append(path)
-                    self.feature_paths.append(path.with_suffix(".pt"))
+        for path in self.root.glob(f"**/*.{self.format}"):
+            if os.path.exists(path.with_suffix(".pt")):
+                self.audio_file_paths.append(path)
+                self.feature_paths.append(path.with_suffix(".pt"))
 
     def __getitem__(self, idx):
         wf, sr = torchaudio.load(self.audio_file_paths[idx])
@@ -74,11 +73,11 @@ class AudioDataset(Dataset):
         data["waveform"] = wf
 
         # adjust size
-        for k in self.sizes.keys:
+        for k in self.sizes.keys():
             v = self.sizes[k]
             if k in data:
-                if data[k].ndim == 3:
-                    data[k] = adjust_size(data[k], v)
+                data[k] = adjust_size(data[k], v)
+
         return data
 
     def __len__(self):
