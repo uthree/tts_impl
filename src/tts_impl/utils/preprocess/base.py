@@ -124,7 +124,7 @@ class CacheWriter:
 
         self.cache_dir = Path(self.cache_dir)
         if not self.cache_dir.exists():
-            self.cache_dir.mkdir()
+            self.cache_dir.mkdir(parents=True, exist_ok=True)
         self.counter = 0
 
     def finalize(self):

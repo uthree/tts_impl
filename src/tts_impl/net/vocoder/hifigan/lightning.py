@@ -1,3 +1,6 @@
+from dataclasses import dataclass, field
+from typing import Any, List, Mapping, Optional
+
 import lightning as L
 import torch.nn as nn
 import torch.nn.functional as F
@@ -10,8 +13,6 @@ from tts_impl.transforms import LogMelSpectrogram
 
 from .discriminator import HifiganDiscriminator, HifiganDiscriminatorConfig
 from .generator import HifiganGenerator, HifiganGeneratorConfig
-from dataclasses import dataclass, field
-from typing import List, Optional, Mapping, Any
 
 
 @dataclass
@@ -33,7 +34,9 @@ class OptimizerConfig:
 @dataclass
 class HifiganLightningModuleConfig:
     generator: HifiganGeneratorConfig = field(default_factory=HifiganGeneratorConfig)
-    discriminator: HifiganDiscriminatorConfig = field(default_factory=HifiganDiscriminatorConfig())
+    discriminator: HifiganDiscriminatorConfig = field(
+        default_factory=HifiganDiscriminatorConfig()
+    )
     mel: MelSpectrogramConfig = field(default_factory=MelSpectrogramConfig())
     weight_mel: float = 45.0
     weight_adv: float = 1.0
@@ -42,7 +45,13 @@ class HifiganLightningModuleConfig:
 
 # HiFi-GAN from https://arxiv.org/abs/2010.05646
 class HifiganLightningModule(L.LightningModule):
-    def __init__(self, generator: Optional[Mapping[str, Any]] = None, discriminator: Optional[Mapping[str, Any]] = None, mel: Optional[ Mapping[str, Any]] = None, use_acoustic_features: bool = False):
+    def __init__(
+        self,
+        generator: Optional[Mapping[str, Any]] = None,
+        discriminator: Optional[Mapping[str, Any]] = None,
+        mel: Optional[Mapping[str, Any]] = None,
+        use_acoustic_features: bool = False,
+    ):
         super().__init__()
 
         generator = generator or dict()
@@ -52,7 +61,7 @@ class HifiganLightningModule(L.LightningModule):
         self.automatic_optimization = False
 
         # flag for using data[acoustic_features] instead of mel spectrogram
-        self.use_acoustic_features = use_acoustic_features 
+        self.use_acoustic_features = use_acoustic_features
         self.generator = HifiganGenerator(**generator)
         self.discriminator = HifiganDiscriminator(**discriminator)
         self.spectrogram = LogMelSpectrogram(**mel)
@@ -124,7 +133,13 @@ class HifiganLightningModule(L.LightningModule):
             self.log(f"Discriminator Adversarial/real {i}", l)
 
     def validation_step(self, batch):
-        waveform = batch[waveform]
+        return self._test_or_validate_batch(batch)
+
+    def test_step(self, batch):
+        return self.test_or_validate_batch(batch)
+
+    def _test_or_validate_batch(self, batch):
+        waveform = batch["waveform"]
 
         if self.use_acoustic_feature:
             acoustic_features = batch["acoustic_features"]
@@ -136,7 +151,7 @@ class HifiganLightningModule(L.LightningModule):
         spec_fake = self.spectrogram(fake.sum(1))
         loss_mel = F.l1_loss(spec_fake, spec_real)
 
-        self.log("Validation loss/Mel Spectrogram", loss_mel)
+        return loss_mel
 
     def configure_optimizers(self):
         opt_g = optim.AdamW(

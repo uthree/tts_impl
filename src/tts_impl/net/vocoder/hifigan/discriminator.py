@@ -1,17 +1,16 @@
+from dataclasses import dataclass, field
 from typing import List
 
 from tts_impl.net.vocoder.discriminator import (
     CombinedDiscriminator, MultiPeriodDiscriminator,
     MultiResolutionStftDiscriminator, MultiScaleDiscriminator)
 
-from dataclasses import dataclass, field
-
 
 @dataclass
 class HifiganDiscriminatorConfig:
-    scales: List[int] = field(default_factory = lambda: [1, 2, 4])
-    periods: List[int] = field(default_factory= lambda: [2, 3, 5, 7, 11])
-    resolutions: List[int] = field(default_factory= lambda: [])
+    scales: List[int] = field(default_factory=lambda: [1, 2, 4])
+    periods: List[int] = field(default_factory=lambda: [2, 3, 5, 7, 11])
+    resolutions: List[int] = field(default_factory=lambda: [])
 
 
 class HifiganDiscriminator(CombinedDiscriminator):

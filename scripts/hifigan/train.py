@@ -3,7 +3,7 @@ from lightning import LightningDataModule, Trainer
 from lightning.pytorch.callbacks import RichProgressBar
 from lightning.pytorch.utilities.types import TRAIN_DATALOADERS
 import torch.utils.data.dataloader
-from tts_impl.dataset import AudioDataset
+from tts_impl.utils.dataset import AudioDataset
 import torch
 import fire
 from tts_impl.net.vocoder.hifigan import HifiganLightningModule, HifiganLightningModuleConfig

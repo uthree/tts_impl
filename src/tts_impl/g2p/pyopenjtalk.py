@@ -1,6 +1,6 @@
 from typing import List
 
-from .protocol import Grapheme2PhonemeModule
+from .base import Grapheme2PhonemeModule
 
 try:
     import pyopenjtalk

@@ -1,5 +1,6 @@
 # HiFi-GAN from https://arxiv.org/abs/2010.05646
-from typing import List, Literal, Optional
+from dataclasses import asdict, dataclass, field
+from typing import List, Literal, Mapping, Optional, Self
 
 import torch
 import torch.nn as nn
@@ -8,11 +9,10 @@ from torch.nn.utils import remove_weight_norm
 from torch.nn.utils.parametrizations import weight_norm
 
 from tts_impl.net.base.vocoder import GanVocoderGenerator
-
-from dataclasses import dataclass, field
-
+from tts_impl.utils.config import BuildFromConfig
 
 LRELU_SLOPE = 0.1
+
 
 def get_padding(kernel_size, dilation=1):
     return int((kernel_size * dilation - dilation) / 2)
@@ -114,7 +114,9 @@ class HifiganGeneratorConfig:
     upsample_initial_channels: int = 512
     resblock_type: Literal["1", "2"] = "1"
     resblock_kernel_sizes: List[int] = field(default_factory=lambda: [3, 7, 11])
-    resblock_dilations: List[List[int]] = field(default_factory=lambda: [[1, 3, 5], [1, 3, 5], [1, 3, 5]])
+    resblock_dilations: List[List[int]] = field(
+        default_factory=lambda: [[1, 3, 5], [1, 3, 5], [1, 3, 5]]
+    )
     upsample_kernel_sizes: List[int] = field(default_factory=lambda: [16, 16, 4, 4])
     upsample_rates: List[int] = field(default_factory=lambda: [8, 8, 2, 2])
     out_channels: int = 1
@@ -122,7 +124,7 @@ class HifiganGeneratorConfig:
     gin_channels: int = 0
 
 
-class HifiganGenerator(nn.Module, GanVocoderGenerator):
+class HifiganGenerator(nn.Module, GanVocoderGenerator, BuildFromConfig):
     """
     HiFi-GAN Generator purposed in https://arxiv.org/abs/2010.05646
     """
@@ -162,7 +164,7 @@ class HifiganGenerator(nn.Module, GanVocoderGenerator):
         elif resblock_type == "2":
             resblock = ResBlock2
         else:
-            raise "invalid resblock type"
+            raise ValueError("invalid resblock type")
 
         self.conv_pre = weight_norm(
             nn.Conv1d(in_channels, upsample_initial_channels, 7, 1, 3)
@@ -231,3 +233,6 @@ class HifiganGenerator(nn.Module, GanVocoderGenerator):
             b.remove_weight_norm()
         if self.with_condition:
             remove_weight_norm(self.conv_cond)
+
+    def build_from_config(cls, config: HifiganGeneratorConfig) -> Self:
+        return cls.__init__(**asdict(config))

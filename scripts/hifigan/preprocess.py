@@ -1,4 +1,4 @@
-from tts_impl.preprocess import Preprocessor, AudioCacheWriter, AudioDataCollector
+from tts_impl.utils.preprocess import Preprocessor, AudioCacheWriter, AudioDataCollector
 import fire
 
 
