@@ -1,1 +1,1 @@
-from .base import BuildFromConfig
+from .base import Configuratible

@@ -5,7 +5,6 @@ import lightning as L
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-from omegaconf import DictConfig
 from tts_impl.net.vocoder.hifigan.loss import (
     discriminator_loss,
     feature_loss,
@@ -16,6 +15,8 @@ from tts_impl.transforms import LogMelSpectrogram
 from .discriminator import HifiganDiscriminator, HifiganDiscriminatorConfig
 from .generator import HifiganGenerator, HifiganGeneratorConfig
 
+
+from tts_impl.utils.config import Configuratible
 
 @dataclass
 class MelSpectrogramConfig:
@@ -46,7 +47,7 @@ class HifiganLightningModuleConfig:
 
 
 # HiFi-GAN from https://arxiv.org/abs/2010.05646
-class HifiganLightningModule(L.LightningModule):
+class HifiganLightningModule(L.LightningModule, Configuratible[HifiganLightningModuleConfig]):
     def __init__(
         self,
         generator: Optional[Mapping[str, Any]] = None,

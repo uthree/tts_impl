@@ -8,7 +8,7 @@ import torch.nn.functional as F
 from torch.nn.utils import remove_weight_norm
 from torch.nn.utils.parametrizations import weight_norm
 from tts_impl.net.base.vocoder import GanVocoderGenerator
-from tts_impl.utils.config import BuildFromConfig
+from tts_impl.utils.config import Configuratible
 
 LRELU_SLOPE = 0.1
 
@@ -123,7 +123,7 @@ class HifiganGeneratorConfig:
     gin_channels: int = 0
 
 
-class HifiganGenerator(nn.Module, GanVocoderGenerator, BuildFromConfig):
+class HifiganGenerator(nn.Module, GanVocoderGenerator, Configuratible):
     """
     HiFi-GAN Generator purposed in https://arxiv.org/abs/2010.05646
     """

@@ -97,18 +97,18 @@ class CacheWriter:
 
     def __init__(
         self,
-        cache_dir: Union[str, os.PathLike] = "dataset_cache",
+        root: Union[str, os.PathLike] = "dataset_cache",
         delete_old_cache=True,
         *args,
         **kwargs,
     ):
         """
         Args
-            cache_dir: Union[str, os.PathLike], Directory for caching datasets.
+            root: Union[str, os.PathLike], Directory for caching datasets.
             remove_old_cache: bool
         """
         self.delete_old_cache = delete_old_cache
-        self.cache_dir = Path(cache_dir)
+        self.root = Path(root)
 
     def prepare(self):
         """
@@ -118,13 +118,13 @@ class CacheWriter:
         The default implementation is to delete old caches and create a directory for the cache.
         """
         if self.delete_old_cache:
-            if self.cache_dir.exists():
-                shutil.rmtree(self.cache_dir)
-                tqdm.write(f"Deleted cache directory: {self.cache_dir}")
+            if self.root.exists():
+                shutil.rmtree(self.root)
+                tqdm.write(f"Deleted cache directory: {self.root}")
 
-        self.cache_dir = Path(self.cache_dir)
-        if not self.cache_dir.exists():
-            self.cache_dir.mkdir(parents=True, exist_ok=True)
+        self.root = Path(self.root)
+        if not self.root.exists():
+            self.root.mkdir(parents=True, exist_ok=True)
         self.counter = 0
 
     def finalize(self):
@@ -137,7 +137,7 @@ class CacheWriter:
         """
         The process when writing out one piece of data.
         """
-        torch.save(data, self.cache_dir / f"{self.counter}.pt")
+        torch.save(data, self.root / f"{self.counter}.pt")
         self.counter += 1
         pass
 

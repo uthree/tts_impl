@@ -110,18 +110,35 @@ def unload_torchfcpe(device: Optional[torch.device]):
         torchfcpe_model = {}
 
 
-# wf: [BatchSize, Length]
 def estimate_f0(
-    wf,
+    waveform,
     sample_rate: int,
     frame_size: int,
     algorithm: Literal["harvest", "dio", "fcpe"] = "harvest",
 ):
-    l = wf.shape[1]
+    """
+    Estimate fundamental frequency (F0).
+
+    Args:
+        waveform: Tensor, shape=(N, C, L).
+        sample_rate: int, sample rate of waveform.
+        frame_size: int, length of one frame.
+        algorithm: str, algorithm type
+        
+    Returns:
+        pitch_envelope: Tensor, shape=(N, L // frame_size)
+    """
+    l = waveform.shape[2]
+    waveform = waveform.sum(dim=1)
+
     if algorithm == "harvest":
-        f0 = estimate_f0_harvest(wf, sample_rate)
+        f0 = estimate_f0_harvest(waveform, sample_rate)
     elif algorithm == "dio":
-        f0 = estimate_f0_dio(wf, sample_rate)
+        f0 = estimate_f0_dio(waveform, sample_rate)
     elif algorithm == "fcpe":
-        f0 = estimate_f0_fcpe(wf, sample_rate)
-    return F.interpolate(f0, l // frame_size, mode="linear").detach()
+        f0 = estimate_f0_fcpe(waveform, sample_rate)
+    else:
+        raise ValueError("invalid algorithm")
+    
+    f0_resized = F.interpolate(f0, l // frame_size, mode="linear").squeeze(1).detach()
+    return f0_resized

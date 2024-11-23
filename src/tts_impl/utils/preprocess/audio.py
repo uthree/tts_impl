@@ -9,6 +9,7 @@ from tqdm import tqdm
 from tts_impl.functional import adjust_size
 
 from .base import CacheWriter, DataCollector
+import shutil
 
 
 class AudioDataCollector(DataCollector):
@@ -77,22 +78,41 @@ class AudioDataCollector(DataCollector):
 class AudioCacheWriter(CacheWriter):
     def __init__(
         self,
-        cache_dir: Union[str, os.PathLike] = "dataset_cache",
+        root: Union[str, os.PathLike] = "dataset_cache",
         format: Literal["flac", "wav", "mp3", "ogg"] = "flac",
-        delete_old_cache=True,
+        delete_old_cache:bool =True,
+        max_files_per_dir: int = 10000
     ):
         """
         Args:
             cache_dir: The dataset cache directory. default: `"dataset_cache"`
             format: Audio file extensions, default: `"flac"`
         """
-        super().__init__(cache_dir, delete_old_cache=delete_old_cache)
+        super().__init__()
+        self.root = Path(root)
         self.format = format
+        self.max_files_per_dir = max_files_per_dir
+        self.delete_old_cache = delete_old_cache
         self.counter = 0
+        self.dir_counter = 0
+
+    def prepare(self):
+        self.counter = 0
+        self.dir_counter = 0
+        self.root.mkdir(parents=True, exist_ok=True)
+
+        if self.delete_old_cache:
+            if self.root.exists():
+                shutil.rmtree(self.root)
+                tqdm.write(f"Deleted cache directory: {self.root}")
 
     def write(self, data: dict):
         wf = data.pop("waveform")
         sr = data["sample_rate"]
-        torchaudio.save(self.cache_dir / f"{self.counter}.{self.format}", wf, sr)
-        torch.save(data, self.cache_dir / f"{self.counter}.pt")
+        subdir = self.root / f"{self.dir_counter}"
+        subdir.mkdir(parents=True, exist_ok=True)
+        torchaudio.save(subdir / f"{self.counter}.{self.format}", wf, sr)
+        torch.save(data, subdir / f"{self.counter}.pt")
         self.counter += 1
+        if self.counter % self.max_files_per_dir == 0:
+            self.dir_counter += 1
