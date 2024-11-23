@@ -1,6 +1,7 @@
 # TODO list
 - VITS, JITSに共通するmonotonic alignを統一する
-- VITS の引数をいい感じにまとめる?
+- ヘルパー関数の一般化・整備
+    - sequence_mask, generate_path etc...
 - VITSのカスタムをサポートする?
     - f0
     - 言語モデル特徴量
@@ -19,3 +20,8 @@
     - end-to-endなTTSとメルスペクトルを経由するTTSを同一のカテゴリにして良いのか？
     - そもそも分類が必要か？
         - VITSはTTS/VCが可能なのでTTSモデルなのかVCモデルなのか明確に決められない。
+- ハイパーパラメータをdataclass + omegaconfで管理する
+    - Protocol "build"
+        - `build_from_config`的な感じのメソッドを実装して、コンフィグ(`Mapping["str", Any]`, `dataclass`) から引数を展開して構築
+        - 引数を直接渡して初期化する`__init__`を残しつつ、コンフィグでの初期化を実装するためにあえてこの仕組みにする。
+        - モデルの引数は原則としてすべてデフォルト値を持つこと。

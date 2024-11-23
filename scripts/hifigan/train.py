@@ -1,11 +1,12 @@
 import lightning
 from lightning import LightningDataModule, Trainer
+from lightning.pytorch.callbacks import RichProgressBar
 from lightning.pytorch.utilities.types import TRAIN_DATALOADERS
 import torch.utils.data.dataloader
 from tts_impl.dataset import AudioDataset
 import torch
 import fire
-from tts_impl.net.vocoder.hifigan import HifiganLightningModule
+from tts_impl.net.vocoder.hifigan import HifiganLightningModule, HifiganLightningModuleConfig
 from omegaconf import OmegaConf
 
 # Tentative implementation
@@ -24,9 +25,9 @@ class AudioDataModule(LightningDataModule):
 torch.set_float32_matmul_precision('medium')
 
 def run_training(cache_dir: str = "dataset_cache", batch_size: int = 1, config="config/hifigan/base.yml", epochs=1):
-    model = HifiganLightningModule(OmegaConf.load(config))
+    model = HifiganLightningModule()
     datamodule = AudioDataModule(cache_dir, batch_size)
-    trainer = Trainer(max_epochs=epochs, precision="bf16-mixed")
+    trainer = Trainer(max_epochs=epochs, precision="bf16-mixed", callbacks=RichProgressBar())
     trainer.fit(model, datamodule)
 
 if __name__ == "__main__":

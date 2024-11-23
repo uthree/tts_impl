@@ -6,9 +6,9 @@ from torch import nn
 from torch.nn import functional as F
 
 from tts_impl.functional.monotonic_align import maximum_path
-from tts_impl.net.protocol.tts import (VariationalAcousticFeatureEncoder,
+from tts_impl.net.base.tts import (VariationalAcousticFeatureEncoder,
                                        VariationalTextEncoder)
-from tts_impl.net.vocoder.hifigan.lightning import HifiganGenerator
+from tts_impl.net.vocoder.hifigan.lightning import HifiganGenerator, HifiganGeneratorConfig
 
 from . import attentions, commons, modules
 

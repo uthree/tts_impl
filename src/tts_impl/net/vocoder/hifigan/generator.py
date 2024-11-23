@@ -7,10 +7,12 @@ import torch.nn.functional as F
 from torch.nn.utils import remove_weight_norm
 from torch.nn.utils.parametrizations import weight_norm
 
-from tts_impl.net.protocol.vocoder import GanVocoderGenerator
+from tts_impl.net.base.vocoder import GanVocoderGenerator
+
+from dataclasses import dataclass, field
+
 
 LRELU_SLOPE = 0.1
-
 
 def get_padding(kernel_size, dilation=1):
     return int((kernel_size * dilation - dilation) / 2)
@@ -102,6 +104,24 @@ class ResBlock2(nn.Module):
             remove_weight_norm(c1)
 
 
+@dataclass
+class HifiganGeneratorConfig:
+    """
+    hyperparameters of HiFi-GAN
+    """
+
+    in_channels: int = 80
+    upsample_initial_channels: int = 512
+    resblock_type: Literal["1", "2"] = "1"
+    resblock_kernel_sizes: List[int] = field(default_factory=lambda: [3, 7, 11])
+    resblock_dilations: List[List[int]] = field(default_factory=lambda: [[1, 3, 5], [1, 3, 5], [1, 3, 5]])
+    upsample_kernel_sizes: List[int] = field(default_factory=lambda: [16, 16, 4, 4])
+    upsample_rates: List[int] = field(default_factory=lambda: [8, 8, 2, 2])
+    out_channels: int = 1
+    tanh_post_activation: bool = True
+    gin_channels: int = 0
+
+
 class HifiganGenerator(nn.Module, GanVocoderGenerator):
     """
     HiFi-GAN Generator purposed in https://arxiv.org/abs/2010.05646
@@ -118,7 +138,6 @@ class HifiganGenerator(nn.Module, GanVocoderGenerator):
         upsample_rates: List[int] = [8, 8, 2, 2],
         out_channels: int = 1,
         tanh_post_activation: bool = True,
-        # option for speaker conditioning in TTS task
         gin_channels: int = 0,
     ):
         super().__init__()

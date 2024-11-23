@@ -19,7 +19,7 @@ class LogMelSpectrogram(nn.Module):
         n_mels: int = 80,
         fmin: float = 0.0,
         fmax: float = 8000.0,
-        eps=1e-5,
+        eps: float =1e-5,
     ):
         """
         Args:

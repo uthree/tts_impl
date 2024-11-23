@@ -8,24 +8,54 @@ from tts_impl.net.vocoder.hifigan.loss import (discriminator_loss,
                                                feature_loss, generator_loss)
 from tts_impl.transforms import LogMelSpectrogram
 
-from .discriminator import HifiganDiscriminator
-from .generator import HifiganGenerator
+from .discriminator import HifiganDiscriminator, HifiganDiscriminatorConfig
+from .generator import HifiganGenerator, HifiganGeneratorConfig
+from dataclasses import dataclass, field
+from typing import List, Optional, Mapping, Any
+
+
+@dataclass
+class MelSpectrogramConfig:
+    sample_rate: int = 22050
+    n_fft: int = 1024
+    hop_length: int = 256
+    n_mels: int = 80
+    fmin: float = 0.0
+    fmax: float = 8000.0
+
+
+@dataclass
+class OptimizerConfig:
+    lr: float = 2e-4
+    betas: List[int] = field(default_factory=[0.8, 0.99])
+
+
+@dataclass
+class HifiganLightningModuleConfig:
+    generator: HifiganGeneratorConfig = field(default_factory=HifiganGeneratorConfig)
+    discriminator: HifiganDiscriminatorConfig = field(default_factory=HifiganDiscriminatorConfig())
+    mel: MelSpectrogramConfig = field(default_factory=MelSpectrogramConfig())
+    weight_mel: float = 45.0
+    weight_adv: float = 1.0
+    weight_feat: float = 1.0
 
 
 # HiFi-GAN from https://arxiv.org/abs/2010.05646
 class HifiganLightningModule(L.LightningModule):
-    def __init__(self, config: DictConfig):
+    def __init__(self, generator: Optional[Mapping[str, Any]] = None, discriminator: Optional[Mapping[str, Any]] = None, mel: Optional[ Mapping[str, Any]] = None, use_acoustic_features: bool = False):
         super().__init__()
 
-        self.config = config
+        generator = generator or dict()
+        discriminator = discriminator or dict()
+        mel = mel or dict()
+
         self.automatic_optimization = False
 
-        self.use_acoustic_features = (
-            config.use_acoustic_features
-        )  # flag for using data[acoustic_features] instead of mel spectrogram
-        self.generator = HifiganGenerator(**config.generator)
-        self.discriminator = HifiganDiscriminator(**config.discriminator)
-        self.spectrogram = LogMelSpectrogram(**config.mel)
+        # flag for using data[acoustic_features] instead of mel spectrogram
+        self.use_acoustic_features = use_acoustic_features 
+        self.generator = HifiganGenerator(**generator)
+        self.discriminator = HifiganDiscriminator(**discriminator)
+        self.spectrogram = LogMelSpectrogram(**mel)
 
         self.save_hyperparameters()
 
@@ -40,9 +70,10 @@ class HifiganLightningModule(L.LightningModule):
         spec_real = self.spectrogram(waveform.sum(1)).detach()
         opt_g, opt_d = self.optimizers()
 
-        weight_mel = self.config.get("weight_mel", 45.0)
-        weight_feat = self.config.get("weight_feat", 1.0)
-        weight_adv = self.config.get("weight_adv", 1.0)
+        # TODO: add loss weight configuration
+        weight_mel = 45.0
+        weight_feat = 1.0
+        weight_adv = 1.0
 
         # Train G.
         fake = self.generator(acoustic_features)
@@ -76,11 +107,14 @@ class HifiganLightningModule(L.LightningModule):
         self.untoggle_optimizer(opt_d)
 
         # Logs
-        self.log("loss/Generator All", loss_g)
-        self.log("loss/Mel Spectrogram", loss_mel)
-        self.log("loss/Feature Matching", loss_feat)
-        self.log("loss/Generator Adversarial", loss_adv)
-        self.log("loss/Discriminator Adversarial", loss_d)
+        self.log("Loss/Generator All", loss_g)
+        self.log("Loss/Mel Spectrogram", loss_mel)
+        self.log("Loss/Feature Matching", loss_feat)
+        self.log("Loss/Generator Adversarial", loss_adv)
+        self.log("Loss/Discriminator Adversarial", loss_d)
+
+        self.log("Gen.", loss_g, prog_bar=True, logger=False)
+        self.log("Dis.", loss_d, prog_bar=True, logger=False)
 
         for i, l in enumerate(loss_adv_list):
             self.log(f"Generator Adversarial/{i}", l)
@@ -107,12 +141,12 @@ class HifiganLightningModule(L.LightningModule):
     def configure_optimizers(self):
         opt_g = optim.AdamW(
             self.generator.parameters(),
-            lr=self.config.optimizer.lr,
-            betas=self.config.optimizer.betas,
+            lr=2e-4,
+            betas=(0.8, 0.99),
         )
         opt_d = optim.AdamW(
             self.discriminator.parameters(),
-            lr=self.config.optimizer.lr,
-            betas=self.config.optimizer.betas,
+            lr=2e-4,
+            betas=(0.8, 0.99),
         )
         return opt_g, opt_d
