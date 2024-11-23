@@ -2,8 +2,11 @@ from dataclasses import dataclass, field
 from typing import List
 
 from tts_impl.net.vocoder.discriminator import (
-    CombinedDiscriminator, MultiPeriodDiscriminator,
-    MultiResolutionStftDiscriminator, MultiScaleDiscriminator)
+    CombinedDiscriminator,
+    MultiPeriodDiscriminator,
+    MultiResolutionStftDiscriminator,
+    MultiScaleDiscriminator,
+)
 
 
 @dataclass

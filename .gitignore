@@ -174,3 +174,4 @@ dataset_cache/
 dataset_cache
 onnx/
 note_local/
+checkpoints/

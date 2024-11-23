@@ -1,10 +1,13 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
-from tts_impl.functional import (fft_convolve, framewise_fir_filter,
-                                 impulse_train, sinusoidal_harmonics,
-                                 spectral_envelope_filter)
+from tts_impl.functional import (
+    fft_convolve,
+    framewise_fir_filter,
+    impulse_train,
+    sinusoidal_harmonics,
+    spectral_envelope_filter,
+)
 
 
 def test_framewise_fir_filter():

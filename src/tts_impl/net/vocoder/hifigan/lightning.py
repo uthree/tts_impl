@@ -6,9 +6,11 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 from omegaconf import DictConfig
-
-from tts_impl.net.vocoder.hifigan.loss import (discriminator_loss,
-                                               feature_loss, generator_loss)
+from tts_impl.net.vocoder.hifigan.loss import (
+    discriminator_loss,
+    feature_loss,
+    generator_loss,
+)
 from tts_impl.transforms import LogMelSpectrogram
 
 from .discriminator import HifiganDiscriminator, HifiganDiscriminatorConfig
@@ -141,7 +143,7 @@ class HifiganLightningModule(L.LightningModule):
     def _test_or_validate_batch(self, batch):
         waveform = batch["waveform"]
 
-        if self.use_acoustic_feature:
+        if self.use_acoustic_features:
             acoustic_features = batch["acoustic_features"]
         else:
             acoustic_features = self.spectrogram(waveform.sum(1)).detach()

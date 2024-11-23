@@ -21,7 +21,7 @@
     - そもそも分類が必要か？
         - VITSはTTS/VCが可能なのでTTSモデルなのかVCモデルなのか明確に決められない。
 - ハイパーパラメータをdataclass + omegaconfで管理する
-    - Protocol "build"
-        - `build_from_config`的な感じのメソッドを実装して、コンフィグ(`Mapping["str", Any]`, `dataclass`) から引数を展開して構築
-        - 引数を直接渡して初期化する`__init__`を残しつつ、コンフィグでの初期化を実装するためにあえてこの仕組みにする。
-        - モデルの引数は原則としてすべてデフォルト値を持つこと。
+- training / test / validation データを自動的に分割する機能
+    - ランダムに分ける？
+    - torch.utils.data.random_splitを使う手もあるが、固定シードを使うだけでは不安。
+        - `torch.utils.data.Subset`の`indices`をデータセットと一緒に保存することで解決可能？

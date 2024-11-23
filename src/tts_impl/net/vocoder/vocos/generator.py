@@ -1,6 +1,5 @@
 import torch
 import torch.nn as nn
-
 from tts_impl.net.common.convnext import Convnext1d
 
 

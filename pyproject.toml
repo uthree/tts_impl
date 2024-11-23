@@ -56,8 +56,9 @@ mypy_ignore_packages = ["pysen.generated.*"]
 mypy_path = ["stubs"]
 line_length = 88
 py_version = "py312"
+
 [[tool.pysen.lint.mypy_targets]]
-  paths = ["test/"]
+  paths = ["test/", "src/", "scripts/"]
 
 [tool.pysen.lint.source]
   includes = ["."]

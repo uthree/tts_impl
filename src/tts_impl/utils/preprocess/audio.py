@@ -6,7 +6,6 @@ import torch
 import torchaudio
 from torchaudio.functional import resample
 from tqdm import tqdm
-
 from tts_impl.functional import adjust_size
 
 from .base import CacheWriter, DataCollector
