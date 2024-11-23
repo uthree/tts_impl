@@ -21,7 +21,12 @@
     - そもそも分類が必要か？
         - VITSはTTS/VCが可能なのでTTSモデルなのかVCモデルなのか明確に決められない。
 - ハイパーパラメータをdataclass + omegaconfで管理する
+
 - training / test / validation データを自動的に分割する機能
     - ランダムに分ける？
     - torch.utils.data.random_splitを使う手もあるが、固定シードを使うだけでは不安。
-        - `torch.utils.data.Subset`の`indices`をデータセットと一緒に保存することで解決可能？
+        - `torch.utils.data.Subset`の`indices`をデータセットと一緒に保存することで解決可能かも。
+
+- AudioCacheWriter, 同じフォルダに大量のファイルを入れる設計で、フォルダをエクスプローラーで開いた際の負荷が尋常じゃないので、いい感じに分割する。
+- というかデータセットのメタデータをいい感じにする。
+    - サンプリングレート, 話者一覧など。

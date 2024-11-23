@@ -21,6 +21,7 @@ class AudioDataset(Dataset):
         sample_rate: Optional[int] = None,
         sizes: Dict[str, Union[int, Tuple[int], List[int]]] = {},
         mix_down: bool = False,
+        weights_only = True
     ):
         """
         Args:
@@ -29,6 +30,7 @@ class AudioDataset(Dataset):
             sample_rate: Option[int], output sampling rate
             sizes: Dict[str, Union[int, Tuple[int], List[int]]]
             mix_down: bool, When True, it will be mixed down to mono (channels=1).
+            weights_only: bool
 
         Details of lengths:
             Option to adjust the length of data.
@@ -48,6 +50,7 @@ class AudioDataset(Dataset):
         self.sizes = sizes
         self.sample_rate = sample_rate
         self.mix_down = mix_down
+        self.weights_only = weights_only
 
         # get all paths
         for path in self.root.glob(f"**/*.{self.format}"):
@@ -67,8 +70,9 @@ class AudioDataset(Dataset):
             wf = wf.sum(dim=0, keepdim=True)
 
         # load other features
-        data = torch.load(self.feature_paths[idx])
+        data = torch.load(self.feature_paths[idx], weights_only=True)
 
+        # add waveform tensor to features dict.
         data["waveform"] = wf
 
         # adjust size

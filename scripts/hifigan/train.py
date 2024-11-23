@@ -38,7 +38,7 @@ torch.set_float32_matmul_precision("medium")
 
 def run_training(
     cache_dir: str = "dataset_cache",
-    batch_size: int = 4,
+    batch_size: int = 1,
     epochs=1,
 ):
     model = HifiganLightningModule(

@@ -138,7 +138,7 @@ class HifiganLightningModule(L.LightningModule):
         return self._test_or_validate_batch(batch)
 
     def test_step(self, batch):
-        return self.test_or_validate_batch(batch)
+        return self._test_or_validate_batch(batch)
 
     def _test_or_validate_batch(self, batch):
         waveform = batch["waveform"]
@@ -152,6 +152,7 @@ class HifiganLightningModule(L.LightningModule):
         fake = self.generator(acoustic_features)
         spec_fake = self.spectrogram(fake.sum(1))
         loss_mel = F.l1_loss(spec_fake, spec_real)
+        self.log("Validation Loss/Mel Spectrogram", loss_mel)
 
         return loss_mel
 
