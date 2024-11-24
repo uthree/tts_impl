@@ -130,5 +130,4 @@ class AudioCacheWriter(CacheWriter):
 
 class Mixdown(FunctionalExtractor):
     def __init__(self, dim=0):
-        super().__init__()
-        self.fn = lambda x: x.sum(dim, keepdim=True)
+        super().__init__("waveform", "waveform", lambda x: x.sum(dim, keepdim=True))

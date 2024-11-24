@@ -32,7 +32,7 @@ def run_training(
     )
 
     # initialize datamodule
-    datamodule = AudioDataModule(root=cache_dir, batch_size=batch_size)
+    datamodule = AudioDataModule(root=cache_dir, batch_size=batch_size, num_workers=1)
 
     # initialize trainer
     trainer = Trainer(

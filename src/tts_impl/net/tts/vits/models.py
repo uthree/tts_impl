@@ -447,9 +447,11 @@ class VitsGenerator(nn.Module):
         else:
             g = None
 
+        # encode posterior, flow
         z, m_q, logs_q, y_mask = self.enc_q(y, y_lengths, g=g)
         z_p = self.flow(z, y_mask, g=g)
 
+        # calculate likelihood
         with torch.no_grad():
             # negative cross-entropy
             s_p_sq_r = torch.exp(-2 * logs_p)  # [b, d, t]
@@ -469,14 +471,15 @@ class VitsGenerator(nn.Module):
             attn_mask = torch.unsqueeze(x_mask, 2) * torch.unsqueeze(y_mask, -1)
             attn_mask = attn_mask.squeeze(1).transpose(1, 2)
             neg_cent = neg_cent.transpose(1, 2)
+
+            # Monotonic Alignment Search
             attn = (
                 maximum_path(neg_cent, attn_mask).transpose(1, 2).unsqueeze(1).detach()
             )
 
+        # Duration Predictor
         w = attn.sum(2)
-
         l_length_all = 0
-
         if self.use_sdp:
             l_length = self.sdp(x, x_mask, w, g=g)
             l_length = l_length / torch.sum(x_mask)
@@ -539,6 +542,7 @@ class VitsGenerator(nn.Module):
         attn_mask = torch.unsqueeze(x_mask, 2) * torch.unsqueeze(y_mask, -1)
         attn = commons.generate_path(w_ceil, attn_mask)
 
+        # expand prior
         m_p = torch.matmul(attn.squeeze(1), m_p.transpose(1, 2)).transpose(
             1, 2
         )  # [b, t', t], [b, t, d] -> [b, d, t']

@@ -4,6 +4,7 @@ from tts_impl.utils.preprocess import (
     AudioCacheWriter,
     AudioDataCollector,
     FunctionalExtractor,
+    Mixdown,
     Preprocessor,
 )
 
@@ -14,11 +15,7 @@ def run_preprocess(target_dir: str):
         AudioDataCollector(target_dir, sample_rate=22050, length=8192)
     )
     # mixdown
-    preprocess.with_extractor(
-        FunctionalExtractor(
-            "waveform", "waveform", lambda x: x.sum(dim=0, keepdim=True)
-        )
-    )
+    preprocess.with_extractor(Mixdown())
     preprocess.with_writer(AudioCacheWriter())
     preprocess.run()
 
