@@ -163,7 +163,7 @@ class HifiganLightningModule(
         sch_g, sch_d = self.lr_schedulers()
         sch_g.step()
         sch_d.step()
-        self.log("scheduler/learning Rate", sch_g.get_lr()[0])
+        self.log("scheduler/learning Rate", sch_g.get_last_lr()[0])
 
     def validation_step(self, batch):
         return self._test_or_validate_batch(batch)
@@ -318,7 +318,7 @@ class NsfhifiganLightningModule(
         sch_g, sch_d = self.lr_schedulers()
         sch_g.step()
         sch_d.step()
-        self.log("scheduler/learning Rate", sch_g.get_lr()[0])
+        self.log("scheduler/learning Rate", sch_g.get_last_lr()[0])
 
     def validation_step(self, batch):
         return self._test_or_validate_batch(batch)
@@ -328,6 +328,7 @@ class NsfhifiganLightningModule(
 
     def _test_or_validate_batch(self, batch):
         waveform = batch["waveform"]
+        f0 = batch["f0"]
 
         if self.use_acoustic_features:
             acoustic_features = batch["acoustic_features"]
@@ -335,7 +336,7 @@ class NsfhifiganLightningModule(
             acoustic_features = self.spectrogram(waveform.sum(1)).detach()
 
         spec_real = self.spectrogram(waveform.sum(1)).detach()
-        fake = self.generator(acoustic_features)
+        fake = self.generator(acoustic_features, f0=f0)
         spec_fake = self.spectrogram(fake.sum(1))
         loss_mel = F.l1_loss(spec_fake, spec_real)
         self.log("validation loss/mel spectrogram", loss_mel)
