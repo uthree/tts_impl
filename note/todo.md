@@ -1,12 +1,27 @@
 # TODO list
+- HiFi-GAN系統のモデルを統合・抽象化する。
+    - Generator, Discriminatorの処理を分けるなど
+    - 対象となるモデル
+        - HiFi-GAN
+        - NSF-HiFi-GAN
+        - FC-HiFi-GAN
+        - iSTFTNet
+        - MS-HiFi-GAN
+        - MB-HiFi-GAN
+        - EVA-GAN
+        - SAN
+
 - VITS, JITSに共通するmonotonic alignを統一する
 - ヘルパー関数の一般化・整備
     - sequence_mask, generate_path etc...
+
 - VITSのカスタムをサポートする?
     - f0
     - 言語モデル特徴量
     - length_regurator
     - decoder
+    - VITS2との統合管理
+
 - g2p
     - pyopenjtalk
     - phonemizer

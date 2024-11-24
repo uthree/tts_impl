@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from tts_impl.net.vocoder.nsf_hifigan import NsfhifiganGenerator
+from tts_impl.net.vocoder.hifigan import NsfhifiganGenerator
 
 
 def test_nsf_hifigan_generator():

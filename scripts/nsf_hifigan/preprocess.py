@@ -6,6 +6,7 @@ from tts_impl.utils.preprocess import (
     FunctionalExtractor,
     Mixdown,
     Preprocessor,
+    PitchEstimation
 )
 
 
@@ -16,6 +17,7 @@ def run_preprocess(target_dir: str):
     )
     # mixdown
     preprocess.with_extractor(Mixdown())
+    preprocess.with_extractor(PitchEstimation(frame_size=256))
     preprocess.with_writer(AudioCacheWriter())
     preprocess.run()
 

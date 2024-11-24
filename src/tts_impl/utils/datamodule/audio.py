@@ -1,7 +1,7 @@
 import multiprocessing
 import os
 from pathlib import Path
-from typing import Any, List, Mapping, Optional, Union
+from typing import Any, List, Literal, Mapping, Optional, Union
 
 import lightning
 import torch
@@ -16,7 +16,7 @@ class AudioDataModule(lightning.LightningDataModule):
         seed: int = 42,
         batch_size: int = 1,
         lengths: Union[List[float], list[int]] = [0.9, 0.05, 0.05],
-        format: str = "flac",
+        format: Literal["flac", "mp3", "wav", "ogg"] = "flac",
         sizes: Optional[Mapping[str, Any]] = {},
         sample_rate: Optional[int] = None,
         num_workers: Optional[int] = None,

@@ -3,12 +3,8 @@ import torch
 import torch.utils.data.dataloader
 from lightning import LightningDataModule, Trainer
 from lightning.pytorch.callbacks import ModelCheckpoint, RichProgressBar
-from lightning.pytorch.utilities.types import EVAL_DATALOADERS
 from omegaconf import OmegaConf
-from tts_impl.net.vocoder.hifigan import (
-    HifiganLightningModule,
-    HifiganLightningModuleConfig,
-)
+from tts_impl.net.vocoder.hifigan import NsfhifiganLightningModule
 from tts_impl.utils.datamodule import AudioDataModule
 
 torch.set_float32_matmul_precision("medium")
@@ -20,9 +16,9 @@ def run_training(
     epochs=20,
 ):
     # initialize lightningmodule
-    model = HifiganLightningModule(
-        # No MPD
-        discriminator={"periods": []},
+    model = NsfhifiganLightningModule(
+        # No MPD, only 1 scale
+        discriminator={"periods": [], "scales": [1]},
         # Like mel-gan, scale-down
         generator={
             "upsample_initial_channels": 256,

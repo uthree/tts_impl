@@ -8,9 +8,9 @@ import torch
 import torchaudio
 from torchaudio.functional import resample
 from tqdm import tqdm
-from tts_impl.functional import adjust_size
+from tts_impl.functional import adjust_size, estimate_f0
 
-from .base import CacheWriter, DataCollector, FunctionalExtractor
+from .base import CacheWriter, DataCollector, Extractor, FunctionalExtractor
 
 
 class AudioDataCollector(DataCollector):
@@ -131,3 +131,23 @@ class AudioCacheWriter(CacheWriter):
 class Mixdown(FunctionalExtractor):
     def __init__(self, dim=0):
         super().__init__("waveform", "waveform", lambda x: x.sum(dim, keepdim=True))
+
+
+class PitchEstimation(Extractor):
+    def __init__(
+        self, frame_size: int, algorithm: Literal["harvest", "dio", "fcpe"] = "harvest"
+    ):
+        super().__init__()
+        self.algorithm = algorithm
+        self.frame_size = frame_size
+
+    def extract(self, data: dict[str, Any]) -> dict[str, Any]:
+        wf = data["waveform"]
+        sr = data["sample_rate"]
+
+        f0 = estimate_f0(
+            wf.unsqueeze(0), sr, self.frame_size, algorithm=self.algorithm
+        ).squeeze(0)
+        data["f0"] = f0
+
+        return data

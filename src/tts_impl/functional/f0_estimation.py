@@ -115,7 +115,7 @@ def estimate_f0(
     sample_rate: int,
     frame_size: int,
     algorithm: Literal["harvest", "dio", "fcpe"] = "harvest",
-):
+) -> torch.Tensor:
     """
     Estimate fundamental frequency (F0).
 
