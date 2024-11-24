@@ -11,12 +11,11 @@ from tts_impl.net.vocoder.hifigan.loss import (
     generator_loss,
 )
 from tts_impl.transforms import LogMelSpectrogram
+from tts_impl.utils.config import Configuratible
 
 from .discriminator import HifiganDiscriminator, HifiganDiscriminatorConfig
 from .generator import HifiganGenerator, HifiganGeneratorConfig
 
-
-from tts_impl.utils.config import Configuratible
 
 @dataclass
 class MelSpectrogramConfig:
@@ -47,7 +46,9 @@ class HifiganLightningModuleConfig:
 
 
 # HiFi-GAN from https://arxiv.org/abs/2010.05646
-class HifiganLightningModule(L.LightningModule, Configuratible[HifiganLightningModuleConfig]):
+class HifiganLightningModule(
+    L.LightningModule, Configuratible[HifiganLightningModuleConfig]
+):
     def __init__(
         self,
         generator: Optional[Mapping[str, Any]] = None,
@@ -119,11 +120,11 @@ class HifiganLightningModule(L.LightningModule, Configuratible[HifiganLightningM
         self.untoggle_optimizer(opt_d)
 
         # Logs
-        self.log("Loss/Generator All", loss_g)
-        self.log("Loss/Mel Spectrogram", loss_mel)
-        self.log("Loss/Feature Matching", loss_feat)
-        self.log("Loss/Generator Adversarial", loss_adv)
-        self.log("Loss/Discriminator Adversarial", loss_d)
+        self.log("Train Loss/Generator Total", loss_g)
+        self.log("Train Loss/Mel Spectrogram", loss_mel)
+        self.log("Train Loss/Feature Matching", loss_feat)
+        self.log("Train Loss/Generator Adversarial", loss_adv)
+        self.log("Train Loss/Discriminator Adversarial", loss_d)
 
         self.log("Gen.", loss_g, prog_bar=True, logger=False)
         self.log("Dis.", loss_d, prog_bar=True, logger=False)

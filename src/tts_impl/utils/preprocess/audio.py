@@ -1,6 +1,8 @@
+import json
 import os
+import shutil
 from pathlib import Path
-from typing import List, Literal, Optional, Union
+from typing import Any, List, Literal, Optional, Union
 
 import torch
 import torchaudio
@@ -8,8 +10,7 @@ from torchaudio.functional import resample
 from tqdm import tqdm
 from tts_impl.functional import adjust_size
 
-from .base import CacheWriter, DataCollector
-import shutil
+from .base import CacheWriter, DataCollector, FunctionalExtractor
 
 
 class AudioDataCollector(DataCollector):
@@ -80,8 +81,8 @@ class AudioCacheWriter(CacheWriter):
         self,
         root: Union[str, os.PathLike] = "dataset_cache",
         format: Literal["flac", "wav", "mp3", "ogg"] = "flac",
-        delete_old_cache:bool =True,
-        max_files_per_dir: int = 10000
+        delete_old_cache: bool = True,
+        max_files_per_dir: int = 10000,
     ):
         """
         Args:
@@ -95,6 +96,7 @@ class AudioCacheWriter(CacheWriter):
         self.delete_old_cache = delete_old_cache
         self.counter = 0
         self.dir_counter = 0
+        self.sample_rate = None
 
     def prepare(self):
         self.counter = 0
@@ -109,6 +111,7 @@ class AudioCacheWriter(CacheWriter):
     def write(self, data: dict):
         wf = data.pop("waveform")
         sr = data["sample_rate"]
+        self.sample_rate = sr
         subdir = self.root / f"{self.dir_counter}"
         subdir.mkdir(parents=True, exist_ok=True)
         torchaudio.save(subdir / f"{self.counter}.{self.format}", wf, sr)
@@ -116,3 +119,16 @@ class AudioCacheWriter(CacheWriter):
         self.counter += 1
         if self.counter % self.max_files_per_dir == 0:
             self.dir_counter += 1
+
+    def finalize(self):
+        metadata = dict()
+        if self.sample_rate is not None:
+            metadata["sample_rate"] = self.sample_rate
+        with open(self.root / "metadata.json", mode="w") as f:
+            json.dump(metadata, f)
+
+
+class Mixdown(FunctionalExtractor):
+    def __init__(self, dim=0):
+        super().__init__()
+        self.fn = lambda x: x.sum(dim, keepdim=True)

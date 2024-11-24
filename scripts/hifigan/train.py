@@ -11,7 +11,6 @@ from tts_impl.net.vocoder.hifigan import (
 )
 from tts_impl.utils.datamodule import AudioDataModule
 
-
 torch.set_float32_matmul_precision("medium")
 
 
@@ -22,8 +21,9 @@ def run_training(
 ):
     # initialize lightningmodule
     model = HifiganLightningModule(
+        # No MPD
         discriminator={"periods": []},
-        # Like mel-gan
+        # Like mel-gan, scale-down
         generator={
             "upsample_initial_channels": 256,
             "resblock_kernel_sizes": [3],
@@ -39,7 +39,7 @@ def run_training(
         max_epochs=epochs,
         precision="bf16-mixed",
         callbacks=[RichProgressBar()],
-        log_every_n_steps=1
+        log_every_n_steps=25,
     )
 
     # run training.

@@ -123,7 +123,9 @@ class HifiganGeneratorConfig:
     gin_channels: int = 0
 
 
-class HifiganGenerator(nn.Module, GanVocoderGenerator, Configuratible):
+class HifiganGenerator(
+    nn.Module, GanVocoderGenerator, Configuratible[HifiganGeneratorConfig]
+):
     """
     HiFi-GAN Generator purposed in https://arxiv.org/abs/2010.05646
     """
@@ -232,6 +234,3 @@ class HifiganGenerator(nn.Module, GanVocoderGenerator, Configuratible):
             b.remove_weight_norm()
         if self.with_condition:
             remove_weight_norm(self.conv_cond)
-
-    def build_from_config(cls, config: HifiganGeneratorConfig) -> Self:
-        return cls.__init__(**asdict(config))

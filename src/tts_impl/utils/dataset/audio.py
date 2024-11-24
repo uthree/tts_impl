@@ -21,7 +21,7 @@ class AudioDataset(Dataset):
         sample_rate: Optional[int] = None,
         sizes: Dict[str, Union[int, Tuple[int], List[int]]] = {},
         mix_down: bool = False,
-        weights_only = True
+        weights_only=True,
     ):
         """
         Args:

@@ -124,7 +124,7 @@ def estimate_f0(
         sample_rate: int, sample rate of waveform.
         frame_size: int, length of one frame.
         algorithm: str, algorithm type
-        
+
     Returns:
         pitch_envelope: Tensor, shape=(N, L // frame_size)
     """
@@ -139,6 +139,6 @@ def estimate_f0(
         f0 = estimate_f0_fcpe(waveform, sample_rate)
     else:
         raise ValueError("invalid algorithm")
-    
+
     f0_resized = F.interpolate(f0, l // frame_size, mode="linear").squeeze(1).detach()
     return f0_resized

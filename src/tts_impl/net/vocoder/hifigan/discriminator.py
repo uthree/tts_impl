@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import List
+from typing import List, Self
 
 from tts_impl.net.vocoder.discriminator import (
     CombinedDiscriminator,
@@ -7,6 +7,7 @@ from tts_impl.net.vocoder.discriminator import (
     MultiResolutionStftDiscriminator,
     MultiScaleDiscriminator,
 )
+from tts_impl.utils.config import Configuratible
 
 
 @dataclass
@@ -16,7 +17,9 @@ class HifiganDiscriminatorConfig:
     resolutions: List[int] = field(default_factory=lambda: [])
 
 
-class HifiganDiscriminator(CombinedDiscriminator):
+class HifiganDiscriminator(
+    CombinedDiscriminator, Configuratible[HifiganDiscriminatorConfig]
+):
     def __init__(
         self,
         scales: List[int] = [2, 3, 5, 7, 11],
