@@ -4,7 +4,7 @@ from typing import Any, Generic, Mapping, Protocol, Self, TypeVar
 ConfigDataclass = TypeVar("ConfigDataclass")
 
 
-class Configuratible(Generic[ConfigDataclass]):
+class Configuratible(Generic[ConfigDataclass], Protocol):
     @classmethod
     def build_from_config(cls, config: ConfigDataclass) -> Self:
         """

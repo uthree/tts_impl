@@ -110,11 +110,12 @@ def unload_torchfcpe(device: Optional[torch.device]):
         torchfcpe_model = {}
 
 
+# TODO: add yin w/ torchyin
 def estimate_f0(
     waveform,
     sample_rate: int,
     frame_size: int,
-    algorithm: Literal["harvest", "dio", "fcpe"] = "harvest",
+    algorithm: Literal["harvest", "dio", "fcpe", "yin"] = "harvest",
 ) -> torch.Tensor:
     """
     Estimate fundamental frequency (F0).

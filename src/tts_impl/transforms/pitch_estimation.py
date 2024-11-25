@@ -10,7 +10,7 @@ class PitchEstimation(nn.Module):
         self,
         sample_rate: int,
         frame_size: int,
-        algorithm: Literal["fcpe", "harvest", "dio"] = "harvest",
+        algorithm: Literal["fcpe", "harvest", "dio", "yin"] = "harvest",
     ):
         super().__init__()
         self.sample_rate = sample_rate

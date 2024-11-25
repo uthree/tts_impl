@@ -7,11 +7,9 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn.utils import remove_weight_norm
 from torch.nn.utils.parametrizations import weight_norm
-
 from tts_impl.net.base.vocoder import GanVocoderGenerator
 from tts_impl.net.vocoder.hifigan import HifiganGeneratorConfig
-from tts_impl.net.vocoder.hifigan.generator import (ResBlock1, ResBlock2,
-                                                    init_weights)
+from tts_impl.net.vocoder.hifigan.generator import ResBlock1, ResBlock2, init_weights
 from tts_impl.utils.config import Configuratible
 
 from .oscillator import HarmonicNoiseOscillator

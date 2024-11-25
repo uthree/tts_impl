@@ -21,7 +21,7 @@
     - 言語モデル特徴量
     - length_regurator
     - decoder
-    - VITS2との統合管理
+    - VITS2との統合管理...?
 
 - g2p
     - pyopenjtalk
@@ -30,6 +30,7 @@
     - docstringを解析して自動生成が望ましいかも。
 - Recipe
     - ハイパーパラメータやデータの前処理や学習の流れなどをまとめたクラス。
+
 - transformersとの連携
 - CLI
 

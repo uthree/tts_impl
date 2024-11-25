@@ -9,14 +9,18 @@ import torch.optim as optim
 from torch.nn.utils import remove_weight_norm
 from torch.nn.utils.parametrizations import weight_norm
 from torch.optim.lr_scheduler import StepLR
-
 from tts_impl.net.base.vocoder import GanVocoderGenerator
-from tts_impl.net.vocoder.hifigan import (HifiganDiscriminator,
-                                          HifiganDiscriminatorConfig,
-                                          HifiganLightningModule,
-                                          HifiganLightningModuleConfig)
-from tts_impl.net.vocoder.hifigan.loss import (discriminator_loss,
-                                               feature_loss, generator_loss)
+from tts_impl.net.vocoder.hifigan import (
+    HifiganDiscriminator,
+    HifiganDiscriminatorConfig,
+    HifiganLightningModule,
+    HifiganLightningModuleConfig,
+)
+from tts_impl.net.vocoder.hifigan.loss import (
+    discriminator_loss,
+    feature_loss,
+    generator_loss,
+)
 from tts_impl.transforms import LogMelSpectrogram
 from tts_impl.utils.config import Configuratible
 

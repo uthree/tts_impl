@@ -122,6 +122,7 @@ class DiscriminatorS(nn.Module):
             fmap: [batch_size, channels, time]
         """
         fmap = []
+        x = self.pool(x)
         for l in self.convs:
             x = l(x)
             x = F.leaky_relu(x, LRELU_SLOPE)
