@@ -1,7 +1,6 @@
 import numpy as np
 import torch
 import torch.nn.functional as F
-
 from scipy import signal as sig
 
 
@@ -16,14 +15,16 @@ class PQMF(torch.nn.Module):
         self.cutoff = cutoff
         self.beta = beta
 
-        QMF = sig.firwin(taps + 1, cutoff, window=('kaiser', beta))
+        QMF = sig.firwin(taps + 1, cutoff, window=("kaiser", beta))
         H = np.zeros((N, len(QMF)))
         G = np.zeros((N, len(QMF)))
         for k in range(N):
-            constant_factor = (2 * k + 1) * (np.pi /
-                                             (2 * N)) * (np.arange(taps + 1) -
-                                                         ((taps - 1) / 2))  # TODO: (taps - 1) -> taps
-            phase = (-1)**k * np.pi / 4
+            constant_factor = (
+                (2 * k + 1)
+                * (np.pi / (2 * N))
+                * (np.arange(taps + 1) - ((taps - 1) / 2))
+            )  # TODO: (taps - 1) -> taps
+            phase = (-1) ** k * np.pi / 4
             H[k] = 2 * QMF * np.cos(constant_factor + phase)
 
             G[k] = 2 * QMF * np.cos(constant_factor - phase)
@@ -59,13 +60,11 @@ class PQMF(torch.nn.Module):
         Synthesize signal.
 
         Args:
-            x: Tensor, shape=(batch_size, N, L), input signal 
-        
+            x: Tensor, shape=(batch_size, N, L), input signal
+
         Returns:
             x: Tensor, shape=(batch_size, 1, N * L)
         """
-        x = F.conv_transpose1d(x,
-                               self.updown_filter * self.N,
-                               stride=self.N)
+        x = F.conv_transpose1d(x, self.updown_filter * self.N, stride=self.N)
         x = F.conv1d(x, self.G, padding=self.taps // 2)
         return x

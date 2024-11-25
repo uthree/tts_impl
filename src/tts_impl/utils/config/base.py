@@ -1,10 +1,12 @@
-from dataclasses import asdict, make_dataclass, field
-from typing import Any, Generic, Protocol, Self, TypeVar, Optional
 import inspect
 from copy import copy as deep_copy
+from dataclasses import asdict, field, make_dataclass
 from functools import partial
+from typing import Any, Generic, Optional, Protocol, Self, TypeVar
 
-ConfigDataclass = TypeVar("ConfigDataclass") # generic type
+ConfigDataclass = TypeVar("ConfigDataclass")  # generic type
+
+
 class Configuratible(Generic[ConfigDataclass], Protocol):
     @classmethod
     def build_from_config(cls, config: ConfigDataclass) -> Self:
@@ -45,12 +47,16 @@ def derive_config(cls: type, cls_name: Optional[str] = None) -> type:
 
         # Handle default value
         if param.default is not inspect.Parameter.empty:
-            default = field(default_factory= partial(lambda v: deep_copy(v), param.default))
+            default = field(
+                default_factory=partial(lambda v: deep_copy(v), param.default)
+            )
         else:
-            default = field(default_factory = lambda: None)
+            default = field(default_factory=lambda: None)
 
         # Handle type annotation
-        annotation = param.annotation if param.annotation is not inspect.Parameter.empty else Any
+        annotation = (
+            param.annotation if param.annotation is not inspect.Parameter.empty else Any
+        )
 
         # Add to fields
         fields.append((param_name, annotation, default))
