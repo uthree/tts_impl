@@ -1,5 +1,6 @@
 # TODO list
 - HiFi-GAN系統のモデルを統合・抽象化する。
+    - クラス継承 or Protocolによる実装
     - Generator, Discriminatorの処理を分けるなど
     - 対象となるモデル
         - HiFi-GAN

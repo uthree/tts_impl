@@ -4,7 +4,7 @@ import torch.utils.data.dataloader
 from lightning import LightningDataModule, Trainer
 from lightning.pytorch.callbacks import ModelCheckpoint, RichProgressBar
 from omegaconf import OmegaConf
-from tts_impl.net.vocoder.hifigan import NsfhifiganLightningModule
+from tts_impl.net.vocoder.nsf_hifigan import NsfhifiganLightningModule
 from tts_impl.utils.datamodule import AudioDataModule
 
 torch.set_float32_matmul_precision("medium")

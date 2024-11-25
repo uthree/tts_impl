@@ -5,8 +5,8 @@ from tts_impl.utils.preprocess import (
     AudioDataCollector,
     FunctionalExtractor,
     Mixdown,
+    PitchEstimation,
     Preprocessor,
-    PitchEstimation
 )
 
 
