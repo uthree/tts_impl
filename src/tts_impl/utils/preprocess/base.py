@@ -204,7 +204,6 @@ class Preprocessor:
             collector.prepare()
             # start yield loop
             for data in collector:
-                tqdm.write("Extracting ...")
                 for ext in self.extractors:
                     data = ext.extract(data)
                 # write cache

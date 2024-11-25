@@ -39,19 +39,15 @@ class AudioDataCollector(DataCollector):
         # collect paths
         audio_file_paths = []
 
-        tqdm.write(f"Collecting audio files from {self.target} ...")
         for fmt in self.formats:
-            tqdm.write(f"Scanning format: {fmt}")
             for path in self.target.glob(f"**/*.{fmt}"):
                 audio_file_paths.append(path)
 
-        tqdm.write(f"Collected {len(audio_file_paths)} file(s).")
-
         # yield loop with tqdm progress bar
+        tqdm.write(f"Collecting audio files in {self.target} ...")
         for path in tqdm(
-            audio_file_paths, desc=f"Collecting audio files from {self.target}"
+            audio_file_paths
         ):
-            tqdm.write(f"Loading {path} ...")
             wf, orig_sr = torchaudio.load(path)
             # wf: [C, L]
 
@@ -59,7 +55,6 @@ class AudioDataCollector(DataCollector):
             if self.sample_rate is not None:
                 sr = orig_sr
                 if orig_sr != self.sample_rate:
-                    tqdm.write(f"Resampling {orig_sr}Hz to {self.sample_rate}Hz ...")
                     wf = resample(wf, orig_sr, self.sample_rate)
                     sr = self.sample_rate
 
@@ -67,10 +62,8 @@ class AudioDataCollector(DataCollector):
             if self.length is None:
                 yield {"waveform": wf, "sample_rate": sr}
             else:
-                tqdm.write("Splitting ...")
                 # split data
                 chunks = torch.split(wf, self.length, dim=1)
-                tqdm.write(f"Got {len(chunks)} audio clip(s).")
                 for chunk in chunks:
                     chunk = adjust_size(chunk, self.length)
                     yield {"waveform": chunk, "sample_rate": sr}

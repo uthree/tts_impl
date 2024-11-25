@@ -1,1 +1,1 @@
-from .base import Configuratible
+from .base import Configuratible, derive_config
