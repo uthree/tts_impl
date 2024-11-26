@@ -3,9 +3,11 @@ import math
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from tts_impl.utils.config import derive_config
 
 
 # HnNSF Module from https://arxiv.org/pdf/1904.12088
+@derive_config
 class HarmonicNoiseOscillator(nn.Module):
     def __init__(self, sample_rate, frame_size, num_harmonics=8, noise_scale=0.03):
         super().__init__()
@@ -47,6 +49,7 @@ class HarmonicNoiseOscillator(nn.Module):
         return source
 
 
+@derive_config
 class ImpulseOscillator(nn.Module):
     def __init__(
         self,
@@ -77,6 +80,7 @@ class ImpulseOscillator(nn.Module):
 
 
 # Cyclic noise oscillator from https://arxiv.org/abs/2004.02191
+@derive_config
 class CyclicNoiseOscillator(nn.Module):
     def __init__(self, sample_rate, frame_size, base_frequency=440.0, beta=0.78):
         super().__init__()

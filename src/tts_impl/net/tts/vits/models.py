@@ -9,10 +9,7 @@ from tts_impl.net.base.tts import (
     VariationalAcousticFeatureEncoder,
     VariationalTextEncoder,
 )
-from tts_impl.net.vocoder.hifigan.lightning import (
-    HifiganGenerator,
-    HifiganGeneratorConfig,
-)
+from tts_impl.net.vocoder.hifigan.lightning import HifiganGenerator
 from tts_impl.utils.config import derive_config
 
 from . import attentions, commons, modules

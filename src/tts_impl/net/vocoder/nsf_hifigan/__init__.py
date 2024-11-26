@@ -1,2 +1,2 @@
-from .generator import NsfhifiganGenerator, NsfhifiganGeneratorConfig
-from .lightning import NsfhifiganLightningModule, NsfhifiganLightningModuleConfig
+from .generator import NsfhifiganGenerator
+from .lightning import NsfhifiganLightningModule

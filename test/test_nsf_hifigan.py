@@ -10,3 +10,8 @@ def test_nsf_hifigan_generator():
     f0 = torch.rand(1, 100)
     wf = G(mel, f0=f0)
     assert wf.shape == torch.Size((2, 1, 25600))
+
+
+def test_initialize_with_config():
+    cfg = NsfhifiganGenerator.Config()
+    G = NsfhifiganGenerator(**cfg)

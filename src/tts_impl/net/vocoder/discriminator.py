@@ -237,8 +237,8 @@ class DiscriminatorR(nn.Module):
             x = self.safe_log(x)
         if self.pre_layernorm:
             x = F.normalize(x, dim=(1, 2))
-        return x 
-    
+        return x
+
     def safe_log(self, x):
         return torch.log(F.relu(x) + 1e-6)
 

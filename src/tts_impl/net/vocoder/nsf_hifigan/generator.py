@@ -8,20 +8,14 @@ import torch.nn.functional as F
 from torch.nn.utils import remove_weight_norm
 from torch.nn.utils.parametrizations import weight_norm
 from tts_impl.net.base.vocoder import GanVocoderGenerator
-from tts_impl.net.vocoder.hifigan import HifiganGeneratorConfig
 from tts_impl.net.vocoder.hifigan.generator import ResBlock1, ResBlock2, init_weights
-from tts_impl.utils.config import Configuratible
+from tts_impl.utils.config import derive_config
 
 from .oscillator import HarmonicNoiseOscillator
 
 
-@dataclass
-class NsfhifiganGeneratorConfig(HifiganGeneratorConfig):
-    sample_rate: int = 22050
-    num_harmonics: int = 8
-
-
-class NsfhifiganGenerator(nn.Module, Configuratible):
+@derive_config
+class NsfhifiganGenerator(nn.Module):
     def __init__(
         self,
         input_channels: int = 80,

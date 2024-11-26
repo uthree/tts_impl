@@ -13,52 +13,20 @@ from tts_impl.net.vocoder.hifigan.loss import (
     generator_loss,
 )
 from tts_impl.transforms import LogMelSpectrogram
-from tts_impl.utils.config import Configuratible
+from tts_impl.utils.config import derive_config
 
-from .discriminator import HifiganDiscriminator, HifiganDiscriminatorConfig
-from .generator import HifiganGenerator, HifiganGeneratorConfig
-
-
-@dataclass
-class MelSpectrogramConfig:
-    sample_rate: int = 22050
-    n_fft: int = 1024
-    hop_length: int = 256
-    n_mels: int = 80
-    fmin: float = 0.0
-    fmax: float = 8000.0
-
-
-@dataclass
-class OptimizerConfig:
-    lr: float = 2e-4
-    betas: List[int] = field(default_factory=[0.8, 0.99])
-
-
-@dataclass
-class HifiganLightningModuleConfig:
-    generator: HifiganGeneratorConfig = field(default_factory=HifiganGeneratorConfig)
-    discriminator: HifiganDiscriminatorConfig = field(
-        default_factory=HifiganDiscriminatorConfig()
-    )
-    mel: MelSpectrogramConfig = field(default_factory=MelSpectrogramConfig())
-    weight_mel: float = 45.0
-    weight_adv: float = 1.0
-    weight_feat: float = 1.0
-    lr_decay: float = 0.999
-    lr: float = 2e-4
-    betas: List[float] = field(default_factory=lambda: [0.8, 0.99])
+from .discriminator import HifiganDiscriminator
+from .generator import HifiganGenerator
 
 
 # HiFi-GAN from https://arxiv.org/abs/2010.05646
-class HifiganLightningModule(
-    L.LightningModule, Configuratible
-):
+@derive_config
+class HifiganLightningModule(L.LightningModule):
     def __init__(
         self,
-        generator: Optional[Mapping[str, Any]] = None,
-        discriminator: Optional[Mapping[str, Any]] = None,
-        mel: Optional[Mapping[str, Any]] = None,
+        generator: HifiganGenerator.Config,
+        discriminator: HifiganDiscriminator.Config,
+        mel: LogMelSpectrogram.Config,
         weight_mel: float = 45.0,
         weight_feat: float = 1.0,
         weight_adv: float = 1.0,

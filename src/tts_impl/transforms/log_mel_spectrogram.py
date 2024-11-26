@@ -4,8 +4,10 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torchaudio
+from tts_impl.utils.config import derive_config
 
 
+@derive_config
 class LogMelSpectrogram(nn.Module):
     """
     A module to calculate the logarithmic mel spectrogram

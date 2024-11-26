@@ -1,42 +1,16 @@
 from dataclasses import dataclass, field
 from typing import Any, List, Literal, Mapping, Optional
 
-import numpy as np
-import torch
-import torch.nn as nn
 import torch.nn.functional as F
-import torch.optim as optim
-from torch.nn.utils import remove_weight_norm
-from torch.nn.utils.parametrizations import weight_norm
-from torch.optim.lr_scheduler import StepLR
-from tts_impl.net.base.vocoder import GanVocoderGenerator
-from tts_impl.net.vocoder.hifigan import (
-    HifiganDiscriminator,
-    HifiganDiscriminatorConfig,
-    HifiganLightningModule,
-    HifiganLightningModuleConfig,
-)
-from tts_impl.net.vocoder.hifigan.loss import (
-    discriminator_loss,
-    feature_loss,
-    generator_loss,
-)
+from tts_impl.net.vocoder.hifigan import HifiganDiscriminator, HifiganLightningModule
 from tts_impl.transforms import LogMelSpectrogram
-from tts_impl.utils.config import Configuratible
+from tts_impl.utils.config import derive_config
 
-from .generator import NsfhifiganGenerator, NsfhifiganGeneratorConfig
-
-
-@dataclass
-class NsfhifiganLightningModuleConfig(HifiganLightningModuleConfig):
-    generator: NsfhifiganGeneratorConfig = field(
-        default_factory=lambda: NsfhifiganGeneratorConfig
-    )
+from .generator import NsfhifiganGenerator
 
 
-class NsfhifiganLightningModule(
-    HifiganLightningModule, Configuratible
-):
+@derive_config
+class NsfhifiganLightningModule(HifiganLightningModule):
     def __init__(
         self,
         generator: Optional[Mapping[str, Any]] = None,

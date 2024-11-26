@@ -1,3 +1,3 @@
-from .discriminator import HifiganDiscriminator, HifiganDiscriminatorConfig
-from .generator import HifiganGenerator, HifiganGeneratorConfig
-from .lightning import HifiganLightningModule, HifiganLightningModuleConfig
+from .discriminator import HifiganDiscriminator
+from .generator import HifiganGenerator
+from .lightning import HifiganLightningModule

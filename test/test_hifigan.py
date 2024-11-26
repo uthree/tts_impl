@@ -34,3 +34,8 @@ def test_custom_discriminator():
         MultiResolutionStftDiscriminator([240, 120, 60]),
     )
     logits, fmap = D(wf)
+
+
+def test_initialize_with_config():
+    cfg = HifiganGenerator.Config()
+    G = HifiganGenerator(**cfg)
