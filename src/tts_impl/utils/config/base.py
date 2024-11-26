@@ -2,25 +2,16 @@ import inspect
 from copy import copy as deep_copy
 from dataclasses import asdict, field, make_dataclass
 from functools import partial
-from typing import Any, Generic, Optional, Protocol, Self, TypeVar
-
-ConfigDataclass = TypeVar("ConfigDataclass")  # generic type
+from typing import Any, Optional, Protocol, Self
 
 
-class Configuratible(Generic[ConfigDataclass], Protocol):
+class Configuratible(Protocol):
     @classmethod
-    def build_from_config(cls, config: ConfigDataclass) -> Self:
+    def build_from_config(cls, config) -> Self:
         """
         Construct model from configuration dataclass
         """
         return cls.__init__(**asdict(config))
-
-    @classmethod
-    def default_config(self) -> ConfigDataclass:
-        """
-        Get default configuration value
-        """
-        return ConfigDataclass()
 
 
 def derive_config(cls: type, cls_name: Optional[str] = None) -> type:

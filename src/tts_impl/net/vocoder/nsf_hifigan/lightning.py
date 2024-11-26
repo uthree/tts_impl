@@ -35,7 +35,7 @@ class NsfhifiganLightningModuleConfig(HifiganLightningModuleConfig):
 
 
 class NsfhifiganLightningModule(
-    HifiganLightningModule, Configuratible[NsfhifiganLightningModuleConfig]
+    HifiganLightningModule, Configuratible
 ):
     def __init__(
         self,

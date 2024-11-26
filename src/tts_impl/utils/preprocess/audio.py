@@ -126,7 +126,7 @@ class Mixdown(FunctionalExtractor):
 
 class PitchEstimation(Extractor):
     def __init__(
-        self, frame_size: int, algorithm: Literal["harvest", "dio", "fcpe"] = "harvest"
+        self, frame_size: int, algorithm: Literal["harvest", "dio", "fcpe", "yin"] = "harvest"
     ):
         super().__init__()
         self.algorithm = algorithm

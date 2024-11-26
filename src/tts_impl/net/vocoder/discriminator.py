@@ -203,8 +203,13 @@ class DiscriminatorR(nn.Module):
         channels: int = 32,
         num_layers: int = 4,
         use_spectral_norm: bool = False,
+        log_scale: bool = True,
+        pre_layernorm: bool = True,
     ):
         super().__init__()
+        self.log_scale = log_scale
+        self.pre_layernorm = pre_layernorm
+
         norm_f = (
             nn.utils.parametrizations.spectral_norm
             if use_spectral_norm
@@ -228,7 +233,14 @@ class DiscriminatorR(nn.Module):
         x = torch.stft(
             x, self.n_fft, self.hop_size, window=w, return_complex=True
         ).abs()
-        return x
+        if self.log_scale:
+            x = self.safe_log(x)
+        if self.pre_layernorm:
+            x = F.normalize(x, dim=(1, 2))
+        return x 
+    
+    def safe_log(self, x):
+        return torch.log(F.relu(x) + 1e-6)
 
     def forward(self, x):
         x = self.spectrogram(x)

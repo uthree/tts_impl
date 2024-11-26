@@ -17,8 +17,7 @@ def run_training(
 ):
     # initialize lightningmodule
     model = NsfhifiganLightningModule(
-        # No MPD, only 1 scale
-        discriminator={"periods": [], "scales": [1]},
+        discriminator={"periods": [], "scales": [], "resolutions": [480, 240, 120]},
         # Like mel-gan, scale-down
         generator={
             "upsample_initial_channels": 256,

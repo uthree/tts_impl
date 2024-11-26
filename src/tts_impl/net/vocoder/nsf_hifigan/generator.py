@@ -21,7 +21,7 @@ class NsfhifiganGeneratorConfig(HifiganGeneratorConfig):
     num_harmonics: int = 8
 
 
-class NsfhifiganGenerator(nn.Module, Configuratible[NsfhifiganGeneratorConfig]):
+class NsfhifiganGenerator(nn.Module, Configuratible):
     def __init__(
         self,
         input_channels: int = 80,

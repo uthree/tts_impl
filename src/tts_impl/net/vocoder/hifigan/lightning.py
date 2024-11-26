@@ -52,7 +52,7 @@ class HifiganLightningModuleConfig:
 
 # HiFi-GAN from https://arxiv.org/abs/2010.05646
 class HifiganLightningModule(
-    L.LightningModule, Configuratible[HifiganLightningModuleConfig]
+    L.LightningModule, Configuratible
 ):
     def __init__(
         self,
@@ -119,7 +119,7 @@ class HifiganLightningModule(
         # logs
         for i, l in enumerate(loss_adv_list):
             self.log(f"generator adversarial/{i}", l)
-        self.log("train loss/generator Total", loss_g)
+        self.log("train loss/generator total", loss_g)
         self.log("train loss/mel spectrogram", loss_mel)
         self.log("train loss/feature matching", loss_feat)
         self.log("train loss/generator adversarial", loss_adv)
@@ -150,6 +150,7 @@ class HifiganLightningModule(
             self.log(f"discriminator adversarial/fake {i}", l)
         for i, l in enumerate(loss_d_list_r):
             self.log(f"discriminator adversarial/real {i}", l)
+        self.log("train loss/discriminator", loss_d)
         self.log("D", loss_d, prog_bar=True, logger=False)
 
     def training_step(self, batch):

@@ -18,7 +18,7 @@ class HifiganDiscriminatorConfig:
 
 
 class HifiganDiscriminator(
-    CombinedDiscriminator, Configuratible[HifiganDiscriminatorConfig]
+    CombinedDiscriminator, Configuratible
 ):
     def __init__(
         self,

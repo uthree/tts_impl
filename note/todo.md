@@ -1,18 +1,6 @@
 # TODO list
-- HiFi-GAN系統のモデルを統合・抽象化する。
-    - クラス継承 or Protocolによる実装
-    - Generator, Discriminatorの処理を分けるなど
-    - 対象となるモデル
-        - HiFi-GAN
-        - NSF-HiFi-GAN
-        - FC-HiFi-GAN
-        - iSTFTNet
-        - MS-HiFi-GAN
-        - MB-HiFi-GAN
-        - EVA-GAN
-        - SAN
-
 - VITS, JITSに共通するmonotonic alignを統一する
+
 - ヘルパー関数の一般化・整備
     - sequence_mask, generate_path etc...
 
@@ -26,6 +14,8 @@
 - g2p
     - pyopenjtalk
     - phonemizer
+    - BERT-CTC-G2P
+
 - ドキュメントをいい感じに
     - docstringを解析して自動生成が望ましいかも。
 - Recipe
@@ -41,9 +31,6 @@
 
 - ハイパーパラメータをdataclass + omegaconfで管理する
     - Optunaとの連携
-
-- データセットのメタデータをいい感じにする。
-    - サンプリングレート, 話者一覧など。
 
 - Logger
     - tqdmを直接呼ぶ形式ではなくもっと抽象化する+richべーすにする。

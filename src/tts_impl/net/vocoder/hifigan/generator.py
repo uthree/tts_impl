@@ -125,7 +125,7 @@ class HifiganGeneratorConfig:
 
 
 class HifiganGenerator(
-    nn.Module, GanVocoderGenerator, Configuratible[HifiganGeneratorConfig]
+    nn.Module, GanVocoderGenerator, Configuratible
 ):
     """
     HiFi-GAN Generator purposed in https://arxiv.org/abs/2010.05646
