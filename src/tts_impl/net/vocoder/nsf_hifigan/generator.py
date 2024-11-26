@@ -5,7 +5,6 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.nn.utils import remove_weight_norm
 from torch.nn.utils.parametrizations import weight_norm
 from tts_impl.net.base.vocoder import GanVocoderGenerator
 from tts_impl.net.vocoder.hifigan.generator import ResBlock1, ResBlock2, init_weights
@@ -15,7 +14,7 @@ from .oscillator import HarmonicNoiseOscillator
 
 
 @derive_config
-class NsfhifiganGenerator(nn.Module):
+class NsfhifiganGenerator(nn.Module, GanVocoderGenerator):
     def __init__(
         self,
         input_channels: int = 80,

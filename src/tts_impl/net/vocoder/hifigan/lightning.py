@@ -24,9 +24,9 @@ from .generator import HifiganGenerator
 class HifiganLightningModule(L.LightningModule):
     def __init__(
         self,
-        generator: HifiganGenerator.Config,
-        discriminator: HifiganDiscriminator.Config,
-        mel: LogMelSpectrogram.Config,
+        generator: HifiganGenerator.Config = HifiganGenerator.Config(),
+        discriminator: HifiganDiscriminator.Config = HifiganDiscriminator.Config(),
+        mel: LogMelSpectrogram.Config = LogMelSpectrogram.Config(),
         weight_mel: float = 45.0,
         weight_feat: float = 1.0,
         weight_adv: float = 1.0,
@@ -58,7 +58,9 @@ class HifiganLightningModule(L.LightningModule):
         self.save_hyperparameters()
 
     def generator_training_step(self, real: torch.Tensor, fake: torch.Tensor):
-        spec_real = self.spectrogram(real.sum(1)).detach()
+        # spectrogram
+        spec_real = self.spectrogram(real).detach()
+        spec_fake = self.spectrogram(fake)
 
         # get optimizer
         opt_g, opt_d = self.optimizers()
@@ -68,7 +70,6 @@ class HifiganLightningModule(L.LightningModule):
         _, fmap_real = self.discriminator(real)
         loss_adv, loss_adv_list = generator_loss(logits)
         loss_feat = feature_loss(fmap_real, fmap_fake)
-        spec_fake = self.spectrogram(fake.sum(1))
         loss_mel = F.l1_loss(spec_fake, spec_real)
         loss_g = (
             loss_mel * self.weight_mel
@@ -146,16 +147,16 @@ class HifiganLightningModule(L.LightningModule):
         return self._test_or_validate_batch(batch)
 
     def _test_or_validate_batch(self, batch):
-        waveform = batch["waveform"]
+        real = batch["waveform"]
 
-        if self.use_acoustic_features:
+        if "acoustic_features" in batch:
             acoustic_features = batch["acoustic_features"]
         else:
-            acoustic_features = self.spectrogram(waveform.sum(1)).detach()
+            acoustic_features = self.spectrogram(real.sum(1)).detach()
 
-        spec_real = self.spectrogram(waveform.sum(1)).detach()
+        spec_real = self.spectrogram(real).detach()
         fake = self.generator(acoustic_features)
-        spec_fake = self.spectrogram(fake.sum(1))
+        spec_fake = self.spectrogram(fake)
         loss_mel = F.l1_loss(spec_fake, spec_real)
         self.log("validation loss/mel spectrogram", loss_mel)
 

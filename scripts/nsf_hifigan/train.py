@@ -4,6 +4,7 @@ import torch.utils.data.dataloader
 from lightning import LightningDataModule, Trainer
 from lightning.pytorch.callbacks import ModelCheckpoint, RichProgressBar
 from omegaconf import OmegaConf
+from tts_impl.net.vocoder.hifigan import HifiganLightningModule
 from tts_impl.net.vocoder.nsf_hifigan import NsfhifiganLightningModule
 from tts_impl.utils.datamodule import AudioDataModule
 
@@ -15,16 +16,19 @@ def run_training(
     batch_size: int = 2,
     epochs=20,
 ):
+
+    Model = NsfhifiganLightningModule
     # initialize lightningmodule
-    model = NsfhifiganLightningModule(
-        discriminator={"periods": [], "scales": [], "resolutions": [480, 240, 120]},
-        # Like mel-gan, scale-down
-        generator={
-            "upsample_initial_channels": 256,
-            "resblock_kernel_sizes": [3],
-            "resblock_dilations": [[1, 3, 9]],
-        },
-    )
+    cfg = Model.default_config()
+
+    cfg.discriminator.periods = []
+    cfg.discriminator.scales = []
+    cfg.discriminator.resolutions = [120, 240, 480]
+    cfg.generator.upsample_initial_channels = 256
+    cfg.generator.resblock_dilations = [[1, 3, 9]]
+    cfg.generator.resblock_kernel_sizes = [3]
+
+    model = Model(**cfg)
 
     # initialize datamodule
     datamodule = AudioDataModule(root=cache_dir, batch_size=batch_size, num_workers=1)

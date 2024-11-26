@@ -64,7 +64,7 @@ def config_of(cls: type, cls_name: Optional[str] = None) -> type:
             default = field(
                 default_factory=partial(lambda v: deep_copy(v), param.default)
             )
-        else:
+        elif param.annotation:
             default = field(default_factory=lambda: None)
 
         # Handle type annotation
@@ -102,7 +102,6 @@ def derive_config(cls, cls_name: Optional[None] = None):
     # Generate the configuration class
     config_cls = config_of(cls, cls_name=cls_name)
 
-    print(config_cls)
     # Attach it to the original class
     cls.Config = config_cls
 
