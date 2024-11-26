@@ -2,7 +2,12 @@ import inspect
 from copy import copy as deep_copy
 from dataclasses import field, make_dataclass
 from functools import partial
-from typing import Any, Optional, Protocol
+from typing import Any, Optional
+
+"""
+激ヤバ黒魔術コード！！！！
+using DARK-SIDE POWER !!!!
+"""
 
 
 def keys(self):

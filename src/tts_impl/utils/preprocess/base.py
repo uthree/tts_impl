@@ -1,10 +1,14 @@
+import logging
 import os
 import shutil
+from logging import Logger
 from pathlib import Path
 from typing import Any, Generator, List, Optional, Union
 
 import torch
-from tqdm import tqdm
+from rich.console import Console
+from rich.logging import RichHandler
+from rich.progress import Progress, track
 
 
 class DataCollector:
@@ -14,6 +18,10 @@ class DataCollector:
 
     def __iter__(self) -> Generator[dict, None, None]:
         pass
+
+    def _prepare_logger(self, console: Console, logger: Logger):
+        self.console = console
+        self.logger = logger
 
     def finalize(self):
         """
@@ -39,6 +47,10 @@ class Extractor:
         Processing such as feature extraction.
         """
         return data
+
+    def _prepare_logger(self, console: Console, logger: Logger):
+        self.console = console
+        self.logger = logger
 
     def prepare(self):
         """
@@ -110,6 +122,10 @@ class CacheWriter:
         self.delete_old_cache = delete_old_cache
         self.root = Path(root)
 
+    def _prepare_logger(self, console: Console, logger: Logger):
+        self.console = console
+        self.logger = logger
+
     def prepare(self):
         """
         This method is called only once before preprocessing is performed.
@@ -120,7 +136,7 @@ class CacheWriter:
         if self.delete_old_cache:
             if self.root.exists():
                 shutil.rmtree(self.root)
-                tqdm.write(f"Deleted cache directory: {self.root}")
+                self.logger.log(logging.INFO, f"Deleted cache directory: {self.root}")
 
         self.root = Path(self.root)
         if not self.root.exists():
@@ -152,10 +168,33 @@ class Preprocessor:
         collectors: List[DataCollector] = [],
         extractors: List[Extractor] = [],
         writer: Optional[CacheWriter] = None,
+        console: Optional[Console] = None,
+        logger: Optional[Logger] = None,
     ):
         self.collectors = collectors
         self.extractors = extractors
         self.writer = writer
+
+        self.console = console
+        self.logger = logger
+
+    def _prepare_logger(self, level=logging.INFO, logger_name: str = "preprocess"):
+
+        if self.logger is None:
+            self.logger = logging.getLogger(logger_name)
+        if self.console is None:
+            self.console = Console()
+
+        handler = RichHandler(console=self.console)
+        logging.basicConfig(level=level, handlers=[handler])
+
+        self.writer._prepare_logger(self.console, self.logger)
+
+        for collector in self.collectors:
+            collector._prepare_logger(self.console, self.logger)
+
+        for extractor in self.extractors:
+            extractor._prepare_logger(self.console, self.logger)
 
     def with_collector(self, collector: DataCollector):
         """
@@ -190,33 +229,41 @@ class Preprocessor:
         """
         assert self.writer is not None, "CacheWriter required, but not given."
 
-        tqdm.write("Preparing submodules ...")
+        self._prepare_logger()
+
+        self.logger.debug("Preparing submodules ...")
         for e in self.extractors:
-            tqdm.write(f"Preparing {e.__class__.__name__} ...")
+            self.logger.debug(f"Preparing {e.__class__.__name__} ...")
             e.prepare()
-        tqdm.write(f"Preparing {self.writer.__class__.__name__} ...")
+        self.logger.debug(f"Preparing {self.writer.__class__.__name__} ...")
         self.writer.prepare()
 
-        tqdm.write("Start preprocessing ...")
+        self.logger.info("Start preprocessing ...")
         data_count = 0
         for collector in self.collectors:
-            tqdm.write(f"Preparing {collector.__class__.__name__} ...")
+            self.logger.debug(f"Preparing {collector.__class__.__name__} ...")
             collector.prepare()
             # start yield loop
+            collector_count = 0
             for data in collector:
                 for ext in self.extractors:
                     data = ext.extract(data)
                 # write cache
                 self.writer.write(data)
                 data_count += 1
-            tqdm.write(f"Finalizing {collector.__class__.__name__} ...")
+                collector_count += 1
+            self.logger.log(
+                logging.INFO,
+                f"Processed {collector_count} item(s) in {collector.__class__.__name__}",
+            )
+            self.logger.debug(f"Finalizing {collector.__class__.__name__} ...")
             collector.finalize()
-        tqdm.write(f"Processed total {data_count} item(s).")
+        self.logger.log(logging.INFO, f"Processed total {data_count} item(s).")
 
-        tqdm.write("Finalizing Extractors...")
+        self.logger.debug("Finalizing extractors...")
         for e in self.extractors:
-            tqdm.write(f"Finalizing {e.__class__.__name__} ...")
+            self.logger.debug(f"Finalizing {e.__class__.__name__} ...")
             e.finalize()
-        tqdm.write(f"Finalizing {self.writer.__class__.__name__} ...")
+        self.logger.debug(f"Finalizing {self.writer.__class__.__name__} ...")
         self.writer.finalize()
-        tqdm.write("Preprocessing complete!")
+        self.logger.log(logging.INFO, "Preprocessing complete!")

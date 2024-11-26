@@ -1,9 +1,8 @@
 import fire
 import torch
 import torch.utils.data.dataloader
-from lightning import LightningDataModule, Trainer
-from lightning.pytorch.callbacks import ModelCheckpoint, RichProgressBar
-from omegaconf import OmegaConf
+from lightning import Trainer
+from lightning.pytorch.callbacks import Checkpoint, RichProgressBar
 from tts_impl.net.vocoder.hifigan import HifiganLightningModule
 from tts_impl.net.vocoder.nsf_hifigan import NsfhifiganLightningModule
 from tts_impl.utils.datamodule import AudioDataModule
@@ -14,7 +13,7 @@ torch.set_float32_matmul_precision("medium")
 def run_training(
     cache_dir: str = "dataset_cache",
     batch_size: int = 2,
-    epochs=20,
+    epochs=100,
 ):
 
     Model = NsfhifiganLightningModule
