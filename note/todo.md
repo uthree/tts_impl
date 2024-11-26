@@ -5,7 +5,6 @@
     - sequence_mask, generate_path etc...
 
 - VITSのカスタムをサポートする?
-    - f0
     - 言語モデル特徴量
     - length_regurator
     - decoder

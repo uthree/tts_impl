@@ -43,3 +43,10 @@ pip install -e .
 - `pysen run lint` : linter
 - `pytest` : test
 - `codespell` : detect typos
+
+## References
+- [VITS](https://github.com/jaywalnut310/vits) ([Paper](https://github.com/espnet/espnet))
+- [VITS2](https://github.com/p0p4k/vits2_pytorch/) ([Paper](https://arxiv.org/abs/2307.16430))
+- [HiFi-GAN](https://github.com/jik876/hifi-gan) ([Paper](https://arxiv.org/abs/2010.05646))
+- [Super Monotonic Alignment Search](https://github.com/supertone-inc/super-monotonic-align) ([Paper](https://arxiv.org/abs/2409.07704))
+- [JETS (ESPNet)](https://github.com/espnet/espnet)

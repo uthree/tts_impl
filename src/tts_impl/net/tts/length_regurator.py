@@ -24,8 +24,8 @@ class DuplicateByDuration(nn.Module, LengthRegurator):
         Args:
             x: Batched hidden state to be expanded (B, channels, T_text)
             w: Batched token duration (B, T_text)
-            x_masks: Mask tensor (B, T_feats)
-            y_masks: Mask tensor (B, T_text)
+            x_masks: Mask tensor (B, T_text)
+            y_masks: Mask tensor (B, T_feats)
         Returns:
             x(Tensor): Expanded hidden state (B, channels, T_feat)
         """
@@ -51,8 +51,8 @@ class GaussianUpsampling(nn.Module, LengthRegurator):
         Args:
             x: Batched hidden state to be expanded (B, channels, T_text)
             w: Batched token duration (B, T_text)
-            x_masks: Mask tensor (B, T_feats)
-            y_masks: Mask tensor (B, T_text)
+            x_masks: Mask tensor (B, T_text)
+            y_masks: Mask tensor (B, T_feats)
         Returns:
             x: Expanded hidden state (B, channels, T_feat)
         """
