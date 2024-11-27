@@ -36,10 +36,6 @@ class HifiganLightningModule(L.LightningModule):
     ):
         super().__init__()
 
-        generator = generator or dict()
-        discriminator = discriminator or dict()
-        mel = mel or dict()
-
         self.automatic_optimization = False
 
         # flag for using data[acoustic_features] instead of mel spectrogram

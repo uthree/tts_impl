@@ -7,8 +7,10 @@ import lightning
 import torch
 from torch.utils.data import DataLoader, random_split
 from tts_impl.utils.dataset import AudioDataset
+from tts_impl.utils.config import derive_config
 
 
+@derive_config
 class AudioDataModule(lightning.LightningDataModule):
     def __init__(
         self,

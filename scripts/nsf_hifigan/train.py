@@ -21,7 +21,7 @@ def run_training(
     cfg = Model.default_config()
 
     cfg.discriminator.periods = []
-    cfg.discriminator.scales = []
+    cfg.discriminator.scales = [1, 2, 4]
     cfg.discriminator.resolutions = [120, 240, 480]
     cfg.generator.upsample_initial_channels = 256
     cfg.generator.resblock_dilations = [[1, 3, 9]]

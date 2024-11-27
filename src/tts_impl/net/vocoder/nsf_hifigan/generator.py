@@ -19,7 +19,7 @@ class NsfhifiganGenerator(nn.Module, GanVocoderGenerator):
         self,
         input_channels: int = 80,
         upsample_initial_channels: int = 512,
-        resblock_type: Literal["1", "2"] = "1",
+        resblock_type: str = "1",
         resblock_kernel_sizes: List[int] = [3, 7, 11],
         resblock_dilations: List[List[int]] = [[1, 3, 5], [1, 3, 5], [1, 3, 5]],
         upsample_kernel_sizes: List[int] = [16, 16, 4, 4],
