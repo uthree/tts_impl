@@ -4,7 +4,6 @@ from copy import deepcopy
 from dataclasses import asdict
 from pathlib import Path
 from typing import List, Optional
-
 import yaml
 from lightning import LightningDataModule, LightningModule, Trainer
 from lightning.pytorch.callbacks import ModelCheckpoint, RichProgressBar
@@ -13,6 +12,7 @@ from rich import print
 from rich.table import Column, Table
 from rich_argparse import RichHelpFormatter
 from tts_impl.utils.config import arguments_dataclass_of
+import torch
 
 
 def build_argparser_for_fn(fn: callable):
@@ -58,10 +58,10 @@ class Recipe:
         self.config_root_dir = Path("config") / self.name
         self.ckpt_root_dir = Path("checkpoint") / self.name
 
-        self.ckpt_name = "model.ckpt"
+        self.ckpt_name = "model"
 
     def checkopint_callback(self) -> ModelCheckpoint:
-        return ModelCheckpoint(self.ckpt_root_dir / self.ckpt_name)
+        return ModelCheckpoint(dirpath=self.ckpt_root_dir, filename=(self.ckpt_name), save_weights_only=True,)
 
     def prepare_trainer(
         self, epochs: int = 1, precision: str = "bf16-mixed"
@@ -91,8 +91,11 @@ class Recipe:
         trainer = self.prepare_trainer(**config["trainer"])
         ckpt_path = self.ckpt_root_dir / (config_name + ".ckpt")
         if ckpt_path.exists():
-            self.TargetModule.load_from_checkpoint(ckpt_path)
+            print(f"Ckeckpoint {ckpt_path} found, loading ckeckpoint")
+            model = self.TargetModule(**config["model"])
+            model.load_state_dict(torch.load(ckpt_path, map_location="cpu")["state_dict"])
         else:
+            print(f"Ckeckpoint {ckpt_path} is not found. initializing model")
             model = self.TargetModule(**config["model"])
         trainer.fit(model, datamodule)
 

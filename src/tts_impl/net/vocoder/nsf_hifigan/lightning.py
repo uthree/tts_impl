@@ -12,7 +12,7 @@ from .generator import NsfhifiganGenerator
 
 
 @derive_config
-class NsfhifiganLightningModule(HifiganLightningModule):
+class NsfhifiganLightningModule(HifiganLightningModule, LightningModule):
     def __init__(
         self,
         generator: NsfhifiganGenerator.Config = NsfhifiganGenerator.Config(),
