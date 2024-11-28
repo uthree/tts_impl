@@ -1,18 +1,16 @@
 import argparse
 import inspect
-from copy import deepcopy
 from dataclasses import asdict
 from pathlib import Path
 from typing import List, Optional
+
+import torch
 import yaml
-from lightning import LightningDataModule, LightningModule, Trainer
-from lightning.pytorch.callbacks import ModelCheckpoint, RichProgressBar
-from omegaconf import OmegaConf
+from lightning import Callback, LightningDataModule, LightningModule, Trainer
+from lightning.pytorch.callbacks import RichProgressBar
 from rich import print
-from rich.table import Column, Table
 from rich_argparse import RichHelpFormatter
 from tts_impl.utils.config import arguments_dataclass_of
-import torch
 
 
 def build_argparser_for_fn(fn: callable):
@@ -42,6 +40,15 @@ def build_argparser_for_fn(fn: callable):
     return parser
 
 
+class ManualSave(Callback):
+    def __init__(self, path: Path):
+        self.path = path
+
+    def on_train_epoch_end(self, trainer, pl_module: LightningModule, *args, **kwargs):
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        torch.save(pl_module.state_dict(), self.path)
+
+
 class Recipe:
     """
     Recipe(WIP) experimental feature
@@ -60,11 +67,11 @@ class Recipe:
 
         self.ckpt_name = "model"
 
-    def checkopint_callback(self) -> ModelCheckpoint:
-        return ModelCheckpoint(dirpath=self.ckpt_root_dir, filename=(self.ckpt_name), save_weights_only=True,)
+    def checkopint_callback(self) -> ManualSave:
+        return ManualSave(self.ckpt_root_dir / (self.ckpt_name + ".pt"))
 
     def prepare_trainer(
-        self, epochs: int = 1, precision: str = "bf16-mixed"
+        self, epochs: int = 100, precision: str = "bf16-mixed"
     ) -> Trainer:
         # initialize trainer
         trainer = Trainer(
@@ -89,15 +96,16 @@ class Recipe:
         config = self.load_config(config_name)
         datamodule = self.prepare_datamodule(**config["datamodule"])
         trainer = self.prepare_trainer(**config["trainer"])
-        ckpt_path = self.ckpt_root_dir / (config_name + ".ckpt")
+        ckpt_path = self.ckpt_root_dir / (config_name + ".pt")
         if ckpt_path.exists():
             print(f"Ckeckpoint {ckpt_path} found, loading ckeckpoint")
             model = self.TargetModule(**config["model"])
-            model.load_state_dict(torch.load(ckpt_path, map_location="cpu")["state_dict"])
+            model.load_state_dict(torch.load(ckpt_path, map_location="cpu"))
         else:
             print(f"Ckeckpoint {ckpt_path} is not found. initializing model")
             model = self.TargetModule(**config["model"])
         trainer.fit(model, datamodule)
+        print("Training Complete!")
 
     def preprocess(self, **config):
         raise NotImplemented("preprocess is not implemented!!")
@@ -143,6 +151,6 @@ class Recipe:
             self.train(args.config)
         elif args.command == "preprocess":
             cfg = self.load_config(args.config)
-            self.preprocess(**cfg)
+            self.preprocess(**cfg["preprocess"])
         elif args.command == "setup":
             self.prepare_config_dir()
