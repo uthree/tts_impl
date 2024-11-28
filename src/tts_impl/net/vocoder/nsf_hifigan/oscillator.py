@@ -27,20 +27,27 @@ class HarmonicNoiseOscillator(nn.Module):
             shape=[N, 1, L * frame_size]
         """
         with torch.no_grad():
+            # Interpolate pitch track
             f0 = F.interpolate(f0, scale_factor=self.frame_size, mode="linear")
             voiced_mask = F.interpolate(uv, scale_factor=self.frame_size)
+
+            # Calculate natural number multiple frequencies
             mul = (
                 (torch.arange(self.num_harmonics, device=f0.device) + 1)
                 .unsqueeze(0)
                 .unsqueeze(2)
             )
             fs = f0 * mul
+
+            # Numerical integration, generate sinusoidal harmonics
             integrated = torch.cumsum(fs / self.sample_rate, dim=2)
             rad = 2 * math.pi * ((integrated) % 1)
             noise = torch.randn(
                 rad.shape[0], 1, rad.shape[2], device=rad.device
             ).expand(rad.shape)
             harmonics = torch.sin(rad) * voiced_mask + noise * self.noise_scale
+
+            # switch harmonics / noise with voiced / unvoiced
             voiced_part = harmonics + noise * self.noise_scale
             unvoiced_part = noise * 0.333
             source = voiced_part * voiced_mask + unvoiced_part * (1 - voiced_mask)

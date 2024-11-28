@@ -4,10 +4,14 @@ from typing import List, Literal, Optional
 import numpy as np
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 from torch.nn.utils.parametrizations import weight_norm
 from tts_impl.net.base.vocoder import GanVocoderGenerator
-from tts_impl.net.vocoder.hifigan.generator import ResBlock1, ResBlock2, init_weights
+from tts_impl.net.vocoder.hifigan.generator import (
+    ResBlock1,
+    ResBlock2,
+    init_activation,
+    init_weights,
+)
 from tts_impl.utils.config import derive_config
 
 from .oscillator import HarmonicNoiseOscillator
@@ -26,6 +30,7 @@ class NsfhifiganGenerator(nn.Module, GanVocoderGenerator):
         upsample_rates: List[int] = [8, 8, 2, 2],
         output_channels: int = 1,
         tanh_post_activation: bool = True,
+        activation: str = "lrelu",
         # option for speaker conditioning in TTS task
         gin_channels: int = 0,
         # for source module
@@ -71,6 +76,7 @@ class NsfhifiganGenerator(nn.Module, GanVocoderGenerator):
         self.frame_size = int(np.prod(upsample_rates))
 
         self.ups = nn.ModuleList()
+        self.up_acts = nn.ModuleList()
         self.source_convs = nn.ModuleList()
         self.source_convs.append(
             weight_norm(
@@ -83,10 +89,12 @@ class NsfhifiganGenerator(nn.Module, GanVocoderGenerator):
                 )
             )
         )
+
         for i, (u, k) in enumerate(zip(upsample_rates, upsample_kernel_sizes)):
             c1 = upsample_initial_channels // (2**i)
             c2 = upsample_initial_channels // (2 ** (i + 1))
             pad = (k - u) // 2
+            self.up_acts.append(init_activation(activation))
             self.ups.append(weight_norm(nn.ConvTranspose1d(c1, c2, k, u, pad)))
             prod = int(np.prod(upsample_rates[(i + 1) :]))
             if prod != 1:
@@ -102,6 +110,7 @@ class NsfhifiganGenerator(nn.Module, GanVocoderGenerator):
             for j, (k, d) in enumerate(zip(resblock_kernel_sizes, resblock_dilations)):
                 self.resblocks.append(resblock(ch, k, d))
 
+        self.post_act = init_activation(activation)
         self.conv_post = weight_norm(nn.Conv1d(ch, output_channels, 7, 1, padding=3))
 
         self.source_module = HarmonicNoiseOscillator(
@@ -145,7 +154,7 @@ class NsfhifiganGenerator(nn.Module, GanVocoderGenerator):
 
         for i in range(self.num_upsamples):
             x = self.ups[i](x)
-            x = F.leaky_relu(x, 0.1)
+            x = self.up_acts[i](x)
             x = x + self.source_convs[i + 1](s)
             xs = None
             for j in range(self.num_kernels):
@@ -154,7 +163,7 @@ class NsfhifiganGenerator(nn.Module, GanVocoderGenerator):
                 else:
                     xs += self.resblocks[i * self.num_kernels + j](x)
             x = xs / self.num_kernels
-        x = F.leaky_relu(x, 0.1)
+        x = self.post_act(x)
         x = self.conv_post(x)
         if self.tanh_post_activation:
             x = torch.tanh(x)

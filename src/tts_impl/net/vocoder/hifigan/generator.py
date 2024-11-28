@@ -24,13 +24,32 @@ def init_weights(m, mean=0.0, std=0.01):
         m.weight.data.normal_(mean, std)
 
 
+def init_activation(name: str = "lrelu"):
+    if name == "lrelu":
+        return nn.LeakyReLU(LRELU_SLOPE)
+    elif name == "silu":
+        return nn.SiLU()
+    elif name == "gelu":
+        return nn.GELU()
+    else:
+        raise ValueError(
+            'Invalid activation name. available: ["lrelu", "silu", "gelu"]'
+        )
+
+
 class ResBlock1(nn.Module):
     def __init__(
-        self, channels: int, kernel_size: int = 3, dilations: List[int] = [1, 3, 5]
+        self,
+        channels: int,
+        kernel_size: int = 3,
+        dilations: List[int] = [1, 3, 5],
+        activation: str = "lrelu",
     ):
         super().__init__()
         self.convs1 = nn.ModuleList()
+        self.acts1 = nn.ModuleList()
         self.convs2 = nn.ModuleList()
+        self.acts2 = nn.ModuleList()
         for d in dilations:
             self.convs1.append(
                 weight_norm(
@@ -44,6 +63,7 @@ class ResBlock1(nn.Module):
                     )
                 )
             )
+            self.acts1.append(init_activation(activation))
             self.convs2.append(
                 weight_norm(
                     nn.Conv1d(
@@ -56,12 +76,13 @@ class ResBlock1(nn.Module):
                     )
                 )
             )
+            self.acts2.append(init_activation(activation))
 
     def forward(self, x):
-        for c1, c2 in zip(self.convs1, self.convs2):
-            xt = F.leaky_relu(x, LRELU_SLOPE)
+        for c1, c2, a1, a2 in zip(self.convs1, self.convs2, self.acts1, self.acts2):
+            xt = a1(x)
             xt = c1(xt)
-            xt = F.leaky_relu(xt, LRELU_SLOPE)
+            xt = a2(xt)
             xt = c2(xt)
             x = x + xt
         return x
@@ -74,10 +95,15 @@ class ResBlock1(nn.Module):
 
 class ResBlock2(nn.Module):
     def __init__(
-        self, channels: int, kernel_size: int = 3, dilations: List[int] = [1, 3]
+        self,
+        channels: int,
+        kernel_size: int = 3,
+        dilations: List[int] = [1, 3],
+        activation: str = "lrelu",
     ):
         super().__init__()
         self.convs1 = nn.ModuleList()
+        self.acts1 = nn.ModuleList()
         for d in dilations:
             self.convs1.append(
                 weight_norm(
@@ -91,10 +117,11 @@ class ResBlock2(nn.Module):
                     )
                 )
             )
+            self.acts2.append(init_activation(activation))
 
     def forward(self, x):
-        for c1 in self.convs1:
-            xt = F.leaky_relu(x, LRELU_SLOPE)
+        for c1, a1 in zip(self.convs1, self.acts1):
+            xt = a1(x)
             xt = c1(xt)
             x = x + xt
         return x
@@ -122,6 +149,7 @@ class HifiganGenerator(nn.Module, GanVocoderGenerator):
         out_channels: int = 1,
         tanh_post_activation: bool = True,
         gin_channels: int = 0,
+        activation: str = "lrelu",
     ):
         super().__init__()
 
@@ -160,10 +188,12 @@ class HifiganGenerator(nn.Module, GanVocoderGenerator):
             self.conv_cond = None
 
         self.ups = nn.ModuleList()
+        self.up_acts = nn.ModuleList()
         for i, (u, k) in enumerate(zip(upsample_rates, upsample_kernel_sizes)):
             c1 = upsample_initial_channels // (2**i)
             c2 = upsample_initial_channels // (2 ** (i + 1))
             p = (k - u) // 2
+            self.up_acts.append(init_activation(activation))
             self.ups.append(weight_norm(nn.ConvTranspose1d(c1, c2, k, u, p)))
             self.frame_size *= u
 
@@ -173,6 +203,7 @@ class HifiganGenerator(nn.Module, GanVocoderGenerator):
             for j, (k, d) in enumerate(zip(resblock_kernel_sizes, resblock_dilations)):
                 self.resblocks.append(resblock(ch, k, d))
 
+        self.post_act = init_activation(activation)
         self.conv_post = weight_norm(nn.Conv1d(ch, out_channels, 7, 1, padding=3))
 
         self.apply(init_weights)
@@ -193,7 +224,7 @@ class HifiganGenerator(nn.Module, GanVocoderGenerator):
             x = x + self.conv_cond(g)
         for i in range(self.num_upsamples):
             x = self.ups[i](x)
-            x = F.leaky_relu(x, 0.1)
+            x = self.up_acts[i](x)
             xs = None
             for j in range(self.num_kernels):
                 if xs is None:
@@ -201,7 +232,7 @@ class HifiganGenerator(nn.Module, GanVocoderGenerator):
                 else:
                     xs += self.resblocks[i * self.num_kernels + j](x)
             x = xs / self.num_kernels
-        x = F.leaky_relu(x, 0.1)
+        x = self.post_act(x)
         x = self.conv_post(x)
         if self.tanh_post_activation:
             x = torch.tanh(x)

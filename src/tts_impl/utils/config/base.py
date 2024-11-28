@@ -4,6 +4,8 @@ from dataclasses import field, make_dataclass
 from functools import partial
 from typing import Any, Optional
 
+from .arguments import arguments_dataclass_of
+
 """
 激ヤバ黒魔術コード！！！！
 using DARK-SIDE POWER !!!!
@@ -56,32 +58,7 @@ def config_of(cls: type, cls_name: Optional[str] = None) -> type:
     if cls_name is None:
         cls_name = cls.__name__ + "Config"
 
-    signature = inspect.signature(cls.__init__)
-    fields = []
-
-    for param_name, param in signature.parameters.items():
-        # Skip "self"
-        if param_name == "self":
-            continue
-
-        # Handle default value
-        if param.default is not inspect.Parameter.empty:
-            default = field(
-                default_factory=partial(lambda v: deep_copy(v), param.default)
-            )
-        elif param.annotation:
-            default = field(default_factory=lambda: None)
-
-        # Handle type annotation
-        annotation = (
-            param.annotation if param.annotation is not inspect.Parameter.empty else Any
-        )
-
-        # Add to fields
-        fields.append((param_name, annotation, default))
-
-    # Create dataclass
-    config_cls = make_dataclass(cls_name, fields)
+    config_cls = arguments_dataclass_of(cls.__init__, cls_name)
 
     # Implementation
     config_cls.keys = keys

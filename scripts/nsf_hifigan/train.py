@@ -12,7 +12,7 @@ torch.set_float32_matmul_precision("medium")
 
 def run_training(
     cache_dir: str = "dataset_cache",
-    batch_size: int = 2,
+    batch_size: int = 8,
     epochs=100,
 ):
 
@@ -21,7 +21,7 @@ def run_training(
     cfg = Model.default_config()
 
     cfg.discriminator.periods = []
-    cfg.discriminator.scales = [1, 2, 4]
+    cfg.discriminator.scales = [1, 2]
     cfg.discriminator.resolutions = [120, 240, 480]
     cfg.generator.upsample_initial_channels = 256
     cfg.generator.resblock_dilations = [[1, 3, 9]]
@@ -37,7 +37,7 @@ def run_training(
         max_epochs=epochs,
         precision="bf16-mixed",
         callbacks=[RichProgressBar()],
-        log_every_n_steps=25,
+        log_every_n_steps=20,
     )
 
     # run training.

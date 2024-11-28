@@ -10,7 +10,7 @@ from tts_impl.utils.datamodule import AudioDataModule
 torch.set_float32_matmul_precision("medium")
 
 
-from omegaconf import OmegaConf, DictConfig
+from omegaconf import DictConfig, OmegaConf
 
 Model = HifiganLightningModule
 cfg = Model.default_config()

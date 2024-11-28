@@ -6,8 +6,8 @@ from typing import Any, List, Literal, Mapping, Optional, Union
 import lightning
 import torch
 from torch.utils.data import DataLoader, random_split
-from tts_impl.utils.dataset import AudioDataset
 from tts_impl.utils.config import derive_config
+from tts_impl.utils.dataset import AudioDataset
 
 
 @derive_config

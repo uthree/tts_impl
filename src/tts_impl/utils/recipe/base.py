@@ -1,19 +1,21 @@
 import argparse
 import inspect
+from copy import deepcopy
 from dataclasses import asdict
 from pathlib import Path
 from typing import List, Optional
 
 import yaml
-from lightning import LightningModule, Trainer, LightningDataModule
+from lightning import LightningDataModule, LightningModule, Trainer
 from lightning.pytorch.callbacks import ModelCheckpoint, RichProgressBar
+from omegaconf import OmegaConf
 from rich import print
 from rich.table import Column, Table
 from rich_argparse import RichHelpFormatter
-from omegaconf import OmegaConf
+from tts_impl.utils.config import arguments_dataclass_of
 
 
-def build_argparser_for_fn(fn: function):
+def build_argparser_for_fn(fn: callable):
     """
     Generate argument parser automatically
     """
@@ -40,18 +42,104 @@ def build_argparser_for_fn(fn: function):
     return parser
 
 
-default_trainer_config = {
-    "devices": "auto",
-    "max_epochs": None,
-    "max_steps": None,
-    "precision": "32",
-    "log_every_n_steps": 50
-}
-
 class Recipe:
     """
     Recipe(WIP) experimental feature
     """
 
-    def __init__(self, target_module: LightningModule, datamodule: LightningDataModule):
-        pass
+    def __init__(self, target_module: LightningModule, name: Optional[str] = None):
+        self.TargetModule = target_module
+
+        if name is None:
+            self.name = target_module.__name__
+        else:
+            self.name = name
+
+        self.config_root_dir = Path("config") / self.name
+        self.ckpt_root_dir = Path("checkpoint") / self.name
+
+        self.ckpt_name = "model.ckpt"
+
+    def checkopint_callback(self) -> ModelCheckpoint:
+        return ModelCheckpoint(self.ckpt_root_dir / self.ckpt_name)
+
+    def prepare_trainer(
+        self, epochs: int = 1, precision: str = "bf16-mixed"
+    ) -> Trainer:
+        # initialize trainer
+        trainer = Trainer(
+            max_epochs=epochs,
+            precision=precision,
+            callbacks=[RichProgressBar(), self.checkopint_callback()],
+            log_every_n_steps=50,
+        )
+
+        return trainer
+
+    def prepare_datamodule(self) -> LightningDataModule:
+        raise NotImplemented("prepare_datamodule is not implemented!!")
+
+    def load_config(self, config_name: str = "default"):
+        path = self.config_root_dir / (config_name + ".yml")
+        with open(path) as f:
+            return yaml.safe_load(f.read())
+
+    def train(self, config_name: str = "default"):
+        self.ckpt_name = config_name
+        config = self.load_config(config_name)
+        datamodule = self.prepare_datamodule(**config["datamodule"])
+        trainer = self.prepare_trainer(**config["trainer"])
+        ckpt_path = self.ckpt_root_dir / (config_name + ".ckpt")
+        if ckpt_path.exists():
+            self.TargetModule.load_from_checkpoint(ckpt_path)
+        else:
+            model = self.TargetModule(**config["model"])
+        trainer.fit(model, datamodule)
+
+    def preprocess(self, **config):
+        raise NotImplemented("preprocess is not implemented!!")
+
+    def prepare_config_dir(self):
+        config = self.TargetModule.default_config()
+        model_config_dict = asdict(config)
+        datamodule_config_cls = arguments_dataclass_of(
+            getattr(self, "prepare_datamodule")
+        )
+        datamodule_config_dict = asdict(datamodule_config_cls())
+        trainer_config_cls = arguments_dataclass_of(getattr(self, "prepare_trainer"))
+        trainer_config_dict = asdict(trainer_config_cls())
+        preprocess_config_cls = arguments_dataclass_of(getattr(self, "preprocess"))
+        preprocess_config_dict = asdict(preprocess_config_cls())
+
+        config_dict = {
+            "model": model_config_dict,
+            "datamodule": datamodule_config_dict,
+            "trainer": trainer_config_dict,
+            "preprocess": preprocess_config_dict,
+        }
+
+        self.config_root_dir.mkdir(parents=True, exist_ok=True)
+        default_config_path = self.config_root_dir / "default.yml"
+        if not default_config_path.exists():
+            with open(default_config_path, mode="w") as f:
+                yaml.dump(config_dict, f)
+
+    def cli(self):
+        """
+        execute as the command line interface
+        """
+        if self is self.__class__:
+            self.__class__().cli()
+
+        parser = argparse.ArgumentParser(formatter_class=RichHelpFormatter)
+        parser.add_argument("command", choices=["preprocess", "train", "setup"])
+        parser.add_argument("-c", "--config", default="default")
+
+        args = parser.parse_args()
+        if args.command == "train":
+            self.train(args.config)
+        elif args.command == "preprocess":
+            cfg = self.load_config(args.config)
+            self.preprocess(**cfg)
+        elif args.command == "setup":
+            self.prepare_config_dir()

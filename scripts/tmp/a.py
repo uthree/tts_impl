@@ -1,6 +1,7 @@
 import argparse
 import inspect
 
+
 # 任意の関数
 def my_function(name: str, age: int = 25, verbose: bool = False):
     """
@@ -16,13 +17,15 @@ def my_function(name: str, age: int = 25, verbose: bool = False):
     print(f"Name: {name}, Age: {age}")
 
 
-# generate argument parser automatically 
+# generate argument parser automatically
 def parse_args_for_function(func):
     parser = argparse.ArgumentParser(description=func.__doc__)
     sig = inspect.signature(func)
 
     for name, param in sig.parameters.items():
-        arg_type = param.annotation if param.annotation != inspect.Parameter.empty else str
+        arg_type = (
+            param.annotation if param.annotation != inspect.Parameter.empty else str
+        )
         default = param.default
 
         if default == inspect.Parameter.empty:
@@ -30,9 +33,15 @@ def parse_args_for_function(func):
             parser.add_argument(f"{name}", type=arg_type, help=f"{name} (required)")
         else:
             # optional arg.
-            parser.add_argument(f"--{name}", type=arg_type, default=default, help=f"{name} (default: {default})")
+            parser.add_argument(
+                f"--{name}",
+                type=arg_type,
+                default=default,
+                help=f"{name} (default: {default})",
+            )
 
     return parser.parse_args()
+
 
 # コマンドライン引数をパースして関数を呼び出し
 if __name__ == "__main__":
