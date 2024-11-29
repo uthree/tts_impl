@@ -51,8 +51,6 @@ class HifiganLightningModule(L.LightningModule):
         self.lr = lr
         self.betas = betas
 
-        self.save_hyperparameters()
-
     def generator_training_step(self, real: torch.Tensor, fake: torch.Tensor):
         # spectrogram
         spec_real = self.spectrogram(real).detach()
@@ -90,6 +88,34 @@ class HifiganLightningModule(L.LightningModule):
         self.log("train loss/generator adversarial", loss_adv)
         self.log("G", loss_g, prog_bar=True, logger=False)
 
+    def training_step(self, batch):
+        real = batch["waveform"]
+
+        if "acoustic_features" in batch:
+            acoustic_features = batch["acoustic_features"]
+        else:
+            acoustic_features = self.spectrogram(real.sum(1)).detach()
+
+        fake = self.generator(acoustic_features)
+        self.generator_training_step(real, fake)
+        self.discriminator_training_step(real, fake)
+
+    def _test_or_validate_batch(self, batch):
+        real = batch["waveform"]
+
+        if "acoustic_features" in batch:
+            acoustic_features = batch["acoustic_features"]
+        else:
+            acoustic_features = self.spectrogram(real.sum(1)).detach()
+
+        spec_real = self.spectrogram(real).detach()
+        fake = self.generator(acoustic_features)
+        spec_fake = self.spectrogram(fake)
+        loss_mel = F.l1_loss(spec_fake, spec_real)
+        self.log("validation loss/mel spectrogram", loss_mel)
+
+        return loss_mel
+
     def discriminator_training_step(
         self, real: torch.Tensor, fake: torch.Tensor
     ) -> torch.Tensor:
@@ -118,18 +144,6 @@ class HifiganLightningModule(L.LightningModule):
         self.log("train loss/discriminator", loss_d)
         self.log("D", loss_d, prog_bar=True, logger=False)
 
-    def training_step(self, batch):
-        real = batch["waveform"]
-
-        if "acoustic_features" in batch:
-            acoustic_features = batch["acoustic_features"]
-        else:
-            acoustic_features = self.spectrogram(real.sum(1)).detach()
-
-        fake = self.generator(acoustic_features)
-        self.generator_training_step(real, fake)
-        self.discriminator_training_step(real, fake)
-
     def on_train_epoch_end(self):
         sch_g, sch_d = self.lr_schedulers()
         sch_g.step()
@@ -141,22 +155,6 @@ class HifiganLightningModule(L.LightningModule):
 
     def test_step(self, batch):
         return self._test_or_validate_batch(batch)
-
-    def _test_or_validate_batch(self, batch):
-        real = batch["waveform"]
-
-        if "acoustic_features" in batch:
-            acoustic_features = batch["acoustic_features"]
-        else:
-            acoustic_features = self.spectrogram(real.sum(1)).detach()
-
-        spec_real = self.spectrogram(real).detach()
-        fake = self.generator(acoustic_features)
-        spec_fake = self.spectrogram(fake)
-        loss_mel = F.l1_loss(spec_fake, spec_real)
-        self.log("validation loss/mel spectrogram", loss_mel)
-
-        return loss_mel
 
     def configure_optimizers(self):
         opt_g = optim.AdamW(
