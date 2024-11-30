@@ -4,17 +4,19 @@ from typing import List, Literal, Optional
 import torch
 from torch import nn
 from torch.nn import functional as F
-from tts_impl.functional.monotonic_align import maximum_path
 from tts_impl.net.base.tts import (
     VariationalAcousticFeatureEncoder,
     VariationalTextEncoder,
+    Invertible
 )
 from tts_impl.net.vocoder.hifigan.lightning import HifiganGenerator
 from tts_impl.utils.config import derive_config
 
 from . import attentions, commons, modules
+from tts_impl.functional import monotonic_align
 
 
+@derive_config
 class StochasticDurationPredictor(nn.Module):
     def __init__(
         self,
@@ -127,6 +129,7 @@ class StochasticDurationPredictor(nn.Module):
             return logw
 
 
+@derive_config
 class DurationPredictor(nn.Module):
     def __init__(
         self,
@@ -175,17 +178,18 @@ class DurationPredictor(nn.Module):
         return x * x_mask
 
 
+@derive_config
 class TextEncoder(nn.Module, VariationalTextEncoder):
     def __init__(
         self,
-        n_vocab: int,
-        out_channels: int,
-        hidden_channels: int,
-        filter_channels: int,
-        n_heads: int,
-        n_layers: int,
-        kernel_size: int,
-        p_dropout: int,
+        n_vocab: int = 256,
+        out_channels: int = 192,
+        hidden_channels: int = 192,
+        filter_channels: int = 768,
+        n_heads: int = 2,
+        n_layers: int = 6,
+        kernel_size: int = 3,
+        p_dropout: int = 0.1,
         window_size: Optional[int] = 4,
     ):
         super().__init__()
@@ -208,7 +212,7 @@ class TextEncoder(nn.Module, VariationalTextEncoder):
             n_layers,
             kernel_size,
             p_dropout,
-            window_size=window_size,
+            window_size=window_size
         )
         self.proj = nn.Conv1d(hidden_channels, out_channels * 2, 1)
 
@@ -226,7 +230,9 @@ class TextEncoder(nn.Module, VariationalTextEncoder):
         return x, m, logs, x_mask
 
 
-class ResidualCouplingBlock(nn.Module):
+# det ∂f(x)/∂x = 1
+@derive_config
+class ResidualCouplingBlock(nn.Module, Invertible):
     def __init__(
         self,
         channels: int = 192,
@@ -271,6 +277,7 @@ class ResidualCouplingBlock(nn.Module):
         return x
 
 
+@derive_config
 class PosteriorEncoder(nn.Module, VariationalAcousticFeatureEncoder):
     def __init__(
         self,
@@ -311,144 +318,51 @@ class PosteriorEncoder(nn.Module, VariationalAcousticFeatureEncoder):
         m, logs = torch.split(stats, self.out_channels, dim=1)
         z = (m + torch.randn_like(m) * torch.exp(logs)) * x_mask
         return z, m, logs, x_mask
+    
+
+_default_decoder_config = HifiganGenerator.Config()
+_default_decoder_config.in_channels = 192
 
 
+@derive_config
 class VitsGenerator(nn.Module):
     def __init__(
         self,
-        n_vocab: int,
-        spec_channels: int,
-        segment_size: int = 32,
-        inter_channels: int = 192,
-        hidden_channels: int = 192,
-        # Text Encoder
-        filter_channels: int = 768,
-        n_heads: int = 2,
-        n_layers: int = 6,
-        kernel_size: int = 3,
-        p_dropout: float = 0.1,
-        # Hifi-GAN Configuration
-        resblock_type: Literal["1", "2"] = "1",
-        resblock_kernel_sizes: List[int] = [3, 7, 11],
-        resblock_dilations: List[List[int]] = [[1, 3, 5], [1, 3, 5], [1, 3, 5]],
-        upsample_rates: List[int] = [8, 8, 2, 2],
-        upsample_initial_channels: int = 512,
-        upsample_kernel_sizes=[16, 16, 4, 4],
-        # Posterior Encoder
-        posterior_encoder_num_layers: int = 16,
-        posterior_encoder_kernel_size: int = 5,
-        # Normalizing Flow
-        flow_kernel_size: int = 5,
-        flow_num_layers: int = 4,
-        flow_num_blocks: int = 4,
+        posterior_encoder: PosteriorEncoder.Config = PosteriorEncoder.Config(),
+        text_encoder: TextEncoder.Config = TextEncoder.Config(),
+        decoder: HifiganGenerator.Config = _default_decoder_config,
+        flow: ResidualCouplingBlock.Config = ResidualCouplingBlock.Config(),
+        duration_predictor: DurationPredictor.Config = DurationPredictor.Config(),
+        stochastic_duration_predictor: StochasticDurationPredictor.Config = StochasticDurationPredictor.Config(),
         n_speakers: int = 0,
-        gin_channels: int = 192,
-        # Duration Predictor
+        gin_channels: int = 0,
         use_dp: bool = False,
         use_sdp: bool = True,
-        dp_kernel_size: int = 3,
-        sdp_kernel_size: int = 3,
-        dp_filter_size: int = 256,
-        sdp_filter_size: int = 192,
-        sdp_num_flows: int = 4,
-        **kwargs,
+        segment_size: int = 32,
     ):
         super().__init__()
-        self.n_vocab = n_vocab
-        self.spec_channels = spec_channels
-        self.inter_channels = inter_channels
-        self.hidden_channels = hidden_channels
-        self.filter_channels = filter_channels
-        self.n_heads = n_heads
-        self.n_layers = n_layers
-        self.kernel_size = kernel_size
-        self.p_dropout = p_dropout
-        self.resblock_type = resblock_type
-        self.resblock_kernel_sizes = resblock_kernel_sizes
-        self.resblock_dilations = resblock_dilations
-        self.upsample_rates = upsample_rates
-        self.upsample_initial_channels = upsample_initial_channels
-        self.upsample_kernel_sizes = upsample_kernel_sizes
-        self.segment_size = segment_size
         self.n_speakers = n_speakers
         self.gin_channels = gin_channels
+        self.segment_size = segment_size
 
         self.use_sdp = use_sdp
         self.use_dp = use_dp
 
-        self.enc_p = TextEncoder(
-            n_vocab,
-            inter_channels,
-            hidden_channels,
-            filter_channels,
-            n_heads,
-            n_layers,
-            kernel_size,
-            p_dropout,
-        )
-        self.dec = HifiganGenerator(
-            inter_channels,
-            upsample_initial_channels,
-            resblock_type,
-            resblock_kernel_sizes,
-            resblock_dilations,
-            upsample_kernel_sizes,
-            upsample_rates,
-            1,
-            gin_channels,
-        )
-        self.enc_q = PosteriorEncoder(
-            spec_channels,
-            inter_channels,
-            hidden_channels,
-            posterior_encoder_kernel_size,
-            1,
-            posterior_encoder_num_layers,
-            gin_channels=gin_channels,
-        )
-        self.flow = ResidualCouplingBlock(
-            inter_channels,
-            hidden_channels,
-            flow_kernel_size,
-            1,
-            flow_num_layers,
-            flow_num_blocks,
-            gin_channels,
-        )
+        self.enc_p = TextEncoder(**text_encoder)
+        self.dec = HifiganGenerator(**decoder)
+        self.enc_q = PosteriorEncoder(**posterior_encoder)
+        self.flow = ResidualCouplingBlock(**flow)
+        self.dec = HifiganGenerator(**decoder)
 
         if use_sdp:
-            self.sdp = StochasticDurationPredictor(
-                hidden_channels,
-                sdp_filter_size,
-                sdp_kernel_size,
-                0.5,
-                sdp_num_flows,
-                gin_channels=gin_channels,
-            )
+            self.sdp = StochasticDurationPredictor(**stochastic_duration_predictor)
         if use_dp:
-            self.dp = DurationPredictor(
-                hidden_channels,
-                dp_filter_size,
-                dp_kernel_size,
-                0.5,
-                gin_channels=gin_channels,
-            )
+            self.dp = DurationPredictor(**duration_predictor)
 
         if n_speakers > 1:
             self.emb_g = nn.Embedding(n_speakers, gin_channels)
 
-    def forward(self, x, x_lengths, y, y_lengths, sid=None):
-
-        x, m_p, logs_p, x_mask = self.enc_p(x, x_lengths)
-        if self.n_speakers > 0:
-            g = self.emb_g(sid).unsqueeze(-1)  # [b, h, 1]
-        else:
-            g = None
-
-        # encode posterior, flow
-        z, m_q, logs_q, y_mask = self.enc_q(y, y_lengths, g=g)
-        z_p = self.flow(z, y_mask, g=g)
-
+    def maximum_path(self, z_p, m_p, logs_p, x_mask, y_mask):
         # calculate likelihood
         with torch.no_grad():
             # negative cross-entropy
@@ -471,9 +385,22 @@ class VitsGenerator(nn.Module):
             neg_cent = neg_cent.transpose(1, 2)
 
             # Monotonic Alignment Search
-            attn = (
-                maximum_path(neg_cent, attn_mask).transpose(1, 2).unsqueeze(1).detach()
-            )
+            attn = monotonic_align.maximum_path(neg_cent, attn_mask).transpose(1, 2).unsqueeze(1).detach()
+        return attn
+
+    def forward(self, x, x_lengths, y, y_lengths, sid=None):
+
+        x, m_p, logs_p, x_mask = self.enc_p(x, x_lengths)
+        if self.n_speakers > 0:
+            g = self.emb_g(sid).unsqueeze(-1)  # [b, h, 1]
+        else:
+            g = None
+
+        # encode posterior, flow
+        z, m_q, logs_q, y_mask = self.enc_q(y, y_lengths, g=g)
+        z_p = self.flow(z, y_mask, g=g)
+
+        attn = self.maximum_path(z_p, m_p, logs_p, x_mask, y_mask)
 
         # Duration Predictor
         w = attn.sum(2)

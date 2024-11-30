@@ -4,7 +4,7 @@ from dataclasses import field, make_dataclass
 from functools import partial
 from typing import Any, Optional
 
-from .arguments import arguments_dataclass_of
+from .args import arguments_dataclass_of
 
 """
 激ヤバ黒魔術コード！！！！

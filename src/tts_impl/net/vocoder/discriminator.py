@@ -200,7 +200,7 @@ class DiscriminatorR(nn.Module):
     def __init__(
         self,
         resolution: int = 128,
-        channels: int = 32,
+        channels: int = 64,
         num_layers: int = 4,
         use_spectral_norm: bool = False,
         log_scale: bool = True,
