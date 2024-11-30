@@ -35,10 +35,9 @@ class AudioDataModule(lightning.LightningDataModule):
         self.kwargs = kwargs
 
         if num_workers is None:
-            self.num_workers = multiprocessing.cpu_count()
+            self.num_workers = multiprocessing.cpu_count() - 1
         else:
             self.num_workers = num_workers
-
         self.persistent_workers = os.name == "nt"
 
     def setup(self, stage: str):

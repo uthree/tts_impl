@@ -8,6 +8,7 @@ import torch.nn.functional as F
 from torch.nn.utils import spectral_norm
 from torch.nn.utils.parametrizations import weight_norm
 from tts_impl.net.base.vocoder import GanVocoderDiscriminator
+from tts_impl.utils.config import derive_config
 
 
 def get_padding(kernel_size, dilation=1):
@@ -82,7 +83,7 @@ class DiscriminatorP(nn.Module):
 
         for l in self.convs:
             x = l(x)
-            x = F.leaky_relu(x, LRELU_SLOPE)
+            x = F.leaky_relu(x, LRELU_SLOPE, inplace=True)
             fmap.append(x)
         x = self.conv_post(x)
         fmap.append(x)
@@ -125,7 +126,7 @@ class DiscriminatorS(nn.Module):
         x = self.pool(x)
         for l in self.convs:
             x = l(x)
-            x = F.leaky_relu(x, LRELU_SLOPE)
+            x = F.leaky_relu(x, LRELU_SLOPE, inplace=True)
             fmap.append(x)
         x = self.conv_post(x)
         fmap.append(x)
@@ -159,6 +160,7 @@ class CombinedDiscriminator(nn.Module, GanVocoderDiscriminator):
         return logits, fmap
 
 
+@derive_config
 class MultiPeriodDiscriminator(CombinedDiscriminator):
     def __init__(
         self,
@@ -188,6 +190,7 @@ class MultiPeriodDiscriminator(CombinedDiscriminator):
             )
 
 
+@derive_config
 class MultiScaleDiscriminator(CombinedDiscriminator):
     def __init__(self, scales: List[int] = [1, 2, 4]):
         super().__init__()
@@ -240,7 +243,7 @@ class DiscriminatorR(nn.Module):
         return x
 
     def safe_log(self, x):
-        return torch.log(F.relu(x) + 1e-6)
+        return torch.log(F.relu(x, inplace=True) + 1e-6)
 
     def forward(self, x):
         x = self.spectrogram(x)
@@ -248,12 +251,13 @@ class DiscriminatorR(nn.Module):
         feats = []
         for l in self.convs:
             x = l(x)
-            F.leaky_relu(x, 0.1)
+            F.leaky_relu(x, 0.1, inplace=True)
             feats.append(x)
         logit = self.post(x)
         return logit, feats
 
 
+@derive_config
 class MultiResolutionStftDiscriminator(CombinedDiscriminator):
     def __init__(self, resolutions: List[int] = [240, 120, 60]):
         super().__init__()

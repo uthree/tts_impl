@@ -4,6 +4,7 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import List, Optional
 
+import torch
 import yaml
 from lightning import LightningDataModule, LightningModule, Trainer
 from lightning.pytorch.callbacks import ModelCheckpoint, RichProgressBar
@@ -87,7 +88,13 @@ class Recipe:
         with open(path) as f:
             return yaml.safe_load(f.read())
 
+    def _indeterministic_mode(self):
+        if torch.cuda.is_available():
+            torch.backends.cudnn.benchmark = True
+            torch.set_float32_matmul_precision("medium")
+
     def train(self, config_name: str = "default"):
+        self._indeterministic_mode()
         self.ckpt_name = config_name
         config = self.load_config(config_name)
         datamodule = self.prepare_datamodule(**config["datamodule"])

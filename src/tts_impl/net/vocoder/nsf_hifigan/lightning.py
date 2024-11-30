@@ -87,7 +87,7 @@ class NsfhifiganLightningModule(LightningModule):
 
         # update parameters
         self.toggle_optimizer(opt_g)
-        opt_g.zero_grad()
+        opt_g.zero_grad(set_to_none=True)
         self.manual_backward(loss_g)
         self.clip_gradients(opt_g, 1.0, "norm")
         opt_g.step()
@@ -134,6 +134,7 @@ class NsfhifiganLightningModule(LightningModule):
 
         # update parameters
         self.toggle_optimizer(opt_d)
+        opt_d.zero_grad(set_to_none=True)
         self.manual_backward(loss_d)
         self.clip_gradients(opt_d, 1.0, "norm")
         opt_d.step()

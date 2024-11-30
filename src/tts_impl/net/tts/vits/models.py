@@ -4,16 +4,16 @@ from typing import List, Literal, Optional
 import torch
 from torch import nn
 from torch.nn import functional as F
+from tts_impl.functional import monotonic_align
 from tts_impl.net.base.tts import (
+    Invertible,
     VariationalAcousticFeatureEncoder,
     VariationalTextEncoder,
-    Invertible
 )
 from tts_impl.net.vocoder.hifigan.lightning import HifiganGenerator
 from tts_impl.utils.config import derive_config
 
 from . import attentions, commons, modules
-from tts_impl.functional import monotonic_align
 
 
 @derive_config
@@ -212,7 +212,7 @@ class TextEncoder(nn.Module, VariationalTextEncoder):
             n_layers,
             kernel_size,
             p_dropout,
-            window_size=window_size
+            window_size=window_size,
         )
         self.proj = nn.Conv1d(hidden_channels, out_channels * 2, 1)
 
@@ -318,7 +318,7 @@ class PosteriorEncoder(nn.Module, VariationalAcousticFeatureEncoder):
         m, logs = torch.split(stats, self.out_channels, dim=1)
         z = (m + torch.randn_like(m) * torch.exp(logs)) * x_mask
         return z, m, logs, x_mask
-    
+
 
 _default_decoder_config = HifiganGenerator.Config()
 _default_decoder_config.in_channels = 192
@@ -385,7 +385,12 @@ class VitsGenerator(nn.Module):
             neg_cent = neg_cent.transpose(1, 2)
 
             # Monotonic Alignment Search
-            attn = monotonic_align.maximum_path(neg_cent, attn_mask).transpose(1, 2).unsqueeze(1).detach()
+            attn = (
+                monotonic_align.maximum_path(neg_cent, attn_mask)
+                .transpose(1, 2)
+                .unsqueeze(1)
+                .detach()
+            )
         return attn
 
     def forward(self, x, x_lengths, y, y_lengths, sid=None):

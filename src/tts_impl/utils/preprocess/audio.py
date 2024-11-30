@@ -2,17 +2,13 @@ import json
 import logging
 import os
 import shutil
-from logging import Logger
 from pathlib import Path
 from typing import Any, List, Literal, Optional, Union
 
 import torch
 import torchaudio
-from rich.console import Console
-from rich.logging import RichHandler
-from rich.progress import Progress, track
+from rich.progress import track
 from torchaudio.functional import resample
-from tqdm import tqdm
 from tts_impl.functional import adjust_size, estimate_f0
 
 from .base import CacheWriter, DataCollector, Extractor, FunctionalExtractor
@@ -48,7 +44,7 @@ class AudioDataCollector(DataCollector):
             for path in self.target.glob(f"**/*.{fmt}"):
                 audio_file_paths.append(path)
 
-        # yield loop with tqdm progress bar
+        # yield loop with progress bar
         self.logger.info(f"collecting from {self.target}")
         for path in track(audio_file_paths, console=self.console):
             wf, orig_sr = torchaudio.load(path)
@@ -90,6 +86,7 @@ class AudioCacheWriter(CacheWriter):
         self.format = format
         self.max_files_per_dir = max_files_per_dir
         self.delete_old_cache = delete_old_cache
+
         self.counter = 0
         self.dir_counter = 0
         self.sample_rate = None
