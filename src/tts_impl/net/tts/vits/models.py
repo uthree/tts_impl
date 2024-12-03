@@ -7,9 +7,11 @@ from torch.nn import functional as F
 from tts_impl.functional import monotonic_align
 from tts_impl.net.base.tts import (
     Invertible,
+    LengthRegurator,
     VariationalAcousticFeatureEncoder,
     VariationalTextEncoder,
 )
+from tts_impl.net.tts.length_regurator import DuplicateByDuration
 from tts_impl.net.vocoder.hifigan.lightning import HifiganGenerator
 from tts_impl.utils.config import derive_config
 
@@ -191,6 +193,7 @@ class TextEncoder(nn.Module, VariationalTextEncoder):
         kernel_size: int = 3,
         p_dropout: int = 0.1,
         window_size: Optional[int] = 4,
+        gin_channels: int = 0,
     ):
         super().__init__()
         self.n_vocab = n_vocab
@@ -201,9 +204,13 @@ class TextEncoder(nn.Module, VariationalTextEncoder):
         self.n_layers = n_layers
         self.kernel_size = kernel_size
         self.p_dropout = p_dropout
+        self.take_condition = gin_channels > 0
 
         self.emb = nn.Embedding(n_vocab, hidden_channels)
         nn.init.normal_(self.emb.weight, 0.0, hidden_channels**-0.5)
+
+        if self.take_condition:
+            self.cond = nn.Linear(gin_channels, hidden_channels)
 
         self.encoder = attentions.Encoder(
             hidden_channels,
@@ -216,8 +223,12 @@ class TextEncoder(nn.Module, VariationalTextEncoder):
         )
         self.proj = nn.Conv1d(hidden_channels, out_channels * 2, 1)
 
-    def forward(self, x, x_lengths):
+    def forward(self, x, x_lengths, g=None):
         x = self.emb(x) * math.sqrt(self.hidden_channels)  # [b, t, h]
+
+        if g is not None and self.take_condition:
+            x += self.cond(g)
+
         x = torch.transpose(x, 1, -1)  # [b, h, t]
         x_mask = torch.unsqueeze(commons.sequence_mask(x_lengths, x.size(2)), 1).to(
             x.dtype
@@ -353,6 +364,7 @@ class VitsGenerator(nn.Module):
         self.enc_q = PosteriorEncoder(**posterior_encoder)
         self.flow = ResidualCouplingBlock(**flow)
         self.dec = HifiganGenerator(**decoder)
+        self.lr = DuplicateByDuration()
 
         if use_sdp:
             self.sdp = StochasticDurationPredictor(**stochastic_duration_predictor)
@@ -394,12 +406,13 @@ class VitsGenerator(nn.Module):
         return attn
 
     def forward(self, x, x_lengths, y, y_lengths, sid=None):
-
-        x, m_p, logs_p, x_mask = self.enc_p(x, x_lengths)
         if self.n_speakers > 0:
             g = self.emb_g(sid).unsqueeze(-1)  # [b, h, 1]
         else:
             g = None
+
+        # encode prior
+        x, m_p, logs_p, x_mask = self.enc_p(x, x_lengths, g=g)
 
         # encode posterior, flow
         z, m_q, logs_q, y_mask = self.enc_q(y, y_lengths, g=g)
@@ -424,8 +437,8 @@ class VitsGenerator(nn.Module):
             l_length_all += l_length
 
         # expand prior
-        m_p = torch.matmul(attn.squeeze(1), m_p.transpose(1, 2)).transpose(1, 2)
-        logs_p = torch.matmul(attn.squeeze(1), logs_p.transpose(1, 2)).transpose(1, 2)
+        m_p = self.lr(m_p, w, x_mask, y_mask)
+        logs_p = self.lr(logs_p, w, x_mask, y_mask)
 
         z_slice, ids_slice = commons.rand_slice_segments(
             z, y_lengths, self.segment_size
@@ -469,21 +482,15 @@ class VitsGenerator(nn.Module):
         y_mask = torch.unsqueeze(commons.sequence_mask(y_lengths, None), 1).to(
             x_mask.dtype
         )
-        attn_mask = torch.unsqueeze(x_mask, 2) * torch.unsqueeze(y_mask, -1)
-        attn = commons.generate_path(w_ceil, attn_mask)
 
         # expand prior
-        m_p = torch.matmul(attn.squeeze(1), m_p.transpose(1, 2)).transpose(
-            1, 2
-        )  # [b, t', t], [b, t, d] -> [b, d, t']
-        logs_p = torch.matmul(attn.squeeze(1), logs_p.transpose(1, 2)).transpose(
-            1, 2
-        )  # [b, t', t], [b, t, d] -> [b, d, t']
+        m_p = self.lr(m_p, w, x_mask, y_mask)
+        logs_p = self.lr(logs_p, w, x_mask, y_mask)
 
         z_p = m_p + torch.randn_like(m_p) * torch.exp(logs_p) * noise_scale
         z = self.flow(z_p, y_mask, g=g, reverse=True)
         o = self.dec((z * y_mask)[:, :, :max_len], g=g)
-        return o, attn, y_mask, (z, z_p, m_p, logs_p)
+        return o
 
     def voice_conversion(self, y, y_lengths, sid_src, sid_tgt):
         assert self.n_speakers > 0, "n_speakers have to be larger than 0."

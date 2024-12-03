@@ -10,7 +10,8 @@ from tts_impl.net.vocoder.discriminator import (
 from tts_impl.utils.config import derive_config
 
 _mrsd_default = MultiResolutionStftDiscriminator.Config()
-_mrsd_default.resolutions = []
+_mrsd_default.hop_size = []
+_mrsd_default.n_fft = []
 
 
 @derive_config

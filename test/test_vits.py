@@ -11,4 +11,4 @@ def test_vits_generator():
     y = torch.randn(1, 80, 80)
     y_lengths = torch.IntTensor([80])
     G.forward(x, x_lengths, y, y_lengths)
-    o, attn, y_mask, (z, z_p, m_p, logs_p) = G.infer(x, x_lengths)
+    o = G.infer(x, x_lengths)

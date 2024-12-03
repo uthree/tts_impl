@@ -3,22 +3,35 @@ import math
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torch.nn.utils.parametrizations import weight_norm
 from tts_impl.utils.config import derive_config
 
 
 # HnNSF Module from https://arxiv.org/pdf/1904.12088
 @derive_config
 class HarmonicNoiseOscillator(nn.Module):
-    def __init__(self, sample_rate, frame_size, num_harmonics=8, noise_scale=0.03):
+    def __init__(
+        self,
+        sample_rate: int = 22050,
+        frame_size: int = 256,
+        num_harmonics=8,
+        noise_scale=0.03,
+        gin_channels: int = 0,
+    ):
         super().__init__()
         self.sample_rate = sample_rate
         self.frame_size = frame_size
         self.num_harmonics = num_harmonics
         self.noise_scale = noise_scale
 
-        self.weights = nn.Parameter(torch.ones(1, num_harmonics, 1))
+        if gin_channels > 0:
+            self.take_condition = True
+            self.cond = weight_norm(nn.Conv1d(gin_channels, num_harmonics, 1))
+        else:
+            self.take_condition = False
+            self.weights = nn.Parameter(torch.zeros(1, num_harmonics, 1))
 
-    def forward(self, f0, uv):
+    def forward(self, f0, uv, g=None, **kwargs):
         """
         Args:
             f0: fundamental frequency shape=[N, 1, L]
@@ -26,6 +39,7 @@ class HarmonicNoiseOscillator(nn.Module):
         Output
             shape=[N, 1, L * frame_size]
         """
+
         with torch.no_grad():
             # Interpolate pitch track
             f0 = F.interpolate(f0, scale_factor=self.frame_size, mode="linear")
@@ -51,7 +65,13 @@ class HarmonicNoiseOscillator(nn.Module):
             voiced_part = harmonics + noise * self.noise_scale
             unvoiced_part = noise * 0.333
             source = voiced_part * voiced_mask + unvoiced_part * (1 - voiced_mask)
-        source = (source * F.normalize(self.weights, dim=1)).sum(dim=1, keepdim=True)
+
+        if self.take_condition and g is not None:
+            w = F.normalize(torch.exp(self.cond(g)), dim=1)
+        else:
+            w = F.normalize(torch.exp(self.weights), dim=1)
+
+        source = (source * w).sum(dim=1, keepdim=True)
         source = torch.tanh(source)
         return source
 
@@ -60,14 +80,14 @@ class HarmonicNoiseOscillator(nn.Module):
 class ImpulseOscillator(nn.Module):
     def __init__(
         self,
-        sample_rate,
-        frame_size,
+        sample_rate: int = 22050,
+        frame_size: int = 256,
     ):
         super().__init__()
         self.sample_rate = sample_rate
         self.frame_size = frame_size
 
-    def forward(self, f0, uv):
+    def forward(self, f0, uv, **kwargs):
         """
         Args:
             f0: fundamental frequency shape=[N, 1, L]
@@ -89,7 +109,13 @@ class ImpulseOscillator(nn.Module):
 # Cyclic noise oscillator from https://arxiv.org/abs/2004.02191
 @derive_config
 class CyclicNoiseOscillator(nn.Module):
-    def __init__(self, sample_rate, frame_size, base_frequency=440.0, beta=0.78):
+    def __init__(
+        self,
+        sample_rate: int = 22050,
+        frame_size: int = 256,
+        base_frequency: float = 440.0,
+        beta: float = 0.78,
+    ):
         super().__init__()
         self.sample_rate = sample_rate
         self.frame_size = frame_size
@@ -106,7 +132,7 @@ class CyclicNoiseOscillator(nn.Module):
         kernel = noise * decay
         return kernel
 
-    def forward(self, f0, uv):
+    def forward(self, f0, uv, **kwargs):
         """
         Args:
             f0: fundamental frequency shape=[N, 1, L]

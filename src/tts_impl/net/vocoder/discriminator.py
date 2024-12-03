@@ -202,8 +202,9 @@ class MultiScaleDiscriminator(CombinedDiscriminator):
 class DiscriminatorR(nn.Module):
     def __init__(
         self,
-        resolution: int = 128,
-        channels: int = 64,
+        n_fft=1024,
+        hop_size: int = 128,
+        channels: int = 32,
         num_layers: int = 4,
         use_spectral_norm: bool = False,
         log_scale: bool = True,
@@ -219,13 +220,13 @@ class DiscriminatorR(nn.Module):
             else nn.utils.parametrizations.weight_norm
         )
         self.convs = nn.ModuleList(
-            [norm_f(nn.Conv2d(1, channels, (7, 3), (1, 1), (3, 1)))]
+            [norm_f(nn.Conv2d(1, channels, (9, 3), (1, 1), (3, 1)))]
         )
-        self.hop_size = resolution
-        self.n_fft = resolution * 4
+        self.hop_size = n_fft
+        self.n_fft = hop_size * 4
         for _ in range(num_layers):
             self.convs.append(
-                norm_f(nn.Conv2d(channels, channels, (7, 3), (2, 1), (2, 1)))
+                norm_f(nn.Conv2d(channels, channels, (9, 3), (2, 1), (2, 1)))
             )
         self.post = nn.Conv2d(channels, 1, 1)
 
@@ -259,10 +260,16 @@ class DiscriminatorR(nn.Module):
 
 @derive_config
 class MultiResolutionStftDiscriminator(CombinedDiscriminator):
-    def __init__(self, resolutions: List[int] = [240, 120, 60]):
+    def __init__(
+        self,
+        n_fft: List[int] = [50, 120, 240],
+        hop_size: List[int] = [240, 600, 1200],
+        channels: int = 32,
+        num_layers: int = 4,
+    ):
         super().__init__()
-        for r in resolutions:
-            self.discriminators.append(DiscriminatorR(r))
+        for n, h in zip(n_fft, hop_size):
+            self.discriminators.append(DiscriminatorR(n, h, channels, num_layers))
 
 
 __all__ = [

@@ -152,7 +152,7 @@ class NsfhifiganLightningModule(LightningModule):
         sch_g, sch_d = self.lr_schedulers()
         sch_g.step()
         sch_d.step()
-        self.log("scheduler/learning Rate", sch_g.get_last_lr()[0])
+        self.log("scheduler/learning rate", sch_g.get_last_lr()[0])
 
     def validation_step(self, batch):
         return self._test_or_validate_batch(batch)

@@ -144,7 +144,6 @@ class HifiganGenerator(nn.Module, GanVocoderGenerator):
         resblock_type: str = "1",
         resblock_kernel_sizes: List[int] = [3, 7, 11],
         resblock_dilations: List[List[int]] = [[1, 3, 5], [1, 3, 5], [1, 3, 5]],
-        upsample_kernel_sizes: List[int] = [16, 16, 4, 4],
         upsample_rates: List[int] = [8, 8, 2, 2],
         out_channels: int = 1,
         tanh_post_activation: bool = True,
@@ -162,7 +161,6 @@ class HifiganGenerator(nn.Module, GanVocoderGenerator):
         self.resblock_type = resblock_type
         self.resblock_kernel_sizes = resblock_kernel_sizes
         self.resblock_dilations = resblock_dilations
-        self.upsample_kernel_sizes = upsample_kernel_sizes
         self.upsample_rates = upsample_rates
         self.out_channels = out_channels
         self.tanh_post_activation = tanh_post_activation
@@ -189,10 +187,11 @@ class HifiganGenerator(nn.Module, GanVocoderGenerator):
 
         self.ups = nn.ModuleList()
         self.up_acts = nn.ModuleList()
-        for i, (u, k) in enumerate(zip(upsample_rates, upsample_kernel_sizes)):
+        for i, u in enumerate(upsample_rates):
             c1 = upsample_initial_channels // (2**i)
             c2 = upsample_initial_channels // (2 ** (i + 1))
-            p = (k - u) // 2
+            p = u // 2
+            k = u * 2
             self.up_acts.append(init_activation(activation))
             self.ups.append(weight_norm(nn.ConvTranspose1d(c1, c2, k, u, p)))
             self.frame_size *= u

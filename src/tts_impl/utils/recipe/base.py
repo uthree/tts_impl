@@ -155,4 +155,6 @@ class Recipe:
             cfg = self.load_config(args.config)
             self.preprocess(**cfg["preprocess"])
         elif args.command == "setup":
+            print("Setting up configuration dir ...")
             self.prepare_config_dir()
+            print("Complete.")
