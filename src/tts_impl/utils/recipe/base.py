@@ -8,6 +8,7 @@ import torch
 import yaml
 from lightning import LightningDataModule, LightningModule, Trainer
 from lightning.pytorch.callbacks import ModelCheckpoint, RichProgressBar
+from omegaconf import OmegaConf
 from rich import print
 from rich_argparse import RichHelpFormatter
 from tts_impl.utils.config import arguments_dataclass_of
@@ -85,8 +86,7 @@ class Recipe:
 
     def load_config(self, config_name: str = "default"):
         path = self.config_root_dir / (config_name + ".yml")
-        with open(path) as f:
-            return yaml.safe_load(f.read())
+        return OmegaConf.load(path)
 
     def _indeterministic_mode(self):
         if torch.cuda.is_available():
@@ -112,7 +112,7 @@ class Recipe:
     def preprocess(self, **config):
         raise NotImplemented("preprocess is not implemented!!")
 
-    def prepare_config_dir(self):
+    def prepare_config_dir(self, config_name):
         config = self.TargetModule.default_config()
         model_config_dict = asdict(config)
         datamodule_config_cls = arguments_dataclass_of(
@@ -132,10 +132,9 @@ class Recipe:
         }
 
         self.config_root_dir.mkdir(parents=True, exist_ok=True)
-        default_config_path = self.config_root_dir / "default.yml"
+        default_config_path = self.config_root_dir / (config_name + ".yml")
         if not default_config_path.exists():
-            with open(default_config_path, mode="w") as f:
-                yaml.dump(config_dict, f)
+            OmegaConf.save(config_dict, default_config_path)
 
     def cli(self):
         """
@@ -156,5 +155,5 @@ class Recipe:
             self.preprocess(**cfg["preprocess"])
         elif args.command == "setup":
             print("Setting up configuration dir ...")
-            self.prepare_config_dir()
+            self.prepare_config_dir(args.config)
             print("Complete.")

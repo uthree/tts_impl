@@ -255,6 +255,7 @@ class DiscriminatorR(nn.Module):
             F.leaky_relu(x, 0.1, inplace=True)
             feats.append(x)
         logit = self.post(x)
+        feats.append(x)
         return logit, feats
 
 
@@ -262,8 +263,8 @@ class DiscriminatorR(nn.Module):
 class MultiResolutionStftDiscriminator(CombinedDiscriminator):
     def __init__(
         self,
-        n_fft: List[int] = [50, 120, 240],
-        hop_size: List[int] = [240, 600, 1200],
+        n_fft: List[int] = [240, 600, 1200],
+        hop_size: List[int] = [50, 120, 240],
         channels: int = 32,
         num_layers: int = 4,
     ):

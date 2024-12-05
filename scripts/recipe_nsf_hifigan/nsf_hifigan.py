@@ -32,7 +32,7 @@ class NsfHifigan(Recipe):
         preprocess.run()
 
     def prepare_datamodule(
-        self, root_dir: str = "dataset_cache", batch_size: int = 4
+        self, root_dir: str = "dataset_cache", batch_size: int = 16
     ) -> LightningDataModule:
         datamodule = AudioDataModule(
             root=root_dir, batch_size=batch_size, num_workers=1

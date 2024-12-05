@@ -3,7 +3,6 @@ import math
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.nn.utils.parametrizations import weight_norm
 from tts_impl.utils.config import derive_config
 
 
@@ -15,21 +14,23 @@ class HarmonicNoiseOscillator(nn.Module):
         sample_rate: int = 22050,
         frame_size: int = 256,
         num_harmonics=8,
-        noise_scale=0.03,
+        noise_scale=0.1,
         gin_channels: int = 0,
+        normalize_amps: bool = True,
     ):
         super().__init__()
         self.sample_rate = sample_rate
         self.frame_size = frame_size
         self.num_harmonics = num_harmonics
         self.noise_scale = noise_scale
+        self.normalize_amps = normalize_amps
 
         if gin_channels > 0:
             self.take_condition = True
-            self.cond = weight_norm(nn.Conv1d(gin_channels, num_harmonics, 1))
+            self.cond = nn.Conv1d(gin_channels, num_harmonics, 1)
         else:
             self.take_condition = False
-            self.weights = nn.Parameter(torch.zeros(1, num_harmonics, 1))
+            self.weight = nn.Parameter(torch.zeros(1, num_harmonics, 1))
 
     def forward(self, f0, uv, g=None, **kwargs):
         """
@@ -43,7 +44,7 @@ class HarmonicNoiseOscillator(nn.Module):
         with torch.no_grad():
             # Interpolate pitch track
             f0 = F.interpolate(f0, scale_factor=self.frame_size, mode="linear")
-            voiced_mask = F.interpolate(uv, scale_factor=self.frame_size)
+            voiced_mask = F.interpolate(uv, scale_factor=self.frame_size, mode="linear")
 
             # Calculate natural number multiple frequencies
             mul = (
@@ -54,22 +55,28 @@ class HarmonicNoiseOscillator(nn.Module):
             fs = f0 * mul
 
             # Numerical integration, generate sinusoidal harmonics
+            fs_mask = fs < (self.sample_rate / 2)
             integrated = torch.cumsum(fs / self.sample_rate, dim=2)
             rad = 2 * math.pi * ((integrated) % 1)
             noise = torch.randn(
                 rad.shape[0], 1, rad.shape[2], device=rad.device
             ).expand(rad.shape)
-            harmonics = torch.sin(rad) * voiced_mask + noise * self.noise_scale
+            harmonics = (
+                torch.sin(rad) * fs_mask * voiced_mask + noise * self.noise_scale
+            )
 
-            # switch harmonics / noise with voiced / unvoiced
+            # switch v/uv.
             voiced_part = harmonics + noise * self.noise_scale
             unvoiced_part = noise * 0.333
             source = voiced_part * voiced_mask + unvoiced_part * (1 - voiced_mask)
 
         if self.take_condition and g is not None:
-            w = F.normalize(torch.exp(self.cond(g)), dim=1)
+            w = torch.exp(self.cond(g))
         else:
-            w = F.normalize(torch.exp(self.weights), dim=1)
+            w = torch.exp(self.weight)
+
+        if self.normalize_amps:
+            w = F.normalize(w, dim=1)
 
         source = (source * w).sum(dim=1, keepdim=True)
         source = torch.tanh(source)

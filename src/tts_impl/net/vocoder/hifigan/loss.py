@@ -5,11 +5,14 @@ import torch
 
 def feature_loss(fmap_r, fmap_g):
     loss = 0
+    losses = []
     for dr, dg in zip(fmap_r, fmap_g):
         for rl, gl in zip(dr, dg):
-            loss += torch.mean(torch.abs(rl - gl))
+            l = torch.mean(torch.abs(rl - gl))
+            loss += l
+            losses.append(l.item() * 2)
 
-    return loss * 2
+    return loss * 2, losses
 
 
 def discriminator_loss(disc_real_outputs, disc_generated_outputs):

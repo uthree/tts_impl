@@ -63,7 +63,7 @@ class HifiganLightningModule(L.LightningModule):
         logits, fmap_fake = self.discriminator(fake)
         _, fmap_real = self.discriminator(real)
         loss_adv, loss_adv_list = generator_loss(logits)
-        loss_feat = feature_loss(fmap_real, fmap_fake)
+        loss_feat, loss_feat_list = feature_loss(fmap_real, fmap_fake)
         loss_mel = F.l1_loss(spec_fake, spec_real)
         loss_g = (
             loss_mel * self.weight_mel
@@ -82,6 +82,8 @@ class HifiganLightningModule(L.LightningModule):
         # logs
         for i, l in enumerate(loss_adv_list):
             self.log(f"generator adversarial/{i}", l)
+        for i, l in enumerate(loss_feat_list):
+            self.log(f"feature matching/{i}", l)
         self.log("train loss/generator total", loss_g)
         self.log("train loss/mel spectrogram", loss_mel)
         self.log("train loss/feature matching", loss_feat)

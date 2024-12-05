@@ -20,6 +20,7 @@ class Encoder(nn.Module):
         kernel_size=1,
         p_dropout=0.0,
         window_size=4,
+        use_cosine_attn=False,
         **kwargs,
     ):
         super().__init__()
@@ -44,6 +45,7 @@ class Encoder(nn.Module):
                     n_heads,
                     p_dropout=p_dropout,
                     window_size=window_size,
+                    use_cosine=use_cosine_attn,
                 )
             )
             self.norm_layers_1.append(LayerNorm(hidden_channels))
@@ -171,6 +173,7 @@ class MultiHeadAttention(nn.Module):
         block_length=None,
         proximal_bias=False,
         proximal_init=False,
+        use_cosine=False,
     ):
         super().__init__()
         assert channels % n_heads == 0
@@ -184,6 +187,7 @@ class MultiHeadAttention(nn.Module):
         self.block_length = block_length
         self.proximal_bias = proximal_bias
         self.proximal_init = proximal_init
+        self.use_cosine = use_cosine
         self.attn = None
 
         self.k_channels = channels // n_heads
@@ -229,6 +233,10 @@ class MultiHeadAttention(nn.Module):
         query = query.view(b, self.n_heads, self.k_channels, t_t).transpose(2, 3)
         key = key.view(b, self.n_heads, self.k_channels, t_s).transpose(2, 3)
         value = value.view(b, self.n_heads, self.k_channels, t_s).transpose(2, 3)
+
+        if self.use_cosine:
+            query = F.normalize(query, dim=2, p=2.0)
+            key = F.normalize(key, dim=2, p=2.0)
 
         scores = torch.matmul(query / math.sqrt(self.k_channels), key.transpose(-2, -1))
         if self.window_size is not None:
@@ -367,7 +375,7 @@ class FFN(nn.Module):
         filter_channels,
         kernel_size,
         p_dropout=0.0,
-        activation=None,
+        activation="relu",
         causal=False,
     ):
         super().__init__()
@@ -392,6 +400,8 @@ class FFN(nn.Module):
         x = self.conv_1(self.padding(x * x_mask))
         if self.activation == "gelu":
             x = F.gelu(x)
+        elif self.activation == "silu":
+            x = F.silu(x)
         else:
             x = F.relu(x)
         x = self.drop(x)

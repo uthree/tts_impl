@@ -193,6 +193,7 @@ class TextEncoder(nn.Module, VariationalTextEncoder):
         kernel_size: int = 3,
         p_dropout: int = 0.1,
         window_size: Optional[int] = 4,
+        use_cosine_attn: bool = False,
         gin_channels: int = 0,
     ):
         super().__init__()
@@ -220,6 +221,7 @@ class TextEncoder(nn.Module, VariationalTextEncoder):
             kernel_size,
             p_dropout,
             window_size=window_size,
+            use_cosine_attn=use_cosine_attn,
         )
         self.proj = nn.Conv1d(hidden_channels, out_channels * 2, 1)
 
@@ -350,6 +352,7 @@ class VitsGenerator(nn.Module):
         use_dp: bool = False,
         use_sdp: bool = True,
         segment_size: int = 32,
+        mas_noise: float = 0.0,
     ):
         super().__init__()
         self.n_speakers = n_speakers
@@ -358,6 +361,8 @@ class VitsGenerator(nn.Module):
 
         self.use_sdp = use_sdp
         self.use_dp = use_dp
+
+        self.mas_noise = mas_noise
 
         self.enc_p = TextEncoder(**text_encoder)
         self.dec = HifiganGenerator(**decoder)
@@ -396,6 +401,10 @@ class VitsGenerator(nn.Module):
             attn_mask = attn_mask.squeeze(1).transpose(1, 2)
             neg_cent = neg_cent.transpose(1, 2)
 
+            # with noise
+            eps = torch.randn_like(neg_cent) * neg_cent.std()
+            neg_cent += eps * self.mas_noise
+
             # Monotonic Alignment Search
             attn = (
                 monotonic_align.maximum_path(neg_cent, attn_mask)
@@ -405,7 +414,26 @@ class VitsGenerator(nn.Module):
             )
         return attn
 
-    def forward(self, x, x_lengths, y, y_lengths, sid=None):
+    def duration_predictor_loss(self, x, x_mask, w, g=None):
+        # Duration Predictor
+        l_length_all = 0
+        logw_hat = None
+        logw = torch.log(w + 1e-6) * x_mask
+
+        if self.use_sdp:
+            l_length = self.sdp(x, x_mask, w, g=g)
+            l_length = l_length / torch.sum(x_mask)
+            l_length_all += l_length
+
+        if self.use_dp:
+            logw_hat = self.dp(x, x_mask, g=g)
+            l_length = torch.sum((logw - logw_hat) ** 2, [1, 2]) / torch.sum(
+                x_mask
+            )  # for averaging
+            l_length_all += l_length
+        return l_length_all, logw, logw_hat
+
+    def forward(self, x, x_lengths, y, y_lengths, sid=None, w=None):
         if self.n_speakers > 0:
             g = self.emb_g(sid).unsqueeze(-1)  # [b, h, 1]
         else:
@@ -418,36 +446,23 @@ class VitsGenerator(nn.Module):
         z, m_q, logs_q, y_mask = self.enc_q(y, y_lengths, g=g)
         z_p = self.flow(z, y_mask, g=g)
 
-        attn = self.maximum_path(z_p, m_p, logs_p, x_mask, y_mask)
-
-        # Duration Predictor
-        w = attn.sum(2)
-        l_length_all = 0
-        if self.use_sdp:
-            l_length = self.sdp(x, x_mask, w, g=g)
-            l_length = l_length / torch.sum(x_mask)
-            l_length_all += l_length
-
-        if self.use_dp:
-            logw_ = torch.log(w + 1e-6) * x_mask
-            logw = self.dp(x, x_mask, g=g)
-            l_length = torch.sum((logw - logw_) ** 2, [1, 2]) / torch.sum(
-                x_mask
-            )  # for averaging
-            l_length_all += l_length
+        if w is None:
+            attn = self.maximum_path(z_p, m_p, logs_p, x_mask, y_mask)
+            w = attn.sum(2)
+            loss_dur, logw, logw_hat = self.duration_predictor_loss(x, x_mask, w, g=g)
 
         # expand prior
         m_p = self.lr(m_p, w, x_mask, y_mask)
         logs_p = self.lr(logs_p, w, x_mask, y_mask)
 
+        # slice
         z_slice, ids_slice = commons.rand_slice_segments(
             z, y_lengths, self.segment_size
         )
         o = self.dec(z_slice, g=g)
         return (
             o,
-            l_length_all,
-            attn,
+            loss_dur,
             ids_slice,
             x_mask,
             y_mask,
@@ -464,6 +479,7 @@ class VitsGenerator(nn.Module):
         noise_scale_w=1.0,
         max_len=None,
         use_sdp=True,
+        w=None,
     ):
         x, m_p, logs_p, x_mask = self.enc_p(x, x_lengths)
         if self.n_speakers > 0:
@@ -471,12 +487,13 @@ class VitsGenerator(nn.Module):
         else:
             g = None
 
-        if use_sdp:
-            logw = self.sdp(x, x_mask, g=g, reverse=True, noise_scale=noise_scale_w)
-        else:
-            logw = self.dp(x, x_mask, g=g)
+        if w is None:
+            if use_sdp:
+                logw = self.sdp(x, x_mask, g=g, reverse=True, noise_scale=noise_scale_w)
+            else:
+                logw = self.dp(x, x_mask, g=g)
+            w = torch.exp(logw) * x_mask * length_scale
 
-        w = torch.exp(logw) * x_mask * length_scale
         w_ceil = torch.ceil(w)
         y_lengths = torch.clamp_min(torch.sum(w_ceil, [1, 2]), 1).long()
         y_mask = torch.unsqueeze(commons.sequence_mask(y_lengths, None), 1).to(
