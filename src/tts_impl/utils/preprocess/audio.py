@@ -50,7 +50,7 @@ class AudioDataCollector(DataCollector):
             wf, orig_sr = torchaudio.load(path)
             # wf: [C, L]
 
-            # resampe
+            # resample
             if self.sample_rate is not None:
                 sr = orig_sr
                 if orig_sr != self.sample_rate:

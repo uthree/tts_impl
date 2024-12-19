@@ -55,7 +55,7 @@ class HarmonicNoiseOscillator(nn.Module):
             fs = f0 * mul
 
             # Numerical integration, generate sinusoidal harmonics
-            fs_mask = fs < (self.sample_rate / 2)
+            fs_mask = fs < (self.sample_rate / 4.0)
             integrated = torch.cumsum(fs / self.sample_rate, dim=2)
             rad = 2 * math.pi * ((integrated) % 1)
             noise = torch.randn(

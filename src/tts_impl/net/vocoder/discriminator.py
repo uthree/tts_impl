@@ -86,7 +86,7 @@ class DiscriminatorP(nn.Module):
             x = F.leaky_relu(x, LRELU_SLOPE, inplace=True)
             fmap.append(x)
         x = self.conv_post(x)
-        fmap.append(x)
+        # fmap.append(x)
         x = torch.flatten(x, 1, -1)
 
         return x, fmap
@@ -129,7 +129,7 @@ class DiscriminatorS(nn.Module):
             x = F.leaky_relu(x, LRELU_SLOPE, inplace=True)
             fmap.append(x)
         x = self.conv_post(x)
-        fmap.append(x)
+        # fmap.append(x)
         x = torch.flatten(x, 1, -1)
 
         return x, fmap
@@ -255,7 +255,7 @@ class DiscriminatorR(nn.Module):
             F.leaky_relu(x, 0.1, inplace=True)
             feats.append(x)
         logit = self.post(x)
-        feats.append(x)
+        # feats.append(x)
         return logit, feats
 
 
