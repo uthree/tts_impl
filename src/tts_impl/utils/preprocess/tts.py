@@ -25,18 +25,38 @@ class TTSDataCollector(DataCollector):
         self.formats = formats
         self.sample_rate = sample_rate
 
-    def __iter__(self):
+    def __iter__(self) -> Generator[Mapping[str, Any]]:
         subdirs = [d for d in self.target.iterdir() if d.is_dir()]
         for subdir in subdirs:
             generator = self.process_subdir(subdir)
             for data in generator:
                 yield data
 
-    # TODO: add transcription
-    def process_subdir(self, subdir: Path) -> Generator:
+    def process_subdir(self, subdir: Path) -> Generator[Mapping[str, Any]]:
+        """
+        Override as needed.
+        """
         speaker = subdir.name
-        # TODO: write this
-
+        transcriptions_path = subdir / "transcriptions.txt"
+        with open(transcriptions_path) as f:
+            transcriptions = f.read().split("\n")
+        for transciption in transcriptions:
+            transcription = transciption.split(":")
+            if len(transciption) == 2:
+                fname = transcription[0]
+                trans = transcription[1]
+                for fmt in self.formats:
+                    audio_path = subdir / f"{fname}.{fmt}"
+                    if audio_path.exists():
+                        wf, sr = torchaudio.load(audio_path)
+                        data = {
+                            "speaker": speaker,
+                            "waveform": wf,
+                            "sample_rate": sr,
+                            "transcription": trans
+                        }
+                        yield data
+                        break
 
 class TTSCacheWriter(CacheWriter):
     def __init__(
