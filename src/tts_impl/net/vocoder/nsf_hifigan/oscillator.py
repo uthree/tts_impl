@@ -13,10 +13,11 @@ class HarmonicNoiseOscillator(nn.Module):
         self,
         sample_rate: int = 22050,
         frame_size: int = 256,
-        num_harmonics=8,
-        noise_scale=0.1,
+        num_harmonics = 8,
+        noise_scale = 0.1,
         gin_channels: int = 0,
         normalize_amps: bool = True,
+        post_tanh_activation:bool = True,
     ):
         super().__init__()
         self.sample_rate = sample_rate
@@ -24,6 +25,7 @@ class HarmonicNoiseOscillator(nn.Module):
         self.num_harmonics = num_harmonics
         self.noise_scale = noise_scale
         self.normalize_amps = normalize_amps
+        self.post_tanh_activation = post_tanh_activation
 
         if gin_channels > 0:
             self.take_condition = True
@@ -68,18 +70,21 @@ class HarmonicNoiseOscillator(nn.Module):
             # switch v/uv.
             voiced_part = harmonics + noise * self.noise_scale
             unvoiced_part = noise * 0.333
-            source = voiced_part * voiced_mask + unvoiced_part * (1 - voiced_mask)
+
+        # synthesize
+        source = voiced_part * voiced_mask + unvoiced_part * (1 - voiced_mask)
 
         if self.take_condition and g is not None:
-            w = torch.exp(self.cond(g))
+            w = F.softplus(self.cond(g))
         else:
-            w = torch.exp(self.weight)
+            w = F.softplus(self.weight)
 
         if self.normalize_amps:
             w = F.normalize(w, dim=1)
 
         source = (source * w).sum(dim=1, keepdim=True)
-        source = torch.tanh(source)
+        if self.post_tanh_activation:
+            source = torch.tanh(source)
         return source
 
 

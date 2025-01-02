@@ -18,7 +18,8 @@ class LayerNorm1d(nn.Module):
         x = F.layer_norm(
             x.transpose(1, 2), (self.channels,), self.gamma, self.beta, self.eps
         )
-        return x.mT
+        x = x.transpose(1, 2)
+        return x
 
 
 # Global Resnponse Normalization for 1d Sequence (shape=[BatchSize, Channels, Length])

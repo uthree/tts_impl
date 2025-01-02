@@ -25,7 +25,7 @@ class NsfhifiganFilter(nn.Module):
         upsample_rates: List[int] = [8, 8, 2, 2],
         output_channels: int = 1,
         tanh_post_activation: bool = True,
-        activation: str = "lrelu",
+        activation: str = "silu",
         # option for speaker conditioning in TTS task
         gin_channels: int = 0,
     ):
