@@ -5,7 +5,6 @@ from pathlib import Path
 from typing import List, Optional
 
 import torch
-import yaml
 from lightning import LightningDataModule, LightningModule, Trainer
 from lightning.pytorch.callbacks import ModelCheckpoint, RichProgressBar
 from omegaconf import OmegaConf
