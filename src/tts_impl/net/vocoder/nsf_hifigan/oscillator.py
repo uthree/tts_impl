@@ -3,6 +3,7 @@ import math
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+
 from tts_impl.utils.config import derive_config
 
 
@@ -13,11 +14,11 @@ class HarmonicNoiseOscillator(nn.Module):
         self,
         sample_rate: int = 22050,
         frame_size: int = 256,
-        num_harmonics = 8,
-        noise_scale = 0.1,
+        num_harmonics=8,
+        noise_scale=0.1,
         gin_channels: int = 0,
         normalize_amps: bool = True,
-        post_tanh_activation:bool = True,
+        post_tanh_activation: bool = True,
     ):
         super().__init__()
         self.sample_rate = sample_rate

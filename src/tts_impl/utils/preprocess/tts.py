@@ -3,12 +3,14 @@ import logging
 import os
 import shutil
 from pathlib import Path
-from typing import Any, Dict, Generator, List, Literal, Mapping, Optional, Union
+from typing import (Any, Dict, Generator, List, Literal, Mapping, Optional,
+                    Union)
 
 import torch
 import torchaudio
 from rich.progress import track
 from torchaudio.functional import resample
+
 from tts_impl.functional import adjust_size, estimate_f0
 
 from .base import CacheWriter, DataCollector, Extractor, FunctionalExtractor
@@ -53,10 +55,11 @@ class TTSDataCollector(DataCollector):
                             "speaker": speaker,
                             "waveform": wf,
                             "sample_rate": sr,
-                            "transcription": trans
+                            "transcription": trans,
                         }
                         yield data
                         break
+
 
 class TTSCacheWriter(CacheWriter):
     def __init__(
