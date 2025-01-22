@@ -13,13 +13,15 @@ PyTorchの`torch.nn.module`または Torch Lightningの`lightning.LightningModul
         - Generator `tts_impl.net.vocoder.nsf_hifigan.NsfhifiganGenerator`
     - Discriminator: `tts_impl.net.vocoder.discriminator`
     - DDSP
-        - [Ultra-Lighweight DDSP](https://arxiv.org/abs/2401.10460)
 
 - tts: Text-To-Speech, 音声読み上げ
     - [VITS](https://arxiv.org/abs/2106.06103): `tts_impl.net.tts.vits`
         - LightningModule: `tts_impl.net.tts.vits.Vits`
         - Generator: `tts_impl.net.tts.vits.VitsGenerator`
-    - [JETS](https://arxiv.org/abs/2203.16852): `tts_impl.net.tts.jets`
+    - [JETS](https://arxiv.org/abs/2203.16852): `tts_impl.net.tts.vits`
+
+- common: 汎用モジュール。
+    - ConvNeXt1d
 
 - pe: ピッチ推定
 
