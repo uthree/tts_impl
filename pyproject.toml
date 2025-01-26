@@ -5,30 +5,28 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
-    "torchaudio>=2.0.0",
-    "lightning>=2.4.0",
-    "tensorboard>=2.18.0",
-    "tqdm>=4.66.5",
-    "safetensors>=0.4.5",
-    "alias-free-torch>=0.0.6",
-    "hydra-core>=1.3.2",
-    "pytest>=8.3.3",
-    "mypy>=1.11.2",
-    "numba>=0.60.0",
-    "isort>=5.13.2",
-    "omegaconf>=2.3.0",
-    "transformers>=4.45.2",
-    "pylint>=3.3.1",
-    "torch>=2.0.0",
-    "black>=24.10.0",
-    "jaxtyping>=0.2.34",
-    "codespell>=2.3.0",
-    "pysen>=0.11.0",
-    "fire>=0.7.0",
-    "rich>=13.9.4",
-    "torch-yin>=0.1.3",
-    "numpy>=1.26.4",
-    "scipy>=1.14.1",
+  "torchaudio>=2.0.0",
+  "lightning>=2.4.0",
+  "tensorboard>=2.18.0",
+  "tqdm>=4.66.5",
+  "safetensors>=0.4.5",
+  "alias-free-torch>=0.0.6",
+  "hydra-core>=1.3.2",
+  "pytest>=8.3.3",
+  "mypy>=1.11.2",
+  "numba>=0.60.0",
+  "isort>=5.13.2",
+  "omegaconf>=2.3.0",
+  "transformers>=4.45.2",
+  "pylint>=3.3.1",
+  "torch>=2.0.0",
+  "black>=24.10.0",
+  "codespell>=2.3.0",
+  "pysen>=0.11.0",
+  "rich>=13.9.4",
+  "torch-yin>=0.1.3",
+  "numpy>=1.26.4",
+  "scipy>=1.14.1",
 ]
 
 [build-system]
@@ -60,16 +58,16 @@ line_length = 88
 py_version = "py312"
 
 [[tool.pysen.lint.mypy_targets]]
-  paths = ["test/", "src/", "scripts/"]
+paths = ["test/", "src/", "scripts/"]
 
 [tool.pysen.lint.source]
-  includes = ["."]
-  include_globs = ["**/*.template"]
-  excludes = ["third_party/"]
-  exclude_globs = ["**/*_grpc.py"]
+includes = ["."]
+include_globs = ["**/*.template"]
+excludes = ["third_party/"]
+exclude_globs = ["**/*_grpc.py"]
 
 [tool.pysen.lint.mypy_modules."pysen.scripts"]
-  preset = "entry"
+preset = "entry"
 
 [tool.pysen.lint.mypy_modules."numpy"]
-  ignore_errors = true
+ignore_errors = true

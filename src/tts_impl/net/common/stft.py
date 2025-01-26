@@ -64,7 +64,7 @@ class STFT(nn.Module):
 
 class ISTFT(nn.Module):
     """
-    An implementation of inverse short time fourier transform using `torch.nn.functional.conv1d` for onnx compatibility.
+    An implementation of inverse short time fourier transform using `torch.nn.functional.conv_transpose1d` for onnx compatibility.
     """
 
     def __init__(

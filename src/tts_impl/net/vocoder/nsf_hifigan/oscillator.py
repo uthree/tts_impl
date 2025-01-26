@@ -4,6 +4,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+
 from tts_impl.utils.config import derive_config
 
 
@@ -14,8 +15,8 @@ class HarmonicNoiseOscillator(nn.Module):
         self,
         sample_rate: int = 22050,
         frame_size: int = 256,
-        num_harmonics=8,
-        noise_scale=0.1,
+        num_harmonics: int = 8,
+        noise_scale: float = 0.1,
         gin_channels: int = 0,
         normalize_amps: bool = True,
         post_tanh_activation: bool = True,
@@ -30,10 +31,15 @@ class HarmonicNoiseOscillator(nn.Module):
 
         if gin_channels > 0:
             self.take_condition = True
-            self.cond = nn.Conv1d(gin_channels, num_harmonics, 1)
+            self.cond_proj = nn.Conv1d(gin_channels, num_harmonics * 2, 1)
         else:
             self.take_condition = False
-            self.weight = nn.Parameter(torch.zeros(1, num_harmonics, 1))
+            self.cond = nn.Parameter(
+                torch.cat(
+                    [torch.zeros(1, num_harmonics, 1), torch.rand(1, num_harmonics, 1)],
+                    dim=1,
+                )
+            )
 
     def forward(self, f0, uv, g=None, **kwargs):
         """
@@ -58,32 +64,33 @@ class HarmonicNoiseOscillator(nn.Module):
             fs = f0 * mul
 
             # Numerical integration, generate sinusoidal harmonics
-            fs_mask = fs < (self.sample_rate / 4.0)
             integrated = torch.cumsum(fs / self.sample_rate, dim=2)
-            rad = 2 * math.pi * ((integrated) % 1)
-            noise = torch.randn(
-                rad.shape[0], 1, rad.shape[2], device=rad.device
-            ).expand(rad.shape)
-            harmonics = (
-                torch.sin(rad) * fs_mask * voiced_mask + noise * self.noise_scale
-            )
 
-            # switch v/uv.
-            voiced_part = harmonics + noise * self.noise_scale
-            unvoiced_part = noise * 0.333
+        if self.take_condition and g is not None:
+            amps, phase = F.softplus(self.cond_proj(g)).chunk(2, dim=1)
+        else:
+            amps, phase = F.softplus(self.cond).chunk(2, dim=1)
+
+        integrated += phase
+
+        rad = 2 * math.pi * (integrated % 1.0)
+        noise = torch.randn(rad.shape[0], 1, rad.shape[2], device=rad.device).expand(
+            rad.shape
+        )
+
+        harmonics = torch.sin(rad) * voiced_mask + noise * self.noise_scale
+
+        # switch v/uv.
+        voiced_part = harmonics + noise * self.noise_scale
+        unvoiced_part = noise * 0.333
 
         # synthesize
         source = voiced_part * voiced_mask + unvoiced_part * (1 - voiced_mask)
 
-        if self.take_condition and g is not None:
-            w = F.softplus(self.cond(g))
-        else:
-            w = F.softplus(self.weight)
-
         if self.normalize_amps:
-            w = F.normalize(w, dim=1)
+            amps = F.normalize(amps, dim=1)
 
-        source = (source * w).sum(dim=1, keepdim=True)
+        source = (source * amps).sum(dim=1, keepdim=True)
         if self.post_tanh_activation:
             source = torch.tanh(source)
         return source
@@ -137,6 +144,7 @@ class CyclicNoiseOscillator(nn.Module):
 
         self.kernel_size = int(4.6 * self.sample_rate / self.base_frequency)
         self.pad_size = self.kernel_size - 1
+        self.kernel = self.generate_kernel()
 
     def generate_kernel(self):
         t = torch.arange(0, self.kernel_size)[None, None, :]
@@ -162,8 +170,7 @@ class CyclicNoiseOscillator(nn.Module):
             sawtooth = rad % 1.0
             impluse = sawtooth - sawtooth.roll(1, dims=(2))
             noise = torch.randn(N, 1, L, device=f0.device)
-            kernel = self.generate_kernel().to(f0.device)
             impluse = F.pad(impluse, (0, self.pad_size))
-            cyclic_noise = F.conv1d(impluse, kernel)
+            cyclic_noise = F.conv1d(impluse, self.kernel)
             source = cyclic_noise * voiced_mask + (1 - voiced_mask) * noise
         return source
