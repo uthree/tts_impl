@@ -17,13 +17,12 @@ def framewise_fir_filter(
         filter: [batch_size, n_fft, length]
         n_fft: int
         hop_length: int
-        center: bool
+
     outputs:
         signal: [batch_size, length * hop_length]
     """
 
     dtype = signal.dtype
-
     x = signal.to(torch.float)
     window = torch.hann_window(n_fft, device=x.device)
     x_stft = torch.stft(

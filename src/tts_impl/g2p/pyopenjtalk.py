@@ -1,6 +1,6 @@
 from typing import List
 
-from .base import Grapheme2PhonemeModule
+from .base import LanguageModule
 
 try:
     import pyopenjtalk
@@ -10,7 +10,7 @@ except ModuleNotFoundError:
     is_available = False
 
 
-class PyopenjtalkG2P(Grapheme2PhonemeModule):
+class PyopenjtalkG2P(LanguageModule):
     """
     G2P Module using pyopenjtalk
     """

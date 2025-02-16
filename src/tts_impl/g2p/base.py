@@ -1,7 +1,7 @@
 from typing import List, Protocol
 
 
-class Grapheme2PhonemeModule(Protocol):
+class LanguageModule(Protocol):
     def phonemes(self) -> List[str]:
         pass
 
