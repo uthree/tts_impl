@@ -1,4 +1,5 @@
-from typing import List, Protocol, Dict, Tuple
+from typing import Dict, List, Protocol, Tuple
+
 import torch
 
 

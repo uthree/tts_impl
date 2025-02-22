@@ -1,7 +1,7 @@
 import lightning as L
-
-from tts_impl.net.vocoder.hifigan.lightning import \
-    HifiganDiscriminator as VitsDiscriminator
+from tts_impl.net.vocoder.hifigan.lightning import (
+    HifiganDiscriminator as VitsDiscriminator,
+)
 
 from .models import VitsGenerator
 

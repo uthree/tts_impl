@@ -1,3 +1,4 @@
+import json
 import os
 from pathlib import Path
 from typing import Any, Dict, List, Mapping, Optional, Tuple, Union
@@ -6,9 +7,7 @@ import torch
 import torchaudio
 from torch.utils.data import Dataset
 from torchaudio.functional import resample
-
 from tts_impl.functional.pad import adjust_size
-import json
 
 
 class TTSDataset(Dataset):

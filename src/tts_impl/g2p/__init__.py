@@ -1,1 +1,1 @@
-from .base import LanguageModule, Grapheme2Phoneme
+from .base import Grapheme2Phoneme, LanguageModule

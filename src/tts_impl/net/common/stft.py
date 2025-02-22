@@ -1,7 +1,8 @@
+from typing import Literal, Tuple
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from typing import Literal, Tuple
 from torch import Tensor
 
 

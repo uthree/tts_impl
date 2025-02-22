@@ -9,11 +9,10 @@ import torch
 import torchaudio
 from rich.progress import track
 from torchaudio.functional import resample
-
 from tts_impl.functional import adjust_size, estimate_f0
+from tts_impl.g2p import Grapheme2Phoneme
 
 from .base import CacheWriter, DataCollector, Extractor, FunctionalExtractor
-from tts_impl.g2p import Grapheme2Phoneme
 
 
 class TTSDataCollector(DataCollector):
