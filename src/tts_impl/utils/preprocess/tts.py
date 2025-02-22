@@ -3,8 +3,7 @@ import logging
 import os
 import shutil
 from pathlib import Path
-from typing import (Any, Dict, Generator, List, Literal, Mapping, Optional,
-                    Union)
+from typing import Any, Dict, Generator, List, Literal, Mapping, Optional, Union
 
 import torch
 import torchaudio
@@ -14,6 +13,7 @@ from torchaudio.functional import resample
 from tts_impl.functional import adjust_size, estimate_f0
 
 from .base import CacheWriter, DataCollector, Extractor, FunctionalExtractor
+from tts_impl.g2p import Grapheme2Phoneme
 
 
 class TTSDataCollector(DataCollector):
@@ -108,3 +108,20 @@ class TTSCacheWriter(CacheWriter):
             metadata["sample_rate"] = self.sample_rate
         with open(self.root / "metadata.json", mode="w") as f:
             json.dump(metadata, f)
+
+
+class G2PExtractor(Extractor):
+    def __init__(self, g2p: Grapheme2Phoneme, length: int = 100):
+        super().__init__()
+        self.g2p = g2p
+        self.length = length
+
+    def extract(data: dict[str, Any]) -> dict[str, Any]:
+        language = data["language"]
+        transcription = data["transcription"]
+        phonemes, language = self.g2p.encode(
+            [transcription], [language], length=self.length
+        )
+        data["language"] = language.squeeze(0)
+        data["phonemes"] = phonemes.squeeze(0)
+        return data
