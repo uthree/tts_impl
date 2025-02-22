@@ -12,6 +12,8 @@ def framewise_fir_filter(
     hop_length: int,
 ) -> torch.Tensor:
     """
+    apply different FIR filter frame-wise.
+
     args:
         signal: [batch_size, length * hop_length]
         filter: [batch_size, n_fft, length]
@@ -108,7 +110,7 @@ def fft_convolve(signal: torch.Tensor, kernel: torch.Tensor) -> torch.Tensor:
     """
     dtype = signal.dtype
     signal = signal.to(torch.float)
-    kernel = kernel.to(torch.flaot)
+    kernel = kernel.to(torch.float)
 
     kernel = F.pad(kernel, (0, signal.shape[-1] - kernel.shape[-1]))
 
@@ -168,7 +170,7 @@ def cross_correlation(
     hop_length: int,
 ) -> torch.Tensor:
     """
-    feature extractor for periodicity extraction
+    calculate cross correlation
 
     Args:
         signal: [batch_size, length * hop_length]

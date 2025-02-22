@@ -49,6 +49,8 @@ class HarmonicNoiseOscillator(nn.Module):
         Output
             shape=[N, 1, L * frame_size]
         """
+        dtype = f0.dtype
+        f0 = f0.to(torch.float)
 
         with torch.no_grad():
             # Interpolate pitch track
@@ -93,6 +95,8 @@ class HarmonicNoiseOscillator(nn.Module):
         source = (source * amps).sum(dim=1, keepdim=True)
         if self.post_tanh_activation:
             source = torch.tanh(source)
+
+        source = source.to(dtype)
         return source
 
 
@@ -116,6 +120,8 @@ class ImpulseOscillator(nn.Module):
             shape=[N, 1, L * frame_size]
         """
         with torch.no_grad():
+            dtype = f0.dtype
+            f0 = f0.to(torch.float)
             f0 = F.interpolate(f0, scale_factor=self.frame_size, mode="linear")
             voiced_mask = F.interpolate(uv, scale_factor=self.frame_size)
             rad = torch.cumsum(-f0 / self.sample_rate, dim=2)
@@ -123,6 +129,7 @@ class ImpulseOscillator(nn.Module):
             impluse = sawtooth - sawtooth.roll(1, dims=(2))
             noise = torch.randn_like(impluse) * 0.333
             source = impluse * voiced_mask + noise * (1 - voiced_mask)
+            source = source.to(dtype)
         return source
 
 
@@ -162,6 +169,8 @@ class CyclicNoiseOscillator(nn.Module):
             shape=[N, 1, L * frame_size]
         """
         with torch.no_grad():
+            dtype = f0.dtype
+            f0 = f0.to(torch.float)
             f0 = F.interpolate(f0, scale_factor=self.frame_size, mode="linear")
             N = f0.shape[0]
             L = f0.shape[2]
@@ -173,4 +182,5 @@ class CyclicNoiseOscillator(nn.Module):
             impluse = F.pad(impluse, (0, self.pad_size))
             cyclic_noise = F.conv1d(impluse, self.kernel)
             source = cyclic_noise * voiced_mask + (1 - voiced_mask) * noise
+            source = source.to(dtype)
         return source

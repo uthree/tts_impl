@@ -5,6 +5,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torchyin import estimate as _estim_torchyin
 
 try:
     import pyworld as pw
@@ -110,6 +111,10 @@ def unload_torchfcpe(device: Optional[torch.device]):
         torchfcpe_model = {}
 
 
+def estimate_f0_yin(wf, sample_rate=24000, frame_size=480):
+    return _estim_torchyin(wf, sample_rate).unsqueeze(1)
+
+
 # TODO: add yin w/ torchyin
 def estimate_f0(
     waveform,
@@ -138,6 +143,8 @@ def estimate_f0(
         f0 = estimate_f0_dio(waveform, sample_rate)
     elif algorithm == "fcpe":
         f0 = estimate_f0_fcpe(waveform, sample_rate)
+    elif algorithm == "yin":
+        f0 = estimate_f0_yin(waveform, sample_rate)
     else:
         raise ValueError("invalid algorithm")
 

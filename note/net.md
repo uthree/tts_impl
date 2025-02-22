@@ -21,7 +21,6 @@ PyTorchの`torch.nn.module`または Torch Lightningの`lightning.LightningModul
     - [JETS](https://arxiv.org/abs/2203.16852): `tts_impl.net.tts.vits`
 
 - common: 汎用モジュール。
-    - ConvNeXt1d
 
 - pe: ピッチ推定
 

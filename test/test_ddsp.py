@@ -7,7 +7,13 @@ from tts_impl.functional import (
     impulse_train,
     sinusoidal_harmonics,
     spectral_envelope_filter,
+    cross_correlation,
 )
+
+
+def test_xcorr():
+    x = torch.randn(2, 65536)
+    cross_correlation(x, 1024, 256)
 
 
 def test_framewise_fir_filter():

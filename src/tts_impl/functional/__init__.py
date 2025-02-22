@@ -1,7 +1,13 @@
 from . import monotonic_align
 from .average_by_duration import average_by_duration
-from .ddsp import (fft_convolve, framewise_fir_filter, impulse_train,
-                   sinusoidal_harmonics, spectral_envelope_filter)
+from .ddsp import (
+    fft_convolve,
+    framewise_fir_filter,
+    impulse_train,
+    sinusoidal_harmonics,
+    spectral_envelope_filter,
+    cross_correlation,
+)
 from .energy_estimation import estimate_energy
 from .f0_estimation import estimate_f0
 from .length_regurator import duplicate_by_duration, gaussian_upsampling
