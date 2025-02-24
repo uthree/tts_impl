@@ -25,7 +25,7 @@ def adjust_size_1d(
         pad_size = size - x.shape[2]
         x = F.pad(x, (0, pad_size))
     if x.shape[2] > size:
-        x = x[:, :, size]
+        x = x[:, :, :size]
     return x
 
 

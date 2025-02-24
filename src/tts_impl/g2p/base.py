@@ -61,7 +61,7 @@ class Grapheme2Phoneme:
         language_ids = []
         for t, l in zip(transcriptions, languages):
             phonemes = self._p2id_single(self._g2p_single(t, l))
-            tokens_length = max(len(phonemes), length)
+            tokens_length = min(len(phonemes), length)
             token_ids.append(pad(phonemes, length))
             language_ids.append(self._lang_id_single(l))
             tokens_lengths.append(tokens_length)

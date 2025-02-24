@@ -19,7 +19,7 @@ class PyopenjtalkG2P(LanguageModule):
         super().__init__()
 
     def g2p(self, text) -> List[str]:
-        return ["pau"] + pyopenjtalk.g2p(text).split(" ") + ["pau"]
+        return pyopenjtalk.g2p(text).split(" ")
 
     def phonemes(self) -> List[str]:
         return [
@@ -62,5 +62,6 @@ class PyopenjtalkG2P(LanguageModule):
             "w",
             "y",
             "z",
+            "kw",
             "pau",
         ]

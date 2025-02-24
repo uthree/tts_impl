@@ -26,7 +26,7 @@ class Vits(Recipe):
         preprocess = Preprocessor()
         g2p = Grapheme2Phoneme({"ja": PyopenjtalkG2P()})
         preprocess.with_collector(
-            TTSDataCollector(target_dir, sample_rate=sample_rate, language="ja")
+            TTSDataCollector(target_dir, sample_rate=sample_rate, language="ja", transcriptions_filename="transcripts_utf8.txt")
         )
         preprocess.with_extractor(Mixdown())
         preprocess.with_extractor(

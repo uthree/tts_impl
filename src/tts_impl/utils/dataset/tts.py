@@ -96,7 +96,6 @@ class TTSDataset(Dataset):
             v = self.sizes[k]
             if k in data:
                 data[k] = adjust_size(data[k], v)
-
         return data
 
     def __len__(self):

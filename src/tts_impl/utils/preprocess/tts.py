@@ -11,6 +11,7 @@ from rich.progress import track
 from torchaudio.functional import resample
 from tts_impl.functional import adjust_size, estimate_f0
 from tts_impl.g2p import Grapheme2Phoneme
+import re
 
 from .base import CacheWriter, DataCollector, Extractor, FunctionalExtractor
 
@@ -22,11 +23,15 @@ class TTSDataCollector(DataCollector):
         formats: List[str] = ["wav", "mp3", "flac", "ogg"],
         sample_rate: Optional[int] = None,
         language: Optional[str] = None,
+        transcriptions_filename: str = "transcriptions.txt",
+        transcriptions_encoding:str = "utf-8"
     ):
         self.target = Path(target)
         self.formats = formats
         self.sample_rate = sample_rate
         self.language = language
+        self.transcriptions_filename = transcriptions_filename
+        self.transcriptions_encoding=transcriptions_encoding
 
     def __iter__(self) -> Generator[Mapping[str, Any], None, None]:
         subdirs = [d for d in self.target.iterdir() if d.is_dir()]
@@ -35,40 +40,54 @@ class TTSDataCollector(DataCollector):
             for data in generator:
                 yield data
 
+
+    def load_with_resample(self, path: Path) -> tuple[torch.Tensor, int]:
+        wf, sr = torchaudio.load(path)
+        if self.sample_rate is not None and sr != self.sample_rate:
+            wf = resample(wf, sr, self.sample_rate)
+            sr = self.sample_rate
+        return wf, sr
+
+    def parse_transcriptions(self, transcriptions: str) -> dict[str, dict[str]]:
+        lines = transcriptions.split("\n")
+        r = dict()
+        for line in lines:
+            m = re.match("(.+)\:(.+)", line)
+            if m is not None:
+                fname, trns = m.groups()
+                r[fname] = {"name": fname, "transcription": trns}
+        return r
+
+
     def process_subdir(self, subdir: Path) -> Generator[Mapping[str, Any], None, None]:
-        """
-        Override as needed.
-        """
         speaker = subdir.name
-        transcriptions_path = subdir / "transcriptions.txt"
-        with open(transcriptions_path, encoding='utf8') as f:
-            transcriptions = f.read().split("\n")
-        for transcription in transcriptions:
-            transcription = transcription.split(":")
-            if len(transcription) == 2:
-                fname = transcription[0]
-                trans = transcription[1]
-                for fmt in self.formats:
-                    audio_path = subdir / f"{fname}.{fmt}"
-                    if audio_path.exists():
-                        wf, sr = torchaudio.load(audio_path)
+        self.logger.info(f"Collecting speaker: `{speaker}` 's data from {subdir} ...")
+        self.logger.info("Scanning transcriptions ...")
+        transcriptions_paths = [subdir / self.transcriptions_filename]
+        transcriptions_paths += [d for d in subdir.rglob(self.transcriptions_filename)]
+        transcriptions = dict()
+        for trns_path in transcriptions_paths:
+            if trns_path.exists():
+                self.logger.info(f"  Load: {trns_path}")
+                with open(trns_path, encoding=self.transcriptions_encoding) as f:
+                    transcriptions |= self.parse_transcriptions(f.read())
+        self.logger.info(f"Detected {len(transcriptions)} transcription(s).")
 
-                        # resample if different sample rate.
-                        if self.sample_rate is not None and sr != self.sample_rate:
-                            wf = torchaudio.functional.resample(wf, sr, self.sample_rate)
-                            sr = self.sample_rate
+        self.logger.info(f"Processing audio files ...")
+        audio_paths = [p for p in subdir.rglob("*") if p.suffix.lstrip(".") in self.formats]
 
-                        data = {
-                            "speaker": speaker,
-                            "waveform": wf,
-                            "sample_rate": sr,
-                            "transcription": trans,
-                        }
-                        if self.language is not None:
-                            data["language"] = self.language
-                        yield data
-                        break
-
+        for apath in audio_paths:
+            self.logger.debug(f"Processing: {apath}")
+            if apath.stem in transcriptions:
+                wf, sr = self.load_with_resample(apath)
+                data = {
+                    "waveform": wf,
+                    "transcription": transcriptions[apath.stem]["transcription"],
+                    "speaker": speaker,
+                    "sample_rate": sr,
+                    "language": self.language
+                }
+                yield data
 
 class TTSCacheWriter(CacheWriter):
     def __init__(
@@ -146,6 +165,6 @@ class WaveformLengthExtractor(Extractor):
         wf = data["waveform"]
         wf_length = wf.shape[1]
         num_frames = wf_length // self.frame_size + 1
-        num_frames = max(num_frames, self.max_frames)
+        num_frames = min(num_frames, self.max_frames)
         data["acoustic_features_lengths"] = num_frames
         return data

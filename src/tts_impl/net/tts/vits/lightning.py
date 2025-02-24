@@ -74,6 +74,8 @@ class VitsLightningModule(L.LightningModule):
         self, x, x_lengths, y, y_lengths, waveform, sid=None, w=None
     ):
         opt_g, opt_d = self.optimizers()  # get optimizer
+
+        # forward pass
         real, fake, loss_gen_tts = self._generator_forward(
             x, x_lengths, y, y_lengths, waveform, sid=sid, w=w
         )
