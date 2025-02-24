@@ -1,5 +1,9 @@
 import lightning as L
 import torch
+import torch.nn as nn
+import torch.nn.functional as F
+import torch.optim as optim
+from torch.optim.lr_scheduler import StepLR
 from tts_impl.net.tts.vits.commons import slice_segments
 from tts_impl.net.tts.vits.losses import (
     discriminator_loss,
@@ -13,7 +17,6 @@ from tts_impl.net.vocoder.hifigan.lightning import (
 )
 from tts_impl.transforms import LogMelSpectrogram
 from tts_impl.utils.config import derive_config
-
 from .models import VitsGenerator
 
 
@@ -35,7 +38,7 @@ class VitsLightningModule(L.LightningModule):
         self.automatic_optimization = False
 
         self.generator = VitsGenerator(**generator)
-        self.discriminator = HifiganDiscriminator(**Discriminator)
+        self.discriminator = HifiganDiscriminator(**discriminator)
         self.spectrogram = LogMelSpectrogram(**mel)
 
         self.weight_mel = weight_mel
@@ -52,8 +55,8 @@ class VitsLightningModule(L.LightningModule):
         if "acoustic_features" in batch:
             y = batch["acoustic_features"]
         else:
-            y = self.spectrogram(real.sum(1)).detach()
-        y_lengths = batch["acoustic_features_length"]
+            y = self.spectrogram(waveform.sum(1)).detach()
+        y_lengths = batch["acoustic_features_lengths"]
         x = batch["phonemes"]
         x_lengths = batch["phonemes_lengths"]
         sid = batch.get("speaker_id", None)
@@ -72,10 +75,10 @@ class VitsLightningModule(L.LightningModule):
     ):
         opt_g, opt_d = self.optimizers()  # get optimizer
         real, fake, loss_gen_tts = self._generator_forward(
-            x, x_lengths, y, y_lengths, waveform, sid=wid, w=w
+            x, x_lengths, y, y_lengths, waveform, sid=sid, w=w
         )
         loss_gen_vocoder = self._vocoder_adversarial_loss(real, fake)
-        loss_gen = loss_gen_tts + loss_gen_vocoder
+        loss_g = loss_gen_tts + loss_gen_vocoder
 
         # logs
         self.log("train loss/generator total", loss_g)
@@ -107,12 +110,14 @@ class VitsLightningModule(L.LightningModule):
         logs_q = outputs["logs_q"]
         m_p = outputs["m_p"]
         logs_p = outputs["logs_p"]
-        z_mask = outputs["z_mask"]
+        z_mask = outputs["y_mask"]
+        y_mask = z_mask
         ids_slice = outputs["ids_slice"]
         fake = outputs["fake"]
 
         # losses
         loss_dur = outputs["loss_dur"]
+        loss_dur = loss_dur.mean()
         loss_kl = kl_loss(z_p, logs_q, m_p, logs_p, z_mask)
 
         # logs
@@ -120,7 +125,7 @@ class VitsLightningModule(L.LightningModule):
         self.log("train loss/duration", loss_dur)
 
         # slice real input
-        real = slice_segments(real, ids_slice * dec_frame_size, segment_size).detach()
+        real = slice_segments(waveform, ids_slice * dec_frame_size, segment_size * dec_frame_size).detach()
 
         loss = loss_dur + loss_kl
         return real, fake, loss

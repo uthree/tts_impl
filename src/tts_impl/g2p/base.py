@@ -26,11 +26,11 @@ class Grapheme2Phoneme:
     def __init__(self, languages: Dict[str, LanguageModule]):
         self.language_modules = languages
         self.phonemes = ["<PAD>"]
-        self.languages = self.languages_modules.keys()
+        self.languages = list(self.language_modules.keys())
 
         # extract all phonemes
         for m in self.language_modules.values():
-            self.phonemes += self.phonemes
+            self.phonemes += m.phonemes()
         self.phonemes = remove_duplicates(self.phonemes)
 
     def _lang_id_single(self, language: str) -> int:
@@ -57,10 +57,15 @@ class Grapheme2Phoneme:
         """
 
         token_ids = []
+        tokens_lengths = []
         language_ids = []
         for t, l in zip(transcriptions, languages):
-            token_ids.append(pad(self._p2id_single(self._g2p_single(t, l)), length))
+            phonemes = self._p2id_single(self._g2p_single(t, l))
+            tokens_length = max(len(phonemes), length)
+            token_ids.append(pad(phonemes, length))
             language_ids.append(self._lang_id_single(l))
+            tokens_lengths.append(tokens_length)
         token_ids = torch.LongTensor(token_ids)
         language_ids = torch.LongTensor(language_ids)
-        return token_ids, language_ids
+        tokens_lengths = torch.LongTensor(tokens_lengths)
+        return token_ids, tokens_lengths, language_ids

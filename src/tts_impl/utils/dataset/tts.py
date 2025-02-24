@@ -33,7 +33,7 @@ class TTSDataset(Dataset):
             mix_down: bool, When True, it will be mixed down to mono (channels=1).
             weights_only: bool
 
-        Details of lengths:
+        Details of sizes:
             Option to adjust the length of data.
             If the length exceeds the limit, the excess will be truncated, and if the length is insufficient, zero padding will be performed.
             The key is the name of the data, and the value is the size.

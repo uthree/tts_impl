@@ -73,6 +73,25 @@ class Extractor:
         return self.extract(data)
 
 
+class CombinedExtractor(Extractor):
+    def __init__(self, *extractors: list[Extractor]):
+        super().__init__()
+        self.extractors = extractors
+
+    def prepare(self):
+        for e in self.extractors:
+            e.prepare()
+
+    def finalize(self):
+        for e in self.extractors:
+            e.finalize()
+
+    def extract(self, data: dict[str, Any]) -> dict[str, Any]:
+        for e in self.extractors:
+            data = e.extract(data)
+        return data
+
+
 class FunctionalExtractor(Extractor):
     """
     Extractor for simple simple function.
