@@ -17,6 +17,7 @@ from tts_impl.net.vocoder.hifigan.lightning import (
 )
 from tts_impl.transforms import LogMelSpectrogram
 from tts_impl.utils.config import derive_config
+
 from .models import VitsGenerator
 
 
@@ -127,7 +128,9 @@ class VitsLightningModule(L.LightningModule):
         self.log("train loss/duration", loss_dur)
 
         # slice real input
-        real = slice_segments(waveform, ids_slice * dec_frame_size, segment_size * dec_frame_size).detach()
+        real = slice_segments(
+            waveform, ids_slice * dec_frame_size, segment_size * dec_frame_size
+        ).detach()
 
         loss = loss_dur + loss_kl
         return real, fake, loss

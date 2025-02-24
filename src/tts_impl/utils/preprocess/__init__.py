@@ -1,9 +1,9 @@
 from .audio import AudioCacheWriter, AudioDataCollector, Mixdown, PitchEstimation
 from .base import (
     CacheWriter,
+    CombinedExtractor,
     Extractor,
     FunctionalExtractor,
     Preprocessor,
-    CombinedExtractor,
 )
-from .tts import G2PExtractor, WaveformLengthExtractor, TTSDataCollector, TTSCacheWriter
+from .tts import G2PExtractor, TTSCacheWriter, TTSDataCollector, WaveformLengthExtractor

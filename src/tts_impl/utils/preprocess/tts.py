@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import re
 import shutil
 from pathlib import Path
 from typing import Any, Dict, Generator, List, Literal, Mapping, Optional, Union
@@ -11,7 +12,6 @@ from rich.progress import track
 from torchaudio.functional import resample
 from tts_impl.functional import adjust_size, estimate_f0
 from tts_impl.g2p import Grapheme2Phoneme
-import re
 
 from .base import CacheWriter, DataCollector, Extractor, FunctionalExtractor
 
@@ -24,14 +24,14 @@ class TTSDataCollector(DataCollector):
         sample_rate: Optional[int] = None,
         language: Optional[str] = None,
         transcriptions_filename: str = "transcriptions.txt",
-        transcriptions_encoding:str = "utf-8"
+        transcriptions_encoding: str = "utf-8",
     ):
         self.target = Path(target)
         self.formats = formats
         self.sample_rate = sample_rate
         self.language = language
         self.transcriptions_filename = transcriptions_filename
-        self.transcriptions_encoding=transcriptions_encoding
+        self.transcriptions_encoding = transcriptions_encoding
 
     def __iter__(self) -> Generator[Mapping[str, Any], None, None]:
         subdirs = [d for d in self.target.iterdir() if d.is_dir()]
@@ -39,7 +39,6 @@ class TTSDataCollector(DataCollector):
             generator = self.process_subdir(subdir)
             for data in generator:
                 yield data
-
 
     def load_with_resample(self, path: Path) -> tuple[torch.Tensor, int]:
         wf, sr = torchaudio.load(path)
@@ -58,7 +57,6 @@ class TTSDataCollector(DataCollector):
                 r[fname] = {"name": fname, "transcription": trns}
         return r
 
-
     def process_subdir(self, subdir: Path) -> Generator[Mapping[str, Any], None, None]:
         speaker = subdir.name
         self.logger.info(f"Collecting speaker: `{speaker}` 's data from {subdir} ...")
@@ -74,7 +72,9 @@ class TTSDataCollector(DataCollector):
         self.logger.info(f"Detected {len(transcriptions)} transcription(s).")
 
         self.logger.info(f"Processing audio files ...")
-        audio_paths = [p for p in subdir.rglob("*") if p.suffix.lstrip(".") in self.formats]
+        audio_paths = [
+            p for p in subdir.rglob("*") if p.suffix.lstrip(".") in self.formats
+        ]
 
         for apath in audio_paths:
             self.logger.debug(f"Processing: {apath}")
@@ -85,9 +85,10 @@ class TTSDataCollector(DataCollector):
                     "transcription": transcriptions[apath.stem]["transcription"],
                     "speaker": speaker,
                     "sample_rate": sr,
-                    "language": self.language
+                    "language": self.language,
                 }
                 yield data
+
 
 class TTSCacheWriter(CacheWriter):
     def __init__(

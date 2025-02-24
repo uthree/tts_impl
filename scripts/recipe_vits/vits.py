@@ -1,17 +1,17 @@
 from lightning import LightningDataModule
+from tts_impl.g2p import Grapheme2Phoneme
+from tts_impl.g2p.pyopenjtalk import PyopenjtalkG2P
 from tts_impl.net.tts.vits import VitsLightningModule
 from tts_impl.utils.datamodule import AudioDataModule
 from tts_impl.utils.preprocess import (
+    G2PExtractor,
+    Mixdown,
+    Preprocessor,
     TTSCacheWriter,
     TTSDataCollector,
-    Mixdown,
-    G2PExtractor,
     WaveformLengthExtractor,
-    Preprocessor,
 )
 from tts_impl.utils.recipe import Recipe
-from tts_impl.g2p import Grapheme2Phoneme
-from tts_impl.g2p.pyopenjtalk import PyopenjtalkG2P
 
 
 class Vits(Recipe):
@@ -26,7 +26,12 @@ class Vits(Recipe):
         preprocess = Preprocessor()
         g2p = Grapheme2Phoneme({"ja": PyopenjtalkG2P()})
         preprocess.with_collector(
-            TTSDataCollector(target_dir, sample_rate=sample_rate, language="ja", transcriptions_filename="transcripts_utf8.txt")
+            TTSDataCollector(
+                target_dir,
+                sample_rate=sample_rate,
+                language="ja",
+                transcriptions_filename="transcripts_utf8.txt",
+            )
         )
         preprocess.with_extractor(Mixdown())
         preprocess.with_extractor(
