@@ -51,7 +51,7 @@ class HifiganLightningModule(L.LightningModule):
         self.lr = lr
         self.betas = betas
 
-    def generator_training_step(self, real: torch.Tensor, fake: torch.Tensor):
+    def _adversarial_training_step(self, real: torch.Tensor, fake: torch.Tensor):
         # spectrogram
         spec_real = self.spectrogram(real).detach()
         spec_fake = self.spectrogram(fake)
@@ -97,8 +97,8 @@ class HifiganLightningModule(L.LightningModule):
             acoustic_features = self.spectrogram(real.sum(1)).detach()
 
         fake = self.generator(acoustic_features)
-        self.generator_training_step(real, fake)
-        self.discriminator_training_step(real, fake)
+        self._adversarial_training_step(real, fake)
+        self._discriminator_training_step(real, fake)
 
     def _test_or_validate_batch(self, batch):
         real = batch["waveform"]
@@ -116,7 +116,7 @@ class HifiganLightningModule(L.LightningModule):
 
         return loss_mel
 
-    def discriminator_training_step(
+    def _discriminator_training_step(
         self, real: torch.Tensor, fake: torch.Tensor
     ) -> torch.Tensor:
         opt_g, opt_d = self.optimizers()  # get optimizer

@@ -62,10 +62,10 @@ class NsfhifiganLightningModule(LightningModule):
             acoustic_features = self.spectrogram(real.sum(1)).detach()
 
         fake = self.generator(acoustic_features, f0=f0, uv=uv)
-        self.generator_training_step(real, fake)
-        self.discriminator_training_step(real, fake)
+        self._adversarial_training_step(real, fake)
+        self._discriminator_training_step(real, fake)
 
-    def generator_training_step(self, real: torch.Tensor, fake: torch.Tensor):
+    def _adversarial_training_step(self, real: torch.Tensor, fake: torch.Tensor):
         # spectrogram
         spec_real = self.spectrogram(real).detach()
         spec_fake = self.spectrogram(fake)
@@ -119,7 +119,7 @@ class NsfhifiganLightningModule(LightningModule):
         self.log("validation loss/mel spectrogram", loss_mel)
         return loss_mel
 
-    def discriminator_training_step(
+    def _discriminator_training_step(
         self, real: torch.Tensor, fake: torch.Tensor
     ) -> torch.Tensor:
         opt_g, opt_d = self.optimizers()  # get optimizer

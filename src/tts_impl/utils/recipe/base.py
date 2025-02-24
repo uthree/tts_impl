@@ -59,11 +59,10 @@ class Recipe:
         self.ckpt_name = "model"
 
     def checkopint_callback(self) -> ModelCheckpoint:
-        # saves top-K checkpoints based on "val_loss" metric
         checkpoint_callback = ModelCheckpoint(
             dirpath=self.ckpt_root_dir,
             filename=self.ckpt_name,
-            enable_version_counter=False,  # fo overwrite
+            enable_version_counter=False,
         )
         return checkpoint_callback
 
