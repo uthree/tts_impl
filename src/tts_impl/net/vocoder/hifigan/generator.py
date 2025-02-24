@@ -6,6 +6,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from alias_free_torch import Activation1d as AliasFreeActivation1d
 from torch.nn.utils import remove_weight_norm
 from torch.nn.utils.parametrizations import weight_norm
 from tts_impl.net.base.vocoder import GanVocoderGenerator
@@ -24,16 +25,87 @@ def init_weights(m, mean=0.0, std=0.01):
         m.weight.data.normal_(mean, std)
 
 
-def init_activation(name: str = "lrelu"):
+class Snake(nn.Module):
+    def __init__(
+        self,
+        channels: int,
+        alpha: float = 0.0,
+        trainable: bool = True,
+        logscale: bool = True,
+        eps: float = 1e-6,
+    ):
+        super().__init__()
+        self.logscale = logscale
+        self.eps = eps
+
+        if logscale:
+            self.alpha = nn.Parameter(torch.zeros(channels) + alpha)
+        else:
+            self.alpha = nn.Parameter(torch.ones(channels) * alpha)
+
+        self.alpha.requires_grad = trainable
+
+    def forward(self, x):
+        alpha = self.alpha[None, :, None]
+        if self.logscale:
+            alpha = torch.exp(alpha)
+        x = x + (1.0 / (alpha + self.eps)) * torch.pow(torch.sin(x * alpha), 2)
+        return x
+
+
+class SnakeBeta(nn.Module):
+    def __init__(
+        self,
+        channels: int,
+        alpha: float = 0.0,
+        beta: float = 0.0,
+        trainable: bool = True,
+        logscale: bool = True,
+        eps: float = 1e-6,
+    ):
+        super().__init__()
+        self.logscale = logscale
+        self.eps = eps
+
+        if logscale:
+            self.alpha = nn.Parameter(torch.zeros(channels) + alpha)
+            self.beta = nn.Parameter(torch.zeros(channels) + beta)
+        else:
+            self.alpha = nn.Parameter(torch.ones(channels) * alpha)
+            self.beta = nn.Parameter(torch.ones(channels) * beta)
+
+        self.alpha.requires_grad = trainable
+        self.beta.requires_grad = trainable
+
+    def forward(self, x):
+        alpha = self.alpha[None, :, None]
+        beta = self.beta[None, :, None]
+        if self.logscale:
+            alpha = torch.exp(alpha)
+            beta = torch.exp(beta)
+        x = x + (1.0 / (beta + self.eps)) * torch.pow(torch.sin(x * alpha), 2)
+        return x
+
+
+def init_activation(name: str = "lrelu", channels: int = 0, alias_free: bool = False):
+    if alias_free:
+        act = init_activation(name, channels=channels, alias_free=False)
+        act = AliasFreeActivation1d(act)
+        return act
+
     if name == "lrelu":
         return nn.LeakyReLU(LRELU_SLOPE)
     elif name == "silu":
         return nn.SiLU()
     elif name == "gelu":
         return nn.GELU()
+    elif name == "snake":
+        return Snake(channels=channels)
+    elif name == "snakebeta":
+        return SnakeBeta(channels=channels)
     else:
         raise ValueError(
-            'Invalid activation name. available: ["lrelu", "silu", "gelu"]'
+            'Invalid activation name. available: ["lrelu", "silu", "gelu", "snake", "snakebeta"]'
         )
 
 
@@ -44,6 +116,7 @@ class ResBlock1(nn.Module):
         kernel_size: int = 3,
         dilations: List[int] = [1, 3, 5],
         activation: str = "lrelu",
+        alias_free: bool = False,
     ):
         super().__init__()
         self.convs1 = nn.ModuleList()
@@ -63,7 +136,9 @@ class ResBlock1(nn.Module):
                     )
                 )
             )
-            self.acts1.append(init_activation(activation))
+            self.acts1.append(
+                init_activation(activation, channels, alias_free=alias_free)
+            )
             self.convs2.append(
                 weight_norm(
                     nn.Conv1d(
@@ -76,7 +151,9 @@ class ResBlock1(nn.Module):
                     )
                 )
             )
-            self.acts2.append(init_activation(activation))
+            self.acts2.append(
+                init_activation(activation, channels, alias_free=alias_free)
+            )
 
     def forward(self, x):
         for c1, c2, a1, a2 in zip(self.convs1, self.convs2, self.acts1, self.acts2):
@@ -100,6 +177,7 @@ class ResBlock2(nn.Module):
         kernel_size: int = 3,
         dilations: List[int] = [1, 3],
         activation: str = "lrelu",
+        alias_free: bool = False,
     ):
         super().__init__()
         self.convs1 = nn.ModuleList()
@@ -117,7 +195,9 @@ class ResBlock2(nn.Module):
                     )
                 )
             )
-            self.acts2.append(init_activation(activation))
+            self.acts1.append(
+                init_activation(activation, channels, alias_free=alias_free)
+            )
 
     def forward(self, x):
         for c1, a1 in zip(self.convs1, self.acts1):
@@ -149,6 +229,7 @@ class HifiganGenerator(nn.Module, GanVocoderGenerator):
         tanh_post_activation: bool = True,
         gin_channels: int = 0,
         activation: str = "lrelu",
+        alias_free: bool = False,
     ):
         super().__init__()
 
@@ -192,7 +273,9 @@ class HifiganGenerator(nn.Module, GanVocoderGenerator):
             c2 = upsample_initial_channels // (2 ** (i + 1))
             p = u // 2
             k = u * 2
-            self.up_acts.append(init_activation(activation))
+            self.up_acts.append(
+                init_activation(activation, channels=c1, alias_free=alias_free)
+            )
             self.ups.append(weight_norm(nn.ConvTranspose1d(c1, c2, k, u, p)))
             self.frame_size *= u
 
@@ -200,9 +283,9 @@ class HifiganGenerator(nn.Module, GanVocoderGenerator):
         for i in range(len(self.ups)):
             ch = upsample_initial_channels // (2 ** (i + 1))
             for j, (k, d) in enumerate(zip(resblock_kernel_sizes, resblock_dilations)):
-                self.resblocks.append(resblock(ch, k, d))
+                self.resblocks.append(resblock(ch, k, d, alias_free=alias_free))
 
-        self.post_act = init_activation(activation)
+        self.post_act = init_activation(activation, channels=c2, alias_free=alias_free)
         self.conv_post = weight_norm(nn.Conv1d(ch, out_channels, 7, 1, padding=3))
 
         self.apply(init_weights)
@@ -222,8 +305,8 @@ class HifiganGenerator(nn.Module, GanVocoderGenerator):
         if g is not None:
             x = x + self.conv_cond(g)
         for i in range(self.num_upsamples):
-            x = self.ups[i](x)
             x = self.up_acts[i](x)
+            x = self.ups[i](x)
             xs = None
             for j in range(self.num_kernels):
                 if xs is None:
