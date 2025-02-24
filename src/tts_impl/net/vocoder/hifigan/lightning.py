@@ -116,9 +116,7 @@ class HifiganLightningModule(L.LightningModule):
 
         return loss_mel
 
-    def _discriminator_training_step(
-        self, real: torch.Tensor, fake: torch.Tensor
-    ) -> torch.Tensor:
+    def _discriminator_training_step(self, real: torch.Tensor, fake: torch.Tensor):
         opt_g, opt_d = self.optimizers()  # get optimizer
 
         # forward pass

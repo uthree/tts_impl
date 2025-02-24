@@ -1,5 +1,12 @@
 import lightning as L
 import torch
+from tts_impl.net.tts.vits.commons import slice_segments
+from tts_impl.net.tts.vits.losses import (
+    discriminator_loss,
+    feature_loss,
+    generator_loss,
+    kl_loss,
+)
 from tts_impl.net.vocoder.hifigan import HifiganDiscriminator
 from tts_impl.net.vocoder.hifigan.lightning import (
     HifiganDiscriminator as VitsDiscriminator,
@@ -14,9 +21,9 @@ from .models import VitsGenerator
 class VitsLightningModule(L.LightningModule):
     def __init__(
         self,
-        generator: VitsGenerator.Config,
-        discriminator: HifiganDiscriminator.Config,
-        mel: LogMelSpectrogram.Config,
+        generator: VitsGenerator.Config = VitsGenerator.Config(),
+        discriminator: HifiganDiscriminator.Config = HifiganDiscriminator.Config(),
+        mel: LogMelSpectrogram.Config = LogMelSpectrogram.Config(),
         weight_mel: float = 45.0,
         weight_feat: float = 1.0,
         weight_adv: float = 1.0,
@@ -39,13 +46,121 @@ class VitsLightningModule(L.LightningModule):
         self.lr = lr
         self.betas = betas
 
-    def _discriminator_training_step(
+    def training_step(self, batch):
+        # expand batch
+        waveform = batch["waveform"]
+        if "acoustic_features" in batch:
+            y = batch["acoustic_features"]
+        else:
+            y = self.spectrogram(real.sum(1)).detach()
+        y_lengths = batch["acoustic_features_length"]
+        x = batch["phonemes"]
+        x_lengths = batch["phonemes_lengths"]
+        sid = batch.get("speaker_id", None)
+        w = batch.get("duration", None)
+
+        # generator step
+        real, fake = self._generator_training_step(
+            x, x_lengths, y, y_lengths, waveform, sid=sid, w=w
+        )
+
+        # discriminator step
+        self._discriminator_training_step(real, fake)
+
+    def _generator_training_step(
+        self, x, x_lengths, y, y_lengths, waveform, sid=None, w=None
+    ):
+        opt_g, opt_d = self.optimizers()  # get optimizer
+        real, fake, loss_gen_tts = self._generator_forward(
+            x, x_lengths, y, y_lengths, waveform, sid=wid, w=w
+        )
+        loss_gen_vocoder = self._vocoder_adversarial_loss(real, fake)
+        loss_gen = loss_gen_tts + loss_gen_vocoder
+
+        # logs
+        self.log("train loss/generator total", loss_g)
+        self.log("G", loss_g, prog_bar=True, logger=False)
+
+        # take generator's gradient descent
+        self.toggle_optimizer(opt_g)
+        opt_d.zero_grad(set_to_none=True)
+        self.manual_backward(loss_g)
+        self.clip_gradients(opt_g, 1.0, "norm")
+        opt_g.step()
+        self.untoggle_optimizer(opt_g)
+        return real, fake
+
+    def _generator_forward(
+        self, x, x_lengths, y, y_lengths, waveform, sid=None, w=None
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+
+        # get frame size and segment size
+        segment_size = self.generator.segment_size
+        dec_frame_size = self.generator.dec.frame_size
+
+        outputs = self.generator.forward(
+            x, x_lengths, y, y_lengths, sid=sid, w=w
+        )  # forward pass
+
+        # expand return dict.
+        z_p = outputs["z_p"]
+        logs_q = outputs["logs_q"]
+        m_p = outputs["m_p"]
+        logs_p = outputs["logs_p"]
+        z_mask = outputs["z_mask"]
+        ids_slice = outputs["ids_slice"]
+        fake = outputs["fake"]
+
+        # losses
+        loss_dur = outputs["loss_dur"]
+        loss_kl = kl_loss(z_p, logs_q, m_p, logs_p, z_mask)
+
+        # logs
+        self.log("train loss/KL divergence", loss_kl)
+        self.log("train loss/duration", loss_dur)
+
+        # slice real input
+        real = slice_segments(real, ids_slice * dec_frame_size, segment_size).detach()
+
+        loss = loss_dur + loss_kl
+        return real, fake, loss
+
+    def _vocoder_adversarial_loss(
         self, real: torch.Tensor, fake: torch.Tensor
     ) -> torch.Tensor:
+        # spectrogram
+        spec_real = self.spectrogram(real).detach()
+        spec_fake = self.spectrogram(fake)
+
+        # get optimizer
+        opt_g, opt_d = self.optimizers()
+
+        # forward pass
+        logits, fmap_fake = self.discriminator(fake)
+        _, fmap_real = self.discriminator(real)
+        loss_adv, loss_adv_list = generator_loss(logits)
+        loss_feat = feature_loss(fmap_real, fmap_fake)
+        loss_mel = F.l1_loss(spec_fake, spec_real)
+        loss_g = (
+            loss_mel * self.weight_mel
+            + loss_feat * self.weight_feat
+            + loss_adv * self.weight_adv
+        )
+
+        # logs
+        for i, l in enumerate(loss_adv_list):
+            self.log(f"generator adversarial/{i}", l)
+        self.log("train loss/mel spectrogram", loss_mel)
+        self.log("train loss/feature matching", loss_feat)
+        self.log("train loss/generator adversarial", loss_adv)
+        return loss_g
+
+    def _discriminator_training_step(self, real: torch.Tensor, fake: torch.Tensor):
         opt_g, opt_d = self.optimizers()  # get optimizer
 
         # forward pass
         fake = fake.detach()  # stop gradient
+        real = real.detach()
         logits_fake, _ = self.discriminator(fake)
         logits_real, _ = self.discriminator(real)
         loss_d, loss_d_list_r, loss_d_list_f = discriminator_loss(

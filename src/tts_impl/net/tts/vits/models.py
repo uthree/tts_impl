@@ -433,7 +433,9 @@ class VitsGenerator(nn.Module):
             l_length_all += l_length
         return l_length_all, logw, logw_hat
 
-    def forward(self, x, x_lengths, y, y_lengths, sid=None, w=None):
+    def forward(
+        self, x, x_lengths, y, y_lengths, sid=None, w=None
+    ) -> dict[str, torch.Tensor]:
         if self.n_speakers > 0:
             g = self.emb_g(sid).unsqueeze(-1)  # [b, h, 1]
         else:
@@ -460,14 +462,22 @@ class VitsGenerator(nn.Module):
             z, y_lengths, self.segment_size
         )
         o = self.dec(z_slice, g=g)
-        return (
-            o,
-            loss_dur,
-            ids_slice,
-            x_mask,
-            y_mask,
-            (z, z_p, m_p, logs_p, m_q, logs_q),
-        )
+
+        outputs = {
+            "fake": o,
+            "loss_dur": loss_dur,
+            "ids_slice": ids_slice,
+            "x_mask": x_mask,
+            "y_mask": y_mask,
+            "z": z,
+            "z_p": z_p,
+            "m_p": m_p,
+            "logs_p": logs_p,
+            "m_q": m_q,
+            "logs_q": logs_q,
+        }
+
+        return outputs
 
     def infer(
         self,
