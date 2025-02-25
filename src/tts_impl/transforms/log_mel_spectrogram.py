@@ -73,6 +73,7 @@ class LogMelSpectrogram(nn.Module):
             ),
             mode="reflect",
         )
+        x = x.to(torch.float)
         x = self.mel_spec(x)
         x = self.safe_log(x)
         return x

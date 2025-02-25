@@ -21,7 +21,7 @@ class Vits(Recipe):
     def preprocess(
         self,
         target_dir: str = "your_target_dir",
-        sample_rate: int = 24000,
+        sample_rate: int = 22050,
     ):
         preprocess = Preprocessor()
         g2p = Grapheme2Phoneme({"ja": PyopenjtalkG2P()})

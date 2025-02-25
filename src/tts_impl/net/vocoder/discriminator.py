@@ -207,8 +207,8 @@ class DiscriminatorR(nn.Module):
         channels: int = 32,
         num_layers: int = 4,
         use_spectral_norm: bool = False,
-        log_scale: bool = True,
-        pre_layernorm: bool = True,
+        log_scale: bool = False,
+        pre_layernorm: bool = False,
     ):
         super().__init__()
         self.log_scale = log_scale
