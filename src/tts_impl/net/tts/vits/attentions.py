@@ -1,13 +1,15 @@
 # code from https://github.com/jaywalnut310/vits/blob/main/attentions.py
 
 import math
+from typing import Literal
 
 import torch
 from torch import nn
 from torch.nn import functional as F
+from torchtune.modules import RotaryPositionalEmbeddings
 
 from . import commons
-from .modules import LayerNorm
+from .modules import LayerNorm, RMSNorm
 
 
 class Encoder(nn.Module):
@@ -20,7 +22,11 @@ class Encoder(nn.Module):
         kernel_size=1,
         p_dropout=0.0,
         window_size=4,
-        use_cosine_attn=False,
+        norm: Literal["layernorm", "rmsnorm"] = "layernorm",
+        glu: bool = False,
+        activation: Literal["relu", "gelu", "silu"] = "relu",
+        rotary_pos_emb: bool = False,
+        prenorm: bool = False,
         **kwargs,
     ):
         super().__init__()
@@ -31,12 +37,21 @@ class Encoder(nn.Module):
         self.kernel_size = kernel_size
         self.p_dropout = p_dropout
         self.window_size = window_size
+        self.prenorm = prenorm
 
         self.drop = nn.Dropout(p_dropout)
         self.attn_layers = nn.ModuleList()
         self.norm_layers_1 = nn.ModuleList()
         self.ffn_layers = nn.ModuleList()
         self.norm_layers_2 = nn.ModuleList()
+
+        if norm == "layernorm":
+            norm_m = LayerNorm
+        elif norm == "rmsnorm":
+            norm_m = RMSNorm
+        else:
+            raise RuntimeError("invalid norm type.")
+
         for i in range(self.n_layers):
             self.attn_layers.append(
                 MultiHeadAttention(
@@ -45,10 +60,10 @@ class Encoder(nn.Module):
                     n_heads,
                     p_dropout=p_dropout,
                     window_size=window_size,
-                    use_cosine=use_cosine_attn,
+                    rotary_pos_emb=rotary_pos_emb,
                 )
             )
-            self.norm_layers_1.append(LayerNorm(hidden_channels))
+            self.norm_layers_1.append(norm_m(hidden_channels))
             self.ffn_layers.append(
                 FFN(
                     hidden_channels,
@@ -56,21 +71,35 @@ class Encoder(nn.Module):
                     filter_channels,
                     kernel_size,
                     p_dropout=p_dropout,
+                    glu=glu,
+                    activation=activation,
                 )
             )
-            self.norm_layers_2.append(LayerNorm(hidden_channels))
+            self.norm_layers_2.append(norm_m(hidden_channels))
 
     def forward(self, x, x_mask):
         attn_mask = x_mask.unsqueeze(2) * x_mask.unsqueeze(-1)
         x = x * x_mask
-        for i in range(self.n_layers):
-            y = self.attn_layers[i](x, x, attn_mask)
-            y = self.drop(y)
-            x = self.norm_layers_1[i](x + y)
+        if self.prenorm:
+            for i in range(self.n_layers):
+                y = self.norm_layers_1[i](x)
+                y = self.attn_layers[i](y, y, attn_mask)
+                y = self.drop(y)
+                x = x + y
 
-            y = self.ffn_layers[i](x, x_mask)
-            y = self.drop(y)
-            x = self.norm_layers_2[i](x + y)
+                y = self.norm_layers_2[i](x)
+                y = self.ffn_layers[i](y, x_mask)
+                y = self.drop(y)
+                x = x + y
+        else:
+            for i in range(self.n_layers):
+                y = self.attn_layers[i](x, x, attn_mask)
+                y = self.drop(y)
+                x = self.norm_layers_1[i](x + y)
+
+                y = self.ffn_layers[i](x, x_mask)
+                y = self.drop(y)
+                x = self.norm_layers_2[i](x + y)
         x = x * x_mask
         return x
 
@@ -86,6 +115,11 @@ class Decoder(nn.Module):
         p_dropout=0.0,
         proximal_bias=False,
         proximal_init=True,
+        norm: Literal["layernorm", "rmsnorm"] = "layernorm",
+        prenorm: bool = False,
+        glu: bool = False,
+        activation: Literal["relu", "gelu", "silu"] = "relu",
+        rotary_pos_emb: bool = False,
         **kwargs,
     ):
         super().__init__()
@@ -97,6 +131,14 @@ class Decoder(nn.Module):
         self.p_dropout = p_dropout
         self.proximal_bias = proximal_bias
         self.proximal_init = proximal_init
+        self.prenorm = prenorm
+
+        if norm == "layernorm":
+            norm_m = LayerNorm
+        elif norm == "rmsnorm":
+            norm_m = RMSNorm
+        else:
+            raise RuntimeError("invalid norm type.")
 
         self.drop = nn.Dropout(p_dropout)
         self.self_attn_layers = nn.ModuleList()
@@ -114,15 +156,16 @@ class Decoder(nn.Module):
                     p_dropout=p_dropout,
                     proximal_bias=proximal_bias,
                     proximal_init=proximal_init,
+                    rotary_pos_emb=rotary_pos_emb,
                 )
             )
-            self.norm_layers_0.append(LayerNorm(hidden_channels))
+            self.norm_layers_0.append(norm_m(hidden_channels))
             self.encdec_attn_layers.append(
                 MultiHeadAttention(
                     hidden_channels, hidden_channels, n_heads, p_dropout=p_dropout
                 )
             )
-            self.norm_layers_1.append(LayerNorm(hidden_channels))
+            self.norm_layers_1.append(norm_m(hidden_channels))
             self.ffn_layers.append(
                 FFN(
                     hidden_channels,
@@ -131,9 +174,11 @@ class Decoder(nn.Module):
                     kernel_size,
                     p_dropout=p_dropout,
                     causal=True,
+                    glu=glu,
+                    activation=activation,
                 )
             )
-            self.norm_layers_2.append(LayerNorm(hidden_channels))
+            self.norm_layers_2.append(norm_m(hidden_channels))
 
     def forward(self, x, x_mask, h, h_mask):
         """
@@ -145,18 +190,35 @@ class Decoder(nn.Module):
         )
         encdec_attn_mask = h_mask.unsqueeze(2) * x_mask.unsqueeze(-1)
         x = x * x_mask
-        for i in range(self.n_layers):
-            y = self.self_attn_layers[i](x, x, self_attn_mask)
-            y = self.drop(y)
-            x = self.norm_layers_0[i](x + y)
+        if self.prenorm:
+            for i in range(self.n_layers):
+                y = self.norm_layers_0[i](x)
+                y = self.self_attn_layers[i](y, y, self_attn_mask)
+                y = self.drop(y)
+                x = x + y
 
-            y = self.encdec_attn_layers[i](x, h, encdec_attn_mask)
-            y = self.drop(y)
-            x = self.norm_layers_1[i](x + y)
+                y = self.norm_layers_1[i](x)
+                y = self.encdec_attn_layers[i](y, h, encdec_attn_mask)
+                y = self.drop(y)
+                x = x + y
 
-            y = self.ffn_layers[i](x, x_mask)
-            y = self.drop(y)
-            x = self.norm_layers_2[i](x + y)
+                y = self.norm_layers_2[i](x)
+                y = self.ffn_layers[i](x, x_mask)
+                y = self.drop(y)
+                x = x + y
+        else:
+            for i in range(self.n_layers):
+                y = self.self_attn_layers[i](x, x, self_attn_mask)
+                y = self.drop(y)
+                x = self.norm_layers_0[i](x + y)
+
+                y = self.encdec_attn_layers[i](x, h, encdec_attn_mask)
+                y = self.drop(y)
+                x = self.norm_layers_1[i](x + y)
+
+                y = self.ffn_layers[i](x, x_mask)
+                y = self.drop(y)
+                x = self.norm_layers_2[i](x + y)
         x = x * x_mask
         return x
 
@@ -169,11 +231,11 @@ class MultiHeadAttention(nn.Module):
         n_heads,
         p_dropout=0.0,
         window_size=None,
-        heads_share=True,
+        heads_share=False,
         block_length=None,
         proximal_bias=False,
         proximal_init=False,
-        use_cosine=False,
+        rotary_pos_emb=False,
     ):
         super().__init__()
         assert channels % n_heads == 0
@@ -187,7 +249,8 @@ class MultiHeadAttention(nn.Module):
         self.block_length = block_length
         self.proximal_bias = proximal_bias
         self.proximal_init = proximal_init
-        self.use_cosine = use_cosine
+        self.rotary_pos_emb = rotary_pos_emb
+
         self.attn = None
 
         self.k_channels = channels // n_heads
@@ -217,6 +280,9 @@ class MultiHeadAttention(nn.Module):
                 self.conv_k.weight.copy_(self.conv_q.weight)
                 self.conv_k.bias.copy_(self.conv_q.bias)
 
+        if self.rotary_pos_emb:
+            self.rope_module = RotaryPositionalEmbeddings(channels // n_heads)
+
     def forward(self, x, c, attn_mask=None):
         q = self.conv_q(x)
         k = self.conv_k(c)
@@ -234,10 +300,12 @@ class MultiHeadAttention(nn.Module):
         key = key.view(b, self.n_heads, self.k_channels, t_s).transpose(2, 3)
         value = value.view(b, self.n_heads, self.k_channels, t_s).transpose(2, 3)
 
-        if self.use_cosine:
-            query = F.normalize(query, dim=2, p=2.0)
-            key = F.normalize(key, dim=2, p=2.0)
-
+        if self.rotary_pos_emb:
+            assert (
+                t_s == t_t
+            ), "Rotary Positional Embeddings is only available for self-attention."
+            query = self.rope_module.forward(query)
+            key = self.rope_module.forward(key)
         scores = torch.matmul(query / math.sqrt(self.k_channels), key.transpose(-2, -1))
         if self.window_size is not None:
             assert (
@@ -377,6 +445,7 @@ class FFN(nn.Module):
         p_dropout=0.0,
         activation="relu",
         causal=False,
+        glu=False,
     ):
         super().__init__()
         self.in_channels = in_channels
@@ -386,24 +455,32 @@ class FFN(nn.Module):
         self.p_dropout = p_dropout
         self.activation = activation
         self.causal = causal
+        self.glu = glu
 
         if causal:
             self.padding = self._causal_padding
         else:
             self.padding = self._same_padding
 
-        self.conv_1 = nn.Conv1d(in_channels, filter_channels, kernel_size)
+        if glu:
+            self.conv_1 = nn.Conv1d(in_channels, filter_channels * 2, kernel_size)
+        else:
+            self.conv_1 = nn.Conv1d(in_channels, filter_channels, kernel_size)
         self.conv_2 = nn.Conv1d(filter_channels, out_channels, kernel_size)
         self.drop = nn.Dropout(p_dropout)
 
     def forward(self, x, x_mask):
         x = self.conv_1(self.padding(x * x_mask))
+        if self.glu:
+            x, s = torch.chunk(x, 2, dim=1)
         if self.activation == "gelu":
             x = F.gelu(x)
         elif self.activation == "silu":
             x = F.silu(x)
         else:
             x = F.relu(x)
+        if self.glu:
+            x = x * s
         x = self.drop(x)
         x = self.conv_2(self.padding(x * x_mask))
         return x * x_mask

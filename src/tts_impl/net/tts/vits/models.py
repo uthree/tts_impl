@@ -199,7 +199,11 @@ class TextEncoder(nn.Module, VariationalTextEncoder):
         kernel_size: int = 3,
         p_dropout: int = 0.1,
         window_size: Optional[int] = 4,
-        use_cosine_attn: bool = False,
+        glu: bool = False,
+        rotary_pos_emb: bool = False,
+        norm: Literal["layernorm", "rmsnorm"] = "layernorm",
+        prenorm: bool = False,
+        activation: Literal["relu", "gelu", "silu"] = "relu",
         gin_channels: int = 0,
     ):
         super().__init__()
@@ -227,7 +231,11 @@ class TextEncoder(nn.Module, VariationalTextEncoder):
             kernel_size,
             p_dropout,
             window_size=window_size,
-            use_cosine_attn=use_cosine_attn,
+            norm=norm,
+            prenorm=prenorm,
+            activation=activation,
+            glu=glu,
+            rotary_pos_emb=rotary_pos_emb,
         )
         self.proj = nn.Conv1d(hidden_channels, out_channels * 2, 1)
 

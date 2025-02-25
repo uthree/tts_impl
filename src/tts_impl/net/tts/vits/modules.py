@@ -27,6 +27,20 @@ class LayerNorm(nn.Module):
         return x.transpose(1, -1)
 
 
+class RMSNorm(nn.Module):
+    def __init__(self, channels, eps=1e-5):
+        super().__init__()
+        self.channels = channels
+        self.eps = eps
+
+        self.gamma = nn.Parameter(torch.ones(channels))
+
+    def forward(self, x):
+        x = x.transpose(1, -1)
+        x = F.rms_norm(x, (self.channels,), self.gamma, self.eps)
+        return x.transpose(1, -1)
+
+
 class ConvReluNorm(nn.Module):
     def __init__(
         self,
