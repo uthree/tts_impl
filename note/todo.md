@@ -4,26 +4,18 @@
 - ヘルパー関数の一般化・整備
     - sequence_mask, generate_path etc...
 
-- VITSのカスタムをサポートする?
-    - 言語モデル特徴量
-    - length_regurator
-    - decoder
-    - VITS2との統合管理...?
-    - 戻り値の変数の数が多すぎて扱いにくいので、辞書にするとかしたほうがいい？
-
 - g2p
-    - pyopenjtalk
     - phonemizer
     - BERT-CTC-G2P
 
 - ドキュメントをいい感じに
     - docstringを解析して自動生成が望ましいかも。
+
 - Recipe
     - ハイパーパラメータやデータの前処理や学習の流れなどをまとめたクラス。
-    - 複数のLightningModuleに対応できるように再実装する (refactor)
+    - 複数のLightningModuleに対応できるように再実装する (refactor/rewrite)
 
 - transformersとの連携
-- CLI
 
 - モデルの分類の見直し?
     - end-to-endなTTSとメルスペクトルを経由するTTSを同一のカテゴリにして良いのか？

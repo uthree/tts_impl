@@ -50,6 +50,8 @@ class VitsLightningModule(L.LightningModule):
         self.lr = lr
         self.betas = betas
 
+        self.save_hyperparameters()
+
     def training_step(self, batch):
         # expand batch
         waveform = batch["waveform"]
