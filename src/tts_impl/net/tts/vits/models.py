@@ -221,7 +221,7 @@ class TextEncoder(nn.Module, VariationalTextEncoder):
         nn.init.normal_(self.emb.weight, 0.0, hidden_channels**-0.5)
 
         if self.take_condition:
-            self.cond = nn.Linear(gin_channels, hidden_channels)
+            self.cond = nn.Conv1d(gin_channels, hidden_channels, 1)
 
         self.encoder = attentions.Encoder(
             hidden_channels,
@@ -243,7 +243,7 @@ class TextEncoder(nn.Module, VariationalTextEncoder):
         x = self.emb(x) * math.sqrt(self.hidden_channels)  # [b, t, h]
 
         if g is not None and self.take_condition:
-            x += self.cond(g)
+            x += self.cond(g).transpose(1, 2)
 
         x = torch.transpose(x, 1, -1)  # [b, h, t]
         x_mask = torch.unsqueeze(commons.sequence_mask(x_lengths, x.size(2)), 1).to(

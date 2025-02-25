@@ -82,9 +82,9 @@ class TTSDataset(Dataset):
         data["waveform"] = wf
 
         # get speaker ID from path
-        speaker_name = audio_path.parent.name
-        if speaker_name in self.metadata:
-            sid = self.metadata["speakers"].index
+        speaker_name = audio_path.parent.stem
+        if speaker_name in self.metadata["speakers"]:
+            sid = self.metadata["speakers"].index(speaker_name)
             data["speaker_id"] = sid
         else:
             raise RuntimeError(

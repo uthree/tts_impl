@@ -2,7 +2,7 @@ from lightning import LightningDataModule
 from tts_impl.g2p import Grapheme2Phoneme
 from tts_impl.g2p.pyopenjtalk import PyopenjtalkG2P
 from tts_impl.net.tts.vits import VitsLightningModule
-from tts_impl.utils.datamodule import AudioDataModule
+from tts_impl.utils.datamodule import TTSDataModule
 from tts_impl.utils.preprocess import (
     G2PExtractor,
     Mixdown,
@@ -48,7 +48,7 @@ class Vits(Recipe):
     def prepare_datamodule(
         self, root_dir: str = "dataset_cache", batch_size: int = 2
     ) -> LightningDataModule:
-        datamodule = AudioDataModule(
+        datamodule = TTSDataModule(
             root=root_dir,
             batch_size=batch_size,
             num_workers=1,

@@ -131,7 +131,7 @@ class TTSCacheWriter(CacheWriter):
     def finalize(self):
         metadata = dict()
         speakers = sorted(self.counter.keys())
-        metadata["speakrs"] = speakers
+        metadata["speakers"] = speakers
         if self.sample_rate is not None:
             metadata["sample_rate"] = self.sample_rate
         with open(self.root / "metadata.json", mode="w+") as f:
