@@ -1,8 +1,9 @@
 import argparse
 import inspect
+import sys
 from dataclasses import asdict
 from pathlib import Path
-from typing import List, Optional, Any
+from typing import Any, List, Optional
 
 import torch
 from lightning import LightningDataModule, LightningModule, Trainer
@@ -11,7 +12,6 @@ from omegaconf import OmegaConf
 from rich import print
 from rich_argparse import RichHelpFormatter
 from tts_impl.utils.config import arguments_dataclass_of
-import sys
 
 
 def build_argparser_for_fn(fn: callable):
