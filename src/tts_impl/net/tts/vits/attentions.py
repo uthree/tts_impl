@@ -27,6 +27,7 @@ class Encoder(nn.Module):
         activation: Literal["relu", "gelu", "silu"] = "relu",
         rotary_pos_emb: bool = False,
         prenorm: bool = False,
+        share_relative_attn_bias: bool = True,
         **kwargs,
     ):
         super().__init__()
@@ -61,6 +62,7 @@ class Encoder(nn.Module):
                     p_dropout=p_dropout,
                     window_size=window_size,
                     rotary_pos_emb=rotary_pos_emb,
+                    heads_share=share_relative_attn_bias,
                 )
             )
             self.norm_layers_1.append(norm_m(hidden_channels))
@@ -120,6 +122,7 @@ class Decoder(nn.Module):
         glu: bool = False,
         activation: Literal["relu", "gelu", "silu"] = "relu",
         rotary_pos_emb: bool = False,
+        share_relative_attn_bias: bool = True,
         **kwargs,
     ):
         super().__init__()
@@ -157,12 +160,16 @@ class Decoder(nn.Module):
                     proximal_bias=proximal_bias,
                     proximal_init=proximal_init,
                     rotary_pos_emb=rotary_pos_emb,
+                    heads_share=share_relative_attn_bias,
                 )
             )
             self.norm_layers_0.append(norm_m(hidden_channels))
             self.encdec_attn_layers.append(
                 MultiHeadAttention(
-                    hidden_channels, hidden_channels, n_heads, p_dropout=p_dropout
+                    hidden_channels,
+                    hidden_channels,
+                    n_heads,
+                    p_dropout=p_dropout,
                 )
             )
             self.norm_layers_1.append(norm_m(hidden_channels))

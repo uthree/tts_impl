@@ -205,6 +205,7 @@ class TextEncoder(nn.Module, VariationalTextEncoder):
         prenorm: bool = False,
         activation: Literal["relu", "gelu", "silu"] = "relu",
         gin_channels: int = 0,
+        share_relative_attn_bias: bool = True,
     ):
         super().__init__()
         self.n_vocab = n_vocab
@@ -236,6 +237,7 @@ class TextEncoder(nn.Module, VariationalTextEncoder):
             activation=activation,
             glu=glu,
             rotary_pos_emb=rotary_pos_emb,
+            share_relative_attn_bias=share_relative_attn_bias,
         )
         self.proj = nn.Conv1d(hidden_channels, out_channels * 2, 1)
 
