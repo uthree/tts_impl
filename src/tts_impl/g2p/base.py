@@ -53,6 +53,7 @@ class Grapheme2Phoneme:
 
         Returns:
             token_ids: dtype=long, shape=(batch_size, length)
+            lengths: dtyoe=long, shape=(batch_size)
             language_ids: dtype=long, shape=(batch_size)
         """
 

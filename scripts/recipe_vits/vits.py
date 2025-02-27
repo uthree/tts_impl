@@ -12,6 +12,8 @@ from tts_impl.utils.preprocess import (
     WaveformLengthExtractor,
 )
 from tts_impl.utils.recipe import Recipe
+import torch
+import torchaudio
 
 
 class Vits(Recipe):
@@ -22,6 +24,7 @@ class Vits(Recipe):
         self,
         target_dir: str = "your_target_dir",
         sample_rate: int = 22050,
+        transcriptions_filename: str = "transcripts_utf8.txt",
     ):
         preprocess = Preprocessor()
         g2p = Grapheme2Phoneme({"ja": PyopenjtalkG2P()})
@@ -30,7 +33,7 @@ class Vits(Recipe):
                 target_dir,
                 sample_rate=sample_rate,
                 language="ja",
-                transcriptions_filename="transcripts_utf8.txt",
+                transcriptions_filename=transcriptions_filename,
             )
         )
         preprocess.with_extractor(Mixdown())
@@ -55,6 +58,15 @@ class Vits(Recipe):
             sizes={"waveform": 256000},
         )
         return datamodule
+
+    def infer(self, text: str):
+        with torch.inference_mode():
+            model = self.load_model()
+            gen = model.generator
+            g2p = Grapheme2Phoneme({"ja": PyopenjtalkG2P()})
+            x, x_lengths, _ = g2p.encode([text], ["ja"])
+            wf = gen.infer(x, x_lengths, sid=torch.LongTensor([0])).squeeze(1)
+            torchaudio.save("output.wav", wf, 22050)
 
 
 if __name__ == "__main__":
