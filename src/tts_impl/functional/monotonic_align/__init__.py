@@ -31,18 +31,18 @@ try:
     available_mas_algorithms.append("jit1")
     available_mas_algorithms.append("jit2")
     torch_jit_available = True
-except Exception as e:
+except ImportError:
     torch_jit_available = False
 
 
 try:
-    import triton  # type: ignore
+    import triton
 
     from .mas_triton import maximum_path_triton
 
     default_mas_algorithm = "triton"
     available_mas_algorithms.append("triton")
-except Exception:
+except ImportError:
     pass
 
 
@@ -98,8 +98,6 @@ def maximum_path(
         [VITS](https://github.com/jaywalnut310/vits)
         [Super Monotonic Alignment Search](https://github.com/supertone-inc/super-monotonic-align)
     """
-    neg_x_ent = attn
-
     if attn_mask is None:
         attn_mask = torch.ones_like(attn)
 

@@ -422,16 +422,11 @@ class VitsGenerator(nn.Module):
             neg_cent += eps * self.mas_noise
 
             # Monotonic Alignment Search
-            attn = (
-                monotonic_align.maximum_path(neg_cent, attn_mask)
-                .transpose(1, 2)
-                .unsqueeze(1)
-                .detach()
-            )
+            attn = monotonic_align.maximum_path(neg_cent, attn_mask).detach()
         return attn
 
     def duration_predictor_loss(self, x, x_mask, w, g=None):
-        # Duration Predictor
+        w = w.unsqueeze(1)
         l_length_all = 0
         logw_hat = None
         logw = torch.log(w + 1e-6) * x_mask
@@ -464,10 +459,11 @@ class VitsGenerator(nn.Module):
         z, m_q, logs_q, y_mask = self.enc_q(y, y_lengths, g=g)
         z_p = self.flow(z, y_mask, g=g)
 
+        # alignment / duration loss
         if w is None:
             attn = self.maximum_path(z_p, m_p, logs_p, x_mask, y_mask)
             w = attn.sum(2)
-            loss_dur, logw, logw_hat = self.duration_predictor_loss(x, x_mask, w, g=g)
+        loss_dur, logw, logw_hat = self.duration_predictor_loss(x, x_mask, w, g=g)
 
         # expand prior
         m_p = self.lr(m_p, w, x_mask, y_mask)
@@ -491,6 +487,8 @@ class VitsGenerator(nn.Module):
             "logs_p": logs_p,
             "m_q": m_q,
             "logs_q": logs_q,
+            "logw": logw,
+            "logw_hat": logw_hat,
         }
 
         return outputs

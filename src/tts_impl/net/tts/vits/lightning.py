@@ -12,9 +12,6 @@ from tts_impl.net.tts.vits.losses import (
     kl_loss,
 )
 from tts_impl.net.vocoder.hifigan import HifiganDiscriminator
-from tts_impl.net.vocoder.hifigan.lightning import (
-    HifiganDiscriminator as VitsDiscriminator,
-)
 from tts_impl.transforms import LogMelSpectrogram
 from tts_impl.utils.config import derive_config
 
@@ -76,7 +73,7 @@ class VitsLightningModule(L.LightningModule):
     def _generator_training_step(
         self, x, x_lengths, y, y_lengths, waveform, sid=None, w=None
     ):
-        opt_g, opt_d = self.optimizers()  # get optimizer
+        opt_g, _opt_d = self.optimizers()  # get optimizer
 
         # forward pass
         real, fake, loss_gen_tts = self._generator_forward(
@@ -91,11 +88,13 @@ class VitsLightningModule(L.LightningModule):
 
         # take generator's gradient descent
         self.toggle_optimizer(opt_g)
-        opt_d.zero_grad(set_to_none=True)
+        opt_g.zero_grad(set_to_none=True)
         self.manual_backward(loss_g)
         self.clip_gradients(opt_g, 1.0, "norm")
         opt_g.step()
         self.untoggle_optimizer(opt_g)
+        fake = fake.detach()
+        real = real.detach()
         return real, fake
 
     def _generator_forward(
@@ -116,7 +115,6 @@ class VitsLightningModule(L.LightningModule):
         m_p = outputs["m_p"]
         logs_p = outputs["logs_p"]
         z_mask = outputs["y_mask"]
-        y_mask = z_mask
         ids_slice = outputs["ids_slice"]
         fake = outputs["fake"]
 
@@ -144,15 +142,12 @@ class VitsLightningModule(L.LightningModule):
         spec_real = self.spectrogram(real).detach()
         spec_fake = self.spectrogram(fake)
 
-        # get optimizer
-        opt_g, opt_d = self.optimizers()
-
         # forward pass
         logits, fmap_fake = self.discriminator(fake)
         _, fmap_real = self.discriminator(real)
         loss_adv, loss_adv_list = generator_loss(logits)
         loss_feat = feature_loss(fmap_real, fmap_fake)
-        loss_mel = F.l1_loss(spec_fake, spec_real)
+        loss_mel = F.l1_loss(spec_fake.float(), spec_real.float())
         loss_g = (
             loss_mel * self.weight_mel
             + loss_feat * self.weight_feat
@@ -168,7 +163,7 @@ class VitsLightningModule(L.LightningModule):
         return loss_g
 
     def _discriminator_training_step(self, real: torch.Tensor, fake: torch.Tensor):
-        opt_g, opt_d = self.optimizers()  # get optimizer
+        _opt_g, opt_d = self.optimizers()  # get optimizer
 
         # forward pass
         fake = fake.detach()  # stop gradient
