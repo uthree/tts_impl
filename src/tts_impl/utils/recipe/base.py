@@ -202,10 +202,7 @@ USAGE:
             self.train(args.config)
         elif args.command == "preprocess":
             cfg = self.load_config(args.config)
-            additional_args = vars(
-                self.argparsers["preprocess"].parse_args(remaining_argv)
-            )
-            self.preprocess(**(dict(cfg["preprocess"]) | additional_args))
+            self.preprocess(**(dict(cfg["preprocess"])))
         elif args.command == "infer":
             cfg = self.load_config(args.config)
             additional_args = vars(self.argparsers["infer"].parse_args(remaining_argv))

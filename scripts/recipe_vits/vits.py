@@ -59,13 +59,13 @@ class Vits(Recipe):
         )
         return datamodule
 
-    def infer(self, text: str):
+    def infer(self, text: str, sid: int = 0):
         with torch.inference_mode():
             model = self.load_model()
             gen = model.generator
             g2p = Grapheme2Phoneme({"ja": PyopenjtalkG2P()})
             x, x_lengths, _ = g2p.encode([text], ["ja"])
-            wf = gen.infer(x, x_lengths, sid=torch.LongTensor([0])).squeeze(1)
+            wf = gen.infer(x, x_lengths, sid=torch.LongTensor([sid])).squeeze(1)
             torchaudio.save("output.wav", wf, 22050)
 
 
