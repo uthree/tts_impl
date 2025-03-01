@@ -14,6 +14,7 @@ from tts_impl.utils.preprocess import (
     WaveformLengthExtractor,
 )
 from tts_impl.utils.recipe import Recipe
+from pathlib import Path
 
 
 class Vits(Recipe):
@@ -61,12 +62,14 @@ class Vits(Recipe):
 
     def infer(self, text: str, sid: int = 0):
         with torch.inference_mode():
+            outputs_dir = Path("outputs")
             model = self.load_model()
             gen = model.generator
             g2p = Grapheme2Phoneme({"ja": PyopenjtalkG2P()})
             x, x_lengths, _ = g2p.encode([text], ["ja"])
             wf = gen.infer(x, x_lengths, sid=torch.LongTensor([sid])).squeeze(1)
-            torchaudio.save("output.wav", wf, 22050)
+            outputs_dir.mkdir(exist_ok=True)
+            torchaudio.save(outputs_dir / f"{sid}.wav", wf, 22050)
 
 
 if __name__ == "__main__":

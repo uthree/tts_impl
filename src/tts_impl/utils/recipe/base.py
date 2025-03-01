@@ -165,31 +165,7 @@ class Recipe:
         """
         if self is self.__class__:
             self.__class__().cli()
-
-        if sys.argv.__len__() <= 1:
-            self.print_usage()
-            while True:
-                args = input(">").strip().split(" ")
-                try:
-                    self.execute_command(args)
-                except Exception as e:
-                    print(e.__traceback__)
-                    print("")
-                    self.print_usage()
-        else:
-            self.execute_command(sys.argv[1:])
-
-    def print_usage(self):
-        print(
-            """
-USAGE:
-    setup: Create configuration directory
-    preprocess: Run preprocessing
-    train: Run training
-    infer: Run inference
-    exit: Quit this
-              """
-        )
+        self.execute_command(sys.argv[1:])
 
     def execute_command(self, cli_args):
         parser = argparse.ArgumentParser(formatter_class=RichHelpFormatter)
