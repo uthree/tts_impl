@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import torch
 import torchaudio
 from lightning import LightningDataModule
@@ -14,7 +16,6 @@ from tts_impl.utils.preprocess import (
     WaveformLengthExtractor,
 )
 from tts_impl.utils.recipe import Recipe
-from pathlib import Path
 
 
 class Vits(Recipe):
@@ -35,6 +36,8 @@ class Vits(Recipe):
                 sample_rate=sample_rate,
                 language="ja",
                 transcriptions_filename=transcriptions_filename,
+                concatenate=True,
+                max_length=256000,
             )
         )
         preprocess.with_extractor(Mixdown())

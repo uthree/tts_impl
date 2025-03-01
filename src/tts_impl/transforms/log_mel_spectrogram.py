@@ -21,7 +21,7 @@ class LogMelSpectrogram(nn.Module):
         n_mels: int = 80,
         fmin: float = 0.0,
         fmax: float = 8000.0,
-        eps: float = 1e-5,
+        eps: float = 1e-8,
     ):
         """
         Args:
@@ -59,10 +59,10 @@ class LogMelSpectrogram(nn.Module):
         Given a batched signal it returns the batched spectrum, otherwise it returns the unbatched spectrum.
 
         Args:
-            signal: Tensor, shape=(..., length)
+            signal: Tensor, shape=(batch_size, length)
 
         Returns:
-            spectrogram: Tensor, shape=(..., n_mels, length // hop_length)
+            spectrogram: Tensor, shape=(batch_size, n_mels, length // hop_length)
         """
         x = signal
         x = F.pad(
@@ -73,7 +73,6 @@ class LogMelSpectrogram(nn.Module):
             ),
             mode="reflect",
         )
-        x = x.to(torch.float)
         x = self.mel_spec(x)
         x = self.safe_log(x)
         return x

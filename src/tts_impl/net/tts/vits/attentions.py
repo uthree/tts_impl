@@ -28,6 +28,8 @@ class Encoder(nn.Module):
         rotary_pos_emb: bool = False,
         prenorm: bool = False,
         share_relative_attn_bias: bool = True,
+        attn_bias: bool = True,
+        ffn_bias: bool = True,
         **kwargs,
     ):
         super().__init__()
@@ -63,6 +65,7 @@ class Encoder(nn.Module):
                     window_size=window_size,
                     rotary_pos_emb=rotary_pos_emb,
                     heads_share=share_relative_attn_bias,
+                    proj_bias=attn_bias,
                 )
             )
             self.norm_layers_1.append(norm_m(hidden_channels))
@@ -75,6 +78,7 @@ class Encoder(nn.Module):
                     p_dropout=p_dropout,
                     glu=glu,
                     activation=activation,
+                    bias=ffn_bias,
                 )
             )
             self.norm_layers_2.append(norm_m(hidden_channels))
@@ -123,6 +127,8 @@ class Decoder(nn.Module):
         activation: Literal["relu", "gelu", "silu"] = "relu",
         rotary_pos_emb: bool = False,
         share_relative_attn_bias: bool = True,
+        attn_bias: bool = True,
+        ffn_bias: bool = True,
         **kwargs,
     ):
         super().__init__()
@@ -161,6 +167,7 @@ class Decoder(nn.Module):
                     proximal_init=proximal_init,
                     rotary_pos_emb=rotary_pos_emb,
                     heads_share=share_relative_attn_bias,
+                    proj_bias=attn_bias,
                 )
             )
             self.norm_layers_0.append(norm_m(hidden_channels))
@@ -170,6 +177,7 @@ class Decoder(nn.Module):
                     hidden_channels,
                     n_heads,
                     p_dropout=p_dropout,
+                    proj_bias=attn_bias,
                 )
             )
             self.norm_layers_1.append(norm_m(hidden_channels))
@@ -183,6 +191,7 @@ class Decoder(nn.Module):
                     causal=True,
                     glu=glu,
                     activation=activation,
+                    bias=ffn_bias,
                 )
             )
             self.norm_layers_2.append(norm_m(hidden_channels))
@@ -243,6 +252,7 @@ class MultiHeadAttention(nn.Module):
         proximal_bias=False,
         proximal_init=False,
         rotary_pos_emb=False,
+        proj_bias=True,
     ):
         super().__init__()
         assert channels % n_heads == 0
@@ -261,10 +271,10 @@ class MultiHeadAttention(nn.Module):
         self.attn = None
 
         self.k_channels = channels // n_heads
-        self.conv_q = nn.Conv1d(channels, channels, 1)
-        self.conv_k = nn.Conv1d(channels, channels, 1)
-        self.conv_v = nn.Conv1d(channels, channels, 1)
-        self.conv_o = nn.Conv1d(channels, out_channels, 1)
+        self.conv_q = nn.Conv1d(channels, channels, 1, bias=proj_bias)
+        self.conv_k = nn.Conv1d(channels, channels, 1, bias=proj_bias)
+        self.conv_v = nn.Conv1d(channels, channels, 1, bias=proj_bias)
+        self.conv_o = nn.Conv1d(channels, out_channels, 1, bias=proj_bias)
         self.drop = nn.Dropout(p_dropout)
 
         if window_size is not None:
@@ -453,6 +463,7 @@ class FFN(nn.Module):
         activation="relu",
         causal=False,
         glu=False,
+        bias=True,
     ):
         super().__init__()
         self.in_channels = in_channels
@@ -470,10 +481,14 @@ class FFN(nn.Module):
             self.padding = self._same_padding
 
         if glu:
-            self.conv_1 = nn.Conv1d(in_channels, filter_channels * 2, kernel_size)
+            self.conv_1 = nn.Conv1d(
+                in_channels, filter_channels * 2, kernel_size, bias=bias
+            )
         else:
-            self.conv_1 = nn.Conv1d(in_channels, filter_channels, kernel_size)
-        self.conv_2 = nn.Conv1d(filter_channels, out_channels, kernel_size)
+            self.conv_1 = nn.Conv1d(
+                in_channels, filter_channels, kernel_size, bias=bias
+            )
+        self.conv_2 = nn.Conv1d(filter_channels, out_channels, kernel_size, bias=bias)
         self.drop = nn.Dropout(p_dropout)
 
     def forward(self, x, x_mask):

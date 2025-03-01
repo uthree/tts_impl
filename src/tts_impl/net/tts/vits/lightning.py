@@ -17,19 +17,23 @@ from tts_impl.utils.config import derive_config
 
 from .models import VitsGenerator
 
+_vits_discriminator_config = HifiganDiscriminator.Config()
+_vits_discriminator_config.msd.scales = []
+_vits_discriminator_config.mpd.periods = [2, 3, 5, 7, 11]
+
 
 @derive_config
 class VitsLightningModule(L.LightningModule):
     def __init__(
         self,
         generator: VitsGenerator.Config = VitsGenerator.Config(),
-        discriminator: HifiganDiscriminator.Config = HifiganDiscriminator.Config(),
+        discriminator: HifiganDiscriminator.Config = _vits_discriminator_config,
         mel: LogMelSpectrogram.Config = LogMelSpectrogram.Config(),
         weight_mel: float = 45.0,
         weight_feat: float = 1.0,
         weight_adv: float = 1.0,
         lr: float = 2e-4,
-        lr_decay: float = 0.999,
+        lr_decay: float = 0.9998749453,
         betas: list[float] = [0.8, 0.99],
     ):
         super().__init__()
@@ -147,7 +151,7 @@ class VitsLightningModule(L.LightningModule):
         _, fmap_real = self.discriminator(real)
         loss_adv, loss_adv_list = generator_loss(logits)
         loss_feat = feature_loss(fmap_real, fmap_fake)
-        loss_mel = F.l1_loss(spec_fake.float(), spec_real.float())
+        loss_mel = F.l1_loss(spec_fake, spec_real)
         loss_g = (
             loss_mel * self.weight_mel
             + loss_feat * self.weight_feat

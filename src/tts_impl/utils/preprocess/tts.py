@@ -4,16 +4,14 @@ import os
 import re
 import shutil
 from pathlib import Path
-from typing import Any, Dict, Generator, List, Literal, Mapping, Optional, Union
+from typing import Any, Generator, List, Literal, Mapping, Optional, Union
 
 import torch
 import torchaudio
-from rich.progress import track
 from torchaudio.functional import resample
-from tts_impl.functional import adjust_size, estimate_f0
 from tts_impl.g2p import Grapheme2Phoneme
 
-from .base import CacheWriter, DataCollector, Extractor, FunctionalExtractor
+from .base import CacheWriter, DataCollector, Extractor
 
 
 class TTSDataCollector(DataCollector):
@@ -25,6 +23,8 @@ class TTSDataCollector(DataCollector):
         language: Optional[str] = None,
         transcriptions_filename: str = "transcriptions.txt",
         transcriptions_encoding: str = "utf-8",
+        concatenate: bool = False,
+        max_length: Optional[int] = None,
     ):
         self.target = Path(target)
         self.formats = formats
@@ -32,11 +32,16 @@ class TTSDataCollector(DataCollector):
         self.language = language
         self.transcriptions_filename = transcriptions_filename
         self.transcriptions_encoding = transcriptions_encoding
+        self.concatenate = concatenate
+        self.max_length = max_length
 
     def __iter__(self) -> Generator[Mapping[str, Any], None, None]:
         subdirs = [d for d in self.target.iterdir() if d.is_dir()]
         for subdir in subdirs:
-            generator = self.process_subdir(subdir)
+            if self.concatenate and self.max_length is not None:
+                generator = self._process_subdir_with_concatenation(subdir)
+            else:
+                generator = self._process_subdir(subdir)
             for data in generator:
                 yield data
 
@@ -45,6 +50,8 @@ class TTSDataCollector(DataCollector):
         if self.sample_rate is not None and sr != self.sample_rate:
             wf = resample(wf, sr, self.sample_rate)
             sr = self.sample_rate
+        if wf.shape[1] > self.max_length:
+            wf = wf[:, : self.max_length]
         return wf, sr
 
     def parse_transcriptions(self, transcriptions: str) -> dict[str, dict[str]]:
@@ -57,9 +64,10 @@ class TTSDataCollector(DataCollector):
                 r[fname] = {"name": fname, "transcription": trns}
         return r
 
-    def process_subdir(self, subdir: Path) -> Generator[Mapping[str, Any], None, None]:
-        speaker = subdir.name
-        self.logger.info(f"Collecting speaker: `{speaker}` 's data from {subdir} ...")
+    def _collect_audio_paths_and_transcriptions(
+        self, subdir: Path
+    ) -> tuple[list[Path], list[dict[str, Any]]]:
+        self.logger.info(f"Collecting data from {subdir} ...")
         self.logger.info("Scanning transcriptions ...")
         transcriptions_paths = [subdir / self.transcriptions_filename]
         transcriptions_paths += [d for d in subdir.rglob(self.transcriptions_filename)]
@@ -76,6 +84,14 @@ class TTSDataCollector(DataCollector):
             p for p in subdir.rglob("*") if p.suffix.lstrip(".") in self.formats
         ]
 
+        return audio_paths, transcriptions
+
+    def _process_subdir(self, subdir: Path) -> Generator[Mapping[str, Any], None, None]:
+        audio_paths, transcriptions = self._collect_audio_paths_and_transcriptions(
+            subdir
+        )
+        speaker = subdir.name
+
         for apath in audio_paths:
             self.logger.debug(f"Processing: {apath}")
             if apath.stem in transcriptions:
@@ -88,6 +104,51 @@ class TTSDataCollector(DataCollector):
                     "language": self.language,
                 }
                 yield data
+
+    def _process_subdir_with_concatenation(
+        self, subdir: Path, buffer_size: int = 30
+    ) -> Generator[Mapping[str, Any], None, None]:
+        audio_paths, transcriptions = self._collect_audio_paths_and_transcriptions(
+            subdir
+        )
+        speaker = subdir.name
+        buffer = []
+
+        for apath in audio_paths:
+            self.logger.debug(f"Processing: {apath}")
+            if apath.stem in transcriptions:
+                wf, sr = self.load_with_resample(apath)
+                data = {
+                    "waveform": wf,
+                    "transcription": transcriptions[apath.stem]["transcription"],
+                    "speaker": speaker,
+                    "sample_rate": sr,
+                    "language": self.language,
+                }
+                if len(buffer) < buffer_size:
+                    buffer.append(data)
+                else:
+                    found = False
+                    for i in range(len(buffer)):
+                        if (
+                            buffer[i]["waveform"].shape[1] + data["waveform"].shape[1]
+                            < self.max_length
+                        ):
+                            buffer[i]["waveform"] = torch.cat(
+                                [buffer[i]["waveform"], data["waveform"]], dim=1
+                            )
+                            buffer[i]["transcription"] = (
+                                buffer[i]["transcription"] + data["transcription"]
+                            )
+                            # print(buffer[i]["transcription"])
+                            found = True
+                            break
+                    if not found:
+                        yield buffer.pop()
+                        buffer.append(data)
+
+        while len(buffer) > 0:
+            yield buffer.pop()
 
 
 class TTSCacheWriter(CacheWriter):
