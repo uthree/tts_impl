@@ -91,8 +91,8 @@ def maximum_path(
         'cython': cython implementation from official VITS implementation.
         'numba': numba implementation.
         'jit1': JIT v1 implementation proposed in super MAS.
-        'jit2': JIT v2 implementation proposed in super MAS paper.
-        'triton': Triton implementation in super MAS paper.
+        'jit2': JIT v2 implementation proposed in super MAS.
+        'triton': Triton implementation in super MAS.
 
     References:
         [VITS](https://github.com/jaywalnut310/vits)

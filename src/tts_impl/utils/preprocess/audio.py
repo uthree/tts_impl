@@ -117,7 +117,7 @@ class AudioCacheWriter(CacheWriter):
         metadata = dict()
         if self.sample_rate is not None:
             metadata["sample_rate"] = self.sample_rate
-        with open(self.root / "metadata.json", mode="w") as f:
+        with open(self.root / "metadata.json", mode="w+") as f:
             json.dump(metadata, f)
 
 

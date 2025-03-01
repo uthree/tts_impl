@@ -12,7 +12,7 @@ class LanguageModule(Protocol):
 
 
 def remove_duplicates(lst):
-    return list(set(lst))
+    return list(sorted(list(set(lst))))
 
 
 def pad(ids: List[int], length: int = 100, pad_id: int = 0) -> List[int]:
@@ -25,13 +25,14 @@ def pad(ids: List[int], length: int = 100, pad_id: int = 0) -> List[int]:
 class Grapheme2Phoneme:
     def __init__(self, languages: Dict[str, LanguageModule]):
         self.language_modules = languages
-        self.phonemes = ["<PAD>"]
         self.languages = list(self.language_modules.keys())
 
         # extract all phonemes
+        self.phonemes = []
         for m in self.language_modules.values():
             self.phonemes += m.phonemes()
         self.phonemes = remove_duplicates(self.phonemes)
+        self.phonemes = ["<PAD>"] + self.phonemes
 
     def _lang_id_single(self, language: str) -> int:
         return self.languages.index(language)

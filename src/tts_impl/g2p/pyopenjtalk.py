@@ -23,6 +23,7 @@ class PyopenjtalkG2P(LanguageModule):
 
     def phonemes(self) -> List[str]:
         return [
+            "pau",
             "I",
             "N",
             "U",
@@ -63,5 +64,5 @@ class PyopenjtalkG2P(LanguageModule):
             "y",
             "z",
             "kw",
-            "pau",
+            "gw",
         ]
