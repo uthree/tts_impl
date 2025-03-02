@@ -38,6 +38,7 @@ class Vits(Recipe):
                 transcriptions_filename=transcriptions_filename,
                 concatenate=True,
                 max_length=256000,
+                filename_blacklist=["falset", "whisper"],
             )
         )
         preprocess.with_extractor(Mixdown())

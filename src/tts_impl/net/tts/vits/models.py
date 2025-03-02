@@ -431,16 +431,17 @@ class VitsGenerator(nn.Module):
         logw_hat = None
         logw = torch.log(w + 1e-6) * x_mask
 
-        if self.use_sdp:
-            l_length = self.sdp(x, x_mask, w, g=g)
-            l_length = l_length / torch.sum(x_mask)
-            l_length_all += l_length
-
         if self.use_dp:
             logw_hat = self.dp(x, x_mask, g=g)
             l_length = torch.sum((logw - logw_hat) ** 2, [1, 2]) / torch.sum(
                 x_mask
             )  # for averaging
+            l_length_all += l_length
+
+        if self.use_sdp:
+            x = x.float()
+            l_length = self.sdp(x, x_mask, w, g=g)
+            l_length = l_length / torch.sum(x_mask)
             l_length_all += l_length
         return l_length_all, logw, logw_hat
 

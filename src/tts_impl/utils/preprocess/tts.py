@@ -23,6 +23,7 @@ class TTSDataCollector(DataCollector):
         language: Optional[str] = None,
         transcriptions_filename: str = "transcriptions.txt",
         transcriptions_encoding: str = "utf-8",
+        filename_blacklist: list[str] = [],
         concatenate: bool = False,
         max_length: Optional[int] = None,
     ):
@@ -34,6 +35,7 @@ class TTSDataCollector(DataCollector):
         self.transcriptions_encoding = transcriptions_encoding
         self.concatenate = concatenate
         self.max_length = max_length
+        self.filename_blacklist = filename_blacklist
 
     def __iter__(self) -> Generator[Mapping[str, Any], None, None]:
         subdirs = [d for d in self.target.iterdir() if d.is_dir()]
@@ -83,6 +85,16 @@ class TTSDataCollector(DataCollector):
         audio_paths = [
             p for p in subdir.rglob("*") if p.suffix.lstrip(".") in self.formats
         ]
+
+        def _tmp_filter(p: Path) -> Path:
+            if not p.exists():
+                return False
+            for b in self.filename_blacklist:
+                if b in str(p):
+                    return False
+            return True
+
+        audio_paths = [p for p in audio_paths if _tmp_filter(p)]
 
         return audio_paths, transcriptions
 
