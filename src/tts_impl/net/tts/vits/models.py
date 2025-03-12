@@ -142,8 +142,10 @@ class DurationPredictor(nn.Module):
         filter_channels: int = 256,
         kernel_size: int = 5,
         p_dropout: float = 0.1,
-        gin_channels=0,
+        gin_channels: int = 0,
+        input_badkward: bool = False,
         condition_backward: bool = False,
+        out_channels: int = 1,
     ):
         super().__init__()
 
@@ -152,6 +154,7 @@ class DurationPredictor(nn.Module):
         self.kernel_size = kernel_size
         self.p_dropout = p_dropout
         self.gin_channels = gin_channels
+        self.input_backward = input_badkward
         self.condition_backward = condition_backward
 
         self.drop = nn.Dropout(p_dropout)
@@ -163,13 +166,14 @@ class DurationPredictor(nn.Module):
             filter_channels, filter_channels, kernel_size, padding=kernel_size // 2
         )
         self.norm_2 = modules.LayerNorm(filter_channels)
-        self.proj = nn.Conv1d(filter_channels, 1, 1)
+        self.proj = nn.Conv1d(filter_channels, out_channels, 1)
 
         if gin_channels != 0:
             self.cond = nn.Conv1d(gin_channels, in_channels, 1)
 
     def forward(self, x, x_mask, g=None):
-        x = torch.detach(x)
+        if not self.input_backward:
+            x = torch.detach(x)
         if g is not None:
             if not self.condition_backward:
                 g = torch.detach(g)
@@ -269,8 +273,8 @@ class ResidualCouplingBlock(nn.Module, Invertible):
         kernel_size: int = 5,
         dilation_rate: int = 1,
         n_layers: int = 4,
-        n_flows=4,
-        gin_channels=0,
+        n_flows: int = 4,
+        gin_channels: int = 0,
     ):
         super().__init__()
         self.channels = channels
@@ -316,7 +320,7 @@ class PosteriorEncoder(nn.Module, VariationalAcousticFeatureEncoder):
         kernel_size: int = 5,
         dilation_rate: int = 1,
         n_layers: int = 16,
-        gin_channels=0,
+        gin_channels: int = 0,
     ):
         super().__init__()
         self.in_channels = in_channels
