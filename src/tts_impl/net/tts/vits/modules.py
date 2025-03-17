@@ -41,6 +41,18 @@ class RMSNorm(nn.Module):
         return x.transpose(1, -1)
 
 
+# purposed at https://arxiv.org/abs/2503.10622
+class DynamicTanh(nn.Module):
+    def __init__(self, channels, alpha: float = 0.5):
+        super().__init__()
+        self.alpha = nn.Parameter(torch.ones(1, 1, 1) * alpha)
+        self.beta = nn.Parameter(torch.zeros(1, channels, 1))
+        self.gamma = nn.Parameter(torch.ones(1, channels, 1))
+
+    def forward(self, x):
+        return F.tanh(self.alpha * x) * self.gamma + self.beta
+
+
 class ConvReluNorm(nn.Module):
     def __init__(
         self,

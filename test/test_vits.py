@@ -21,7 +21,7 @@ from tts_impl.net.tts.vits.attentions import Decoder, Encoder
 @pytest.mark.parametrize("activation", ["relu", "silu", "gelu"])
 @pytest.mark.parametrize("glu", [True, False])
 @pytest.mark.parametrize("rotary_pos_emb", [True, False])
-@pytest.mark.parametrize("norm", ["rmsnorm", "layernorm"])
+@pytest.mark.parametrize("norm", ["rmsnorm", "layernorm", "none", "tanh"])
 @pytest.mark.parametrize("prenorm", [True, False])
 @pytest.mark.parametrize("window_size", [None, 4])
 def test_vits_encoder(activation, glu, rotary_pos_emb, norm, prenorm, window_size):
@@ -47,7 +47,7 @@ def test_vits_encoder(activation, glu, rotary_pos_emb, norm, prenorm, window_siz
 @pytest.mark.parametrize("activation", ["relu", "silu", "gelu"])
 @pytest.mark.parametrize("glu", [True, False])
 @pytest.mark.parametrize("rotary_pos_emb", [True, False])
-@pytest.mark.parametrize("norm", ["rmsnorm", "layernorm"])
+@pytest.mark.parametrize("norm", ["rmsnorm", "layernorm", "none", "tanh"])
 @pytest.mark.parametrize("prenorm", [True, False])
 @pytest.mark.parametrize("window_size", [None, 4])
 def test_vits_decoder(activation, glu, rotary_pos_emb, norm, prenorm, window_size):

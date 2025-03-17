@@ -9,7 +9,7 @@ from torch.nn import functional as F
 from torchtune.modules import RotaryPositionalEmbeddings
 
 from . import commons
-from .modules import LayerNorm, RMSNorm
+from .modules import LayerNorm, RMSNorm, DynamicTanh
 
 
 class Encoder(nn.Module):
@@ -22,7 +22,7 @@ class Encoder(nn.Module):
         kernel_size=1,
         p_dropout=0.0,
         window_size=4,
-        norm: Literal["layernorm", "rmsnorm"] = "layernorm",
+        norm: Literal["layernorm", "rmsnorm", "none", "tanh"] = "layernorm",
         glu: bool = False,
         activation: Literal["relu", "gelu", "silu"] = "relu",
         rotary_pos_emb: bool = False,
@@ -52,6 +52,10 @@ class Encoder(nn.Module):
             norm_m = LayerNorm
         elif norm == "rmsnorm":
             norm_m = RMSNorm
+        elif norm == "none":
+            norm_m = nn.Identity
+        elif norm == "tanh":
+            norm_m = DynamicTanh
         else:
             raise RuntimeError("invalid norm type.")
 
@@ -121,7 +125,7 @@ class Decoder(nn.Module):
         p_dropout=0.0,
         proximal_bias=False,
         proximal_init=True,
-        norm: Literal["layernorm", "rmsnorm"] = "layernorm",
+        norm: Literal["layernorm", "rmsnorm", "none", "tanh"] = "layernorm",
         prenorm: bool = False,
         glu: bool = False,
         activation: Literal["relu", "gelu", "silu"] = "relu",
@@ -146,6 +150,10 @@ class Decoder(nn.Module):
             norm_m = LayerNorm
         elif norm == "rmsnorm":
             norm_m = RMSNorm
+        elif norm == "none":
+            norm_m = nn.Identity
+        elif norm == "tanh":
+            norm_m = DynamicTanh
         else:
             raise RuntimeError("invalid norm type.")
 

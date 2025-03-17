@@ -205,7 +205,7 @@ class TextEncoder(nn.Module, VariationalTextEncoder):
         window_size: Optional[int] = 4,
         glu: bool = False,
         rotary_pos_emb: bool = False,
-        norm: Literal["layernorm", "rmsnorm"] = "layernorm",
+        norm: Literal["layernorm", "rmsnorm", "none", "tanh"] = "layernorm",
         prenorm: bool = False,
         activation: Literal["relu", "gelu", "silu"] = "relu",
         gin_channels: int = 0,
