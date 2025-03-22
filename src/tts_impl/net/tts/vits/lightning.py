@@ -18,7 +18,7 @@ from tts_impl.utils.config import derive_config
 from .models import VitsGenerator
 
 _vits_discriminator_config = HifiganDiscriminator.Config()
-_vits_discriminator_config.msd.scales = []
+_vits_discriminator_config.msd.scales = [1]
 _vits_discriminator_config.mpd.periods = [2, 3, 5, 7, 11]
 
 
