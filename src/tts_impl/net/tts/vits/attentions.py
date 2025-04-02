@@ -6,10 +6,10 @@ from typing import Literal
 import torch
 from torch import nn
 from torch.nn import functional as F
-from torchtune.modules import RotaryPositionalEmbeddings
 
 from . import commons
 from .modules import LayerNorm, RMSNorm, DynamicTanh
+from rotary_embedding_torch import RotaryEmbedding
 
 
 class Encoder(nn.Module):
@@ -306,7 +306,7 @@ class MultiHeadAttention(nn.Module):
                 self.conv_k.bias.copy_(self.conv_q.bias)
 
         if self.rotary_pos_emb:
-            self.rope_module = RotaryPositionalEmbeddings(channels // n_heads)
+            self.rope_module = RotaryEmbedding(channels // n_heads, use_xpos=True)
 
     def forward(self, x, c, attn_mask=None):
         q = self.conv_q(x)
@@ -329,8 +329,7 @@ class MultiHeadAttention(nn.Module):
             assert (
                 t_s == t_t
             ), "Rotary Positional Embeddings is only available for self-attention."
-            query = self.rope_module.forward(query)
-            key = self.rope_module.forward(key)
+            query, key = self.rope_module.rotate_queries_and_keys(query, key, seq_dim=2)
         scores = torch.matmul(query / math.sqrt(self.k_channels), key.transpose(-2, -1))
         if self.window_size is not None:
             assert (

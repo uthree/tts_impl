@@ -1,7 +1,6 @@
 from typing import Optional
 
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
 
 
@@ -187,5 +186,5 @@ def cross_correlation(
     x_stft = torch.stft(x, n_fft, hop_length, n_fft, window, return_complex=True)[
         :, :, 1:
     ]
-    x_corr = torch.fft.irfft(x_stft * x_stft, dim=1).to(dtype)
+    x_corr = torch.fft.irfft(x_stft * x_stft.conj(), dim=1).to(dtype)
     return x_corr
