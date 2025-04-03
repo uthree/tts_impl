@@ -18,6 +18,7 @@ class DdspVocoder(nn.Module):
         sample_rate: int = 24000,
         hop_length: int = 256,
         n_fft: int = 1024,
+        min_phase: bool = False,
     ):
         super().__init__()
         self.dim_periodicity = dim_periodicity
@@ -25,6 +26,7 @@ class DdspVocoder(nn.Module):
         self.n_fft = n_fft
         self.fft_bin = n_fft // 2 + 1
         self.hop_length = hop_length
+        self.min_phase = min_phase
 
         self.mel_inv = InverseMelScale(self.fft_bin, dim_periodicity, sample_rate)
         self.hann_window = nn.Parameter(torch.hann_window(n_fft))
@@ -77,6 +79,12 @@ class DdspVocoder(nn.Module):
         exc_stft = imp_stft + noi_stft
 
         # FIR Filter
+        if self.min_phase:
+            cepst = torch.fft.irfft(torch.log(torch.clamp_min(spectral_envelope, 1e-8)), dim=1)
+            h = self.n_fft // 2
+            cepst[:, h:-1] *= 2.0
+            cepst[:, 1:h] *= 0.0
+            spectral_envelope = torch.exp(torch.fft.rfft(cepst, dim=1))
         voi_stft = exc_stft * F.pad(spectral_envelope, (1, 0))
 
         # inverse STFT
