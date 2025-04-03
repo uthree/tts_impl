@@ -46,6 +46,11 @@ class DdspVocoder(nn.Module):
         Returns:
             output: synthesized wave
         """
+        dtype = periodicity.dtype
+        periodicity = periodicity.to(torch.float)
+        spectral_envelope = spectral_envelope.to(torch.float)
+        post_filter = post_filter.to(torch.float)
+
         with torch.no_grad():
             # oscillate impulse train and gaussian noise
             imp = impulse_train(f0, self.hop_length, self.sample_rate) * F.interpolate(torch.rsqrt(torch.clamp_min(f0, 20.0)[:, None, :]), scale_factor=self.hop_length).squeeze(1)
@@ -81,4 +86,5 @@ class DdspVocoder(nn.Module):
         if post_filter is not None:
             voi = fft_convolve(voi, post_filter)
         
+        voi = voi.to(dtype)
         return voi
