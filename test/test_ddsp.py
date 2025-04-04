@@ -9,7 +9,15 @@ from tts_impl.functional import (
     sinusoidal_harmonics,
     spectral_envelope_filter,
 )
+from tts_impl.net.vocoder.ddsp import DdspVocoder
 
+def test_synth_ddsp_vocoder():
+    vocoder = DdspVocoder()
+    f0 = torch.ones(2, 100) * 440.
+    per = torch.rand(2, 12, 100)
+    senv = torch.randn(2, 513, 100)
+    pf = torch.randn(2, 2048)
+    vocoder.forward(f0, per, senv, pf)
 
 def test_xcorr():
     x = torch.randn(2, 65536)

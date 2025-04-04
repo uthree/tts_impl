@@ -28,7 +28,7 @@ class DdspVocoder(nn.Module):
         self.hop_length = hop_length
         self.min_phase = min_phase
 
-        self.mel_inv = InverseMelScale(self.fft_bin, dim_periodicity, sample_rate)
+        self.per2spec = InverseMelScale(self.fft_bin, dim_periodicity, sample_rate)
         self.hann_window = nn.Parameter(torch.hann_window(n_fft))
 
     def forward(
@@ -66,16 +66,9 @@ class DdspVocoder(nn.Module):
                 noi, self.n_fft, window=self.hann_window, return_complex=True
             )
 
-            # set periodicity to zero if unvoiced.
-            periodicity[
-                (f0 <= 20.0)
-                .unsqueeze(1)
-                .expand(f0.shape[0], self.dim_periodicity, f0.shape[1])
-            ] = 0.0
-
         # excitation
-        imp_stft = imp_stft * F.pad(self.mel_inv(periodicity), (1, 0))
-        noi_stft = noi_stft * F.pad(self.mel_inv(1.0-periodicity), (1, 0))
+        imp_stft = imp_stft * F.pad(self.per2spec(periodicity), (1, 0))
+        noi_stft = noi_stft * F.pad(self.per2spec(1.0-periodicity), (1, 0))
         exc_stft = imp_stft + noi_stft
 
         # FIR Filter
