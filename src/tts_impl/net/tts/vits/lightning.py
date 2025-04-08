@@ -214,3 +214,13 @@ class VitsLightningModule(L.LightningModule):
         sch_g.step()
         sch_d.step()
         self.log("scheduler/learning rate", sch_g.get_last_lr()[0])
+    
+    def validation_step(self, batch, bid):
+        reference_waveform = batch["waveform"]
+        synthesized_waveform = self.generator.infer(batch["phonemes"], batch["phonemes_lengths"], batch["speaker_id"])
+        for i in range(synthesized_waveform.shape[0]):
+            r = reference_waveform[i].sum(dim=0, keepdim=True).detach().cpu()
+            f = synthesized_waveform[i].sum(dim=0, keepdim=True).detach().cpu()
+            self.logger.experiment.add_audio(f"synthesized waveform/{bid}_{i}", f, self.current_epoch, sample_rate=self.generator.sample_rate)
+            self.logger.experiment.add_audio(f"reference waveform/{bid}_{i}", r, self.current_epoch, sample_rate=self.generator.sample_rate)
+            

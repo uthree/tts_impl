@@ -102,7 +102,7 @@ class NsfhifiganLightningModule(LightningModule):
         self.log("train loss/generator adversarial", loss_adv)
         self.log("G", loss_g, prog_bar=True, logger=False)
 
-    def _test_or_validate_batch(self, batch):
+    def _test_or_validate_batch(self, batch, bid):
         waveform = batch["waveform"]
         f0 = batch.get("f0", None)
         uv = batch.get("uv", None)
@@ -119,10 +119,10 @@ class NsfhifiganLightningModule(LightningModule):
         self.log("validation loss/mel spectrogram", loss_mel)
 
         for i in range(fake.shape[0]):
-            f = fake[i, :].detach().cpu()
-            r = waveform[i, :].detach().cpu()
-            self.logger.experiment.add_audio(f"synthesized waveform/{i}", f, self.current_epoch, sample_rate=self.generator.sample_rate)
-            self.logger.experiment.add_audio(f"reference waveform/{i}", r, self.current_epoch, sample_rate=self.generator.sample_rate)
+            f = fake[i].sum(dim=0, keepdim=True).detach().cpu()
+            r = waveform[i].sum(dim=0, keepdim=True).detach().cpu()
+            self.logger.experiment.add_audio(f"synthesized waveform/{bid}_{i}", f, self.current_epoch, sample_rate=self.generator.sample_rate)
+            self.logger.experiment.add_audio(f"reference waveform/{bid}_{i}", r, self.current_epoch, sample_rate=self.generator.sample_rate)
 
         return loss_mel
 
@@ -159,11 +159,11 @@ class NsfhifiganLightningModule(LightningModule):
         sch_d.step()
         self.log("scheduler/learning rate", sch_g.get_last_lr()[0])
 
-    def validation_step(self, batch):
-        return self._test_or_validate_batch(batch)
+    def validation_step(self, batch, id):
+        return self._test_or_validate_batch(batch, id)
 
-    def test_step(self, batch):
-        return self._test_or_validate_batch(batch)
+    def test_step(self, batch, id):
+        return self._test_or_validate_batch(batch, id)
 
     def configure_optimizers(self):
         opt_g = optim.AdamW(

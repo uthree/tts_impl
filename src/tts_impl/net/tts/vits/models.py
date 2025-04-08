@@ -373,6 +373,7 @@ class VitsGenerator(nn.Module):
         use_sdp: bool = True,
         segment_size: int = 32,
         mas_noise: float = 0.0,
+        sample_rate: int = 22050,
     ):
         super().__init__()
         self.n_speakers = n_speakers
@@ -383,6 +384,7 @@ class VitsGenerator(nn.Module):
         self.use_dp = use_dp
 
         self.mas_noise = mas_noise
+        self.sample_rate = sample_rate
 
         self.enc_p = TextEncoder(**text_encoder)
         self.dec = HifiganGenerator(**decoder)
@@ -390,6 +392,8 @@ class VitsGenerator(nn.Module):
         self.flow = ResidualCouplingBlock(**flow)
         self.dec = HifiganGenerator(**decoder)
         self.lr = DuplicateByDuration()
+
+        self.dec.sample_rate = self.sample_rate
 
         if use_sdp:
             self.sdp = StochasticDurationPredictor(**stochastic_duration_predictor)

@@ -9,7 +9,7 @@ from torchaudio.transforms import InverseMelScale
 from tts_impl.functional.ddsp import fft_convolve, impulse_train
 
 
-class DdspVocoder(nn.Module):
+class SubtractiveVocoder(nn.Module):
     def __init__(
         self,
         dim_periodicity: int = 12,

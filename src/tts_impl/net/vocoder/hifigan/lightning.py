@@ -100,7 +100,7 @@ class HifiganLightningModule(L.LightningModule):
         self._adversarial_training_step(real, fake)
         self._discriminator_training_step(real, fake)
 
-    def _test_or_validate_batch(self, batch):
+    def _test_or_validate_batch(self, batch, bid):
         real = batch["waveform"]
 
         if "acoustic_features" in batch:
@@ -115,10 +115,10 @@ class HifiganLightningModule(L.LightningModule):
         self.log("validation loss/mel spectrogram", loss_mel)
 
         for i in range(fake.shape[0]):
-            f = fake[i, :].detach().cpu()
-            r = real[i, :].detach().cpu()
-            self.logger.experiment.add_audio(f"synthesized waveform/{i}", f, self.current_epoch, sample_rate=self.generator.sample_rate)
-            self.logger.experiment.add_audio(f"reference waveform/{i}", r, self.current_epoch, sample_rate=self.generator.sample_rate)
+            f = fake[i].sum(dim=0, keepdim=True).detach().cpu()
+            r = real[i].sum(dim=0, keepdim=True).detach().cpu()
+            self.logger.experiment.add_audio(f"synthesized waveform/{bid}_{i}", f, self.current_epoch, sample_rate=self.generator.sample_rate)
+            self.logger.experiment.add_audio(f"reference waveform/{bid}_{i}", r, self.current_epoch, sample_rate=self.generator.sample_rate)
 
         return loss_mel
 
@@ -155,11 +155,11 @@ class HifiganLightningModule(L.LightningModule):
         sch_d.step()
         self.log("scheduler/learning rate", sch_g.get_last_lr()[0])
 
-    def validation_step(self, batch):
-        return self._test_or_validate_batch(batch)
+    def validation_step(self, batch, id):
+        return self._test_or_validate_batch(batch, id)
 
-    def test_step(self, batch):
-        return self._test_or_validate_batch(batch)
+    def test_step(self, batch, id):
+        return self._test_or_validate_batch(batch, id)
 
     def configure_optimizers(self):
         opt_g = optim.AdamW(
