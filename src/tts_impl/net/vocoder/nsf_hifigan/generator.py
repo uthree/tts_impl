@@ -19,6 +19,10 @@ class NsfhifiganGenerator(nn.Module, GanVocoderGenerator):
         super().__init__()
         self.source_module = HarmonicNoiseOscillator(**source)
         self.filter = NsfhifiganFilter(**filter)
+    
+    @property
+    def sample_rate(self) -> int:
+        return self.source_module.sample_rate
 
     def forward(
         self,
@@ -26,7 +30,7 @@ class NsfhifiganGenerator(nn.Module, GanVocoderGenerator):
         g: Optional[torch.Tensor] = None,
         f0: Optional[torch.Tensor] = None,
         uv: Optional[torch.Tensor] = None,
-    ):
+    ) -> torch.Tensor:
 
         if f0 is None:
             f0 = torch.zeros((x.shape[0], x.shape[2]), device=x.device)

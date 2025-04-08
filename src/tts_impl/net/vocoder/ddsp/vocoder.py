@@ -1,20 +1,19 @@
+import math
+from typing import Optional
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
-from typing import Optional
 from torchaudio.transforms import InverseMelScale
-from tts_impl.functional.ddsp import (
-    impulse_train,
-    fft_convolve,
-)
-import math
+from tts_impl.functional.ddsp import fft_convolve, impulse_train
 
 
 class DdspVocoder(nn.Module):
     def __init__(
         self,
         dim_periodicity: int = 12,
+        n_mels: int = 80,
         sample_rate: int = 24000,
         hop_length: int = 256,
         n_fft: int = 1024,
@@ -29,6 +28,7 @@ class DdspVocoder(nn.Module):
         self.min_phase = min_phase
 
         self.per2spec = InverseMelScale(self.fft_bin, dim_periodicity, sample_rate)
+        self.env2spec = InverseMelScale(self.fft_bin, n_mels, sample_rate)
         self.hann_window = nn.Parameter(torch.hann_window(n_fft))
 
     def forward(
@@ -55,7 +55,10 @@ class DdspVocoder(nn.Module):
 
         with torch.no_grad():
             # oscillate impulse train and gaussian noise
-            imp = impulse_train(f0, self.hop_length, self.sample_rate) * F.interpolate(torch.rsqrt(torch.clamp_min(f0, 20.0)[:, None, :]), scale_factor=self.hop_length).squeeze(1)
+            imp = impulse_train(f0, self.hop_length, self.sample_rate) * F.interpolate(
+                torch.rsqrt(torch.clamp_min(f0, 20.0)[:, None, :]),
+                scale_factor=self.hop_length,
+            ).squeeze(1)
             noi = (torch.rand_like(imp) - 0.5) * 2 / math.sqrt(self.sample_rate)
 
             # fourier transform
@@ -68,12 +71,15 @@ class DdspVocoder(nn.Module):
 
         # excitation
         imp_stft = imp_stft * F.pad(self.per2spec(periodicity), (1, 0))
-        noi_stft = noi_stft * F.pad(self.per2spec(1.0-periodicity), (1, 0))
+        noi_stft = noi_stft * F.pad(self.per2spec(1.0 - periodicity), (1, 0))
         exc_stft = imp_stft + noi_stft
 
         # FIR Filter
+        spectral_envelope = self.env2spec(spectral_envelope)
         if self.min_phase:
-            cepst = torch.fft.irfft(torch.log(torch.clamp_min(spectral_envelope, 1e-8)), dim=1)
+            cepst = torch.fft.irfft(
+                torch.log(torch.clamp_min(spectral_envelope, 1e-8)), dim=1
+            )
             h = self.n_fft // 2
             cepst[:, h:-1] *= 2.0
             cepst[:, 1:h] *= 0.0
@@ -81,11 +87,13 @@ class DdspVocoder(nn.Module):
         voi_stft = exc_stft * F.pad(spectral_envelope, (1, 0))
 
         # inverse STFT
-        voi = torch.istft(voi_stft, self.n_fft, self.hop_length, window=self.hann_window)
+        voi = torch.istft(
+            voi_stft, self.n_fft, self.hop_length, window=self.hann_window
+        )
 
         # apply post filter
         if post_filter is not None:
             voi = fft_convolve(voi, post_filter)
-        
+
         voi = voi.to(dtype)
         return voi

@@ -26,6 +26,10 @@ class GanVocoderGenerator(Protocol):
             waveform: (batch_size, out_channels, length * frame_size)
         """
 
+    @property
+    def sample_rate(self) -> int:
+        pass
+
 
 class GanVocoderDiscriminator(Protocol):
     """

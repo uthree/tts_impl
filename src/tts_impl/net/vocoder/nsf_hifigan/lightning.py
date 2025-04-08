@@ -117,6 +117,13 @@ class NsfhifiganLightningModule(LightningModule):
         spec_fake = self.spectrogram(fake)
         loss_mel = F.l1_loss(spec_fake, spec_real)
         self.log("validation loss/mel spectrogram", loss_mel)
+
+        for i in range(fake.shape[0]):
+            f = fake[i, :].detach().cpu()
+            r = waveform[i, :].detach().cpu()
+            self.logger.experiment.add_audio(f"synthesized waveform/{i}", f, self.current_epoch, sample_rate=self.generator.sample_rate)
+            self.logger.experiment.add_audio(f"reference waveform/{i}", r, self.current_epoch, sample_rate=self.generator.sample_rate)
+
         return loss_mel
 
     def _discriminator_training_step(self, real: torch.Tensor, fake: torch.Tensor):

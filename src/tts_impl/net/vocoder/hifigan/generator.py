@@ -230,6 +230,7 @@ class HifiganGenerator(nn.Module, GanVocoderGenerator):
         gin_channels: int = 0,
         activation: str = "lrelu",
         alias_free: bool = False,
+        sample_rate: int = 22050,
     ):
         super().__init__()
 
@@ -246,6 +247,7 @@ class HifiganGenerator(nn.Module, GanVocoderGenerator):
         self.out_channels = out_channels
         self.tanh_post_activation = tanh_post_activation
         self.gin_channels = gin_channels
+        self.sample_rate = sample_rate
 
         if resblock_type == "1":
             resblock = ResBlock1

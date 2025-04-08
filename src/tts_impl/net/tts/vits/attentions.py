@@ -4,12 +4,12 @@ import math
 from typing import Literal
 
 import torch
+from rotary_embedding_torch import RotaryEmbedding
 from torch import nn
 from torch.nn import functional as F
 
 from . import commons
-from .modules import LayerNorm, RMSNorm, DynamicTanh
-from rotary_embedding_torch import RotaryEmbedding
+from .modules import DynamicTanh, LayerNorm, RMSNorm
 
 
 class Encoder(nn.Module):
