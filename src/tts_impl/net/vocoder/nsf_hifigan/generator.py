@@ -19,7 +19,7 @@ class NsfhifiganGenerator(nn.Module, GanVocoderGenerator):
         super().__init__()
         self.source_module = HarmonicNoiseOscillator(**source)
         self.filter = NsfhifiganFilter(**filter)
-    
+
     @property
     def sample_rate(self) -> int:
         return self.source_module.sample_rate

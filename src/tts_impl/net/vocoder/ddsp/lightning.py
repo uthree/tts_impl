@@ -1,12 +1,13 @@
 from dataclasses import dataclass, field
-from typing import Any, List, Mapping, Optional, Union
+from typing import Any, List, Literal, Mapping, Optional
 
-import lightning as L
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
+from lightning import LightningModule
 from torch.optim.lr_scheduler import StepLR
+from tts_impl.net.vocoder.hifigan import HifiganDiscriminator
 from tts_impl.net.vocoder.hifigan.loss import (
     discriminator_loss,
     feature_loss,
@@ -15,18 +16,26 @@ from tts_impl.net.vocoder.hifigan.loss import (
 from tts_impl.transforms import LogMelSpectrogram
 from tts_impl.utils.config import derive_config
 
-from .discriminator import HifiganDiscriminator
-from .generator import HifiganGenerator
+from .generator import DdspGenerator
 
 
-# HiFi-GAN from https://arxiv.org/abs/2010.05646
+discriminator_cfg_default = HifiganDiscriminator.Config()
+discriminator_cfg_default.msd.scales = []
+discriminator_cfg_default.mpd.periods = [1, 2, 3, 5, 7]
+discriminator_cfg_default.mpd.channels_max = 256
+discriminator_cfg_default.mpd.channels_mul = 2
+discriminator_cfg_default.mrsd.n_fft = [250, 400, 800]
+discriminator_cfg_default.mrsd.hop_size = [60, 120, 240]
+
+
 @derive_config
-class HifiganLightningModule(L.LightningModule):
+class DdspVocoderLightningModule(LightningModule):
     def __init__(
         self,
-        generator: HifiganGenerator.Config = HifiganGenerator.Config(),
-        discriminator: HifiganDiscriminator.Config = HifiganDiscriminator.Config(),
+        generator: DdspGenerator.Config = DdspGenerator.Config(),
+        discriminator: HifiganDiscriminator.Config = discriminator_cfg_default,
         mel: LogMelSpectrogram.Config = LogMelSpectrogram.Config(),
+        use_acoustic_features: bool = False,
         weight_mel: float = 45.0,
         weight_feat: float = 1.0,
         weight_adv: float = 1.0,
@@ -35,21 +44,35 @@ class HifiganLightningModule(L.LightningModule):
         lr: float = 2e-4,
     ):
         super().__init__()
-
         self.automatic_optimization = False
 
         # flag for using data[acoustic_features] instead of mel spectrogram
-        self.generator = HifiganGenerator(**generator)
+        self.use_acoustic_features = use_acoustic_features
+        self.generator = DdspGenerator(**generator)
         self.discriminator = HifiganDiscriminator(**discriminator)
         self.spectrogram = LogMelSpectrogram(**mel)
-
         self.weight_mel = weight_mel
         self.weight_adv = weight_adv
         self.weight_feat = weight_feat
-
         self.lr_decay = lr_decay
         self.lr = lr
         self.betas = betas
+
+        self.save_hyperparameters()
+
+    def training_step(self, batch: dict):
+        real = batch["waveform"]
+        f0 = batch.get("f0", None)
+        uv = batch.get("uv", None)
+
+        if "acoustic_features" in batch:
+            acoustic_features = batch["acoustic_features"]
+        else:
+            acoustic_features = self.spectrogram(real.sum(1)).detach()
+
+        fake = self.generator(acoustic_features, f0=f0, uv=uv)
+        self._adversarial_training_step(real, fake)
+        self._discriminator_training_step(real, fake)
 
     def _adversarial_training_step(self, real: torch.Tensor, fake: torch.Tensor):
         # spectrogram
@@ -88,35 +111,25 @@ class HifiganLightningModule(L.LightningModule):
         self.log("train loss/generator adversarial", loss_adv)
         self.log("G", loss_g, prog_bar=True, logger=False)
 
-    def training_step(self, batch):
-        real = batch["waveform"]
-
-        if "acoustic_features" in batch:
-            acoustic_features = batch["acoustic_features"]
-        else:
-            acoustic_features = self.spectrogram(real.sum(1)).detach()
-
-        fake = self.generator(acoustic_features)
-        self._adversarial_training_step(real, fake)
-        self._discriminator_training_step(real, fake)
-
     def _test_or_validate_batch(self, batch, bid):
-        real = batch["waveform"]
+        waveform = batch["waveform"]
+        f0 = batch.get("f0", None)
+        uv = batch.get("uv", None)
 
-        if "acoustic_features" in batch:
+        if self.use_acoustic_features:
             acoustic_features = batch["acoustic_features"]
         else:
-            acoustic_features = self.spectrogram(real.sum(1)).detach()
+            acoustic_features = self.spectrogram(waveform.sum(1)).detach()
 
-        spec_real = self.spectrogram(real).detach()
-        fake = self.generator(acoustic_features)
+        spec_real = self.spectrogram(waveform).detach()
+        fake = self.generator(acoustic_features, f0=f0, uv=uv)
         spec_fake = self.spectrogram(fake)
         loss_mel = F.l1_loss(spec_fake, spec_real)
         self.log("validation loss/mel spectrogram", loss_mel)
 
         for i in range(fake.shape[0]):
             f = fake[i].sum(dim=0, keepdim=True).detach().cpu()
-            r = real[i].sum(dim=0, keepdim=True).detach().cpu()
+            r = waveform[i].sum(dim=0, keepdim=True).detach().cpu()
             self.logger.experiment.add_audio(
                 f"synthesized waveform/{bid}_{i}",
                 f,

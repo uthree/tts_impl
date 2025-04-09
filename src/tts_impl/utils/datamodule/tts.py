@@ -17,7 +17,7 @@ class TTSDataModule(lightning.LightningDataModule):
         root: Union[str | os.PathLike],
         seed: int = 42,
         batch_size: int = 1,
-        lengths: Union[List[float], list[int]] = [0.9, 0.05, 0.05],
+        lengths: Union[List[float], list[int]] = [0.98, 0.01, 0.01],
         format: Literal["flac", "mp3", "wav", "ogg"] = "flac",
         sizes: Optional[Mapping[str, Any]] = {},
         sample_rate: Optional[int] = None,

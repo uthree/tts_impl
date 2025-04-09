@@ -121,8 +121,18 @@ class NsfhifiganLightningModule(LightningModule):
         for i in range(fake.shape[0]):
             f = fake[i].sum(dim=0, keepdim=True).detach().cpu()
             r = waveform[i].sum(dim=0, keepdim=True).detach().cpu()
-            self.logger.experiment.add_audio(f"synthesized waveform/{bid}_{i}", f, self.current_epoch, sample_rate=self.generator.sample_rate)
-            self.logger.experiment.add_audio(f"reference waveform/{bid}_{i}", r, self.current_epoch, sample_rate=self.generator.sample_rate)
+            self.logger.experiment.add_audio(
+                f"synthesized waveform/{bid}_{i}",
+                f,
+                self.current_epoch,
+                sample_rate=self.generator.sample_rate,
+            )
+            self.logger.experiment.add_audio(
+                f"reference waveform/{bid}_{i}",
+                r,
+                self.current_epoch,
+                sample_rate=self.generator.sample_rate,
+            )
 
         return loss_mel
 

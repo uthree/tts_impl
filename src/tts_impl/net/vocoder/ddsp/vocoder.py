@@ -7,8 +7,10 @@ import torch.nn.functional as F
 from torch import Tensor
 from torchaudio.transforms import InverseMelScale
 from tts_impl.functional.ddsp import fft_convolve, impulse_train
+from tts_impl.utils.config import derive_config
 
 
+@derive_config
 class SubtractiveVocoder(nn.Module):
     def __init__(
         self,
@@ -21,6 +23,7 @@ class SubtractiveVocoder(nn.Module):
     ):
         super().__init__()
         self.dim_periodicity = dim_periodicity
+        self.n_mels = n_mels
         self.sample_rate = sample_rate
         self.n_fft = n_fft
         self.fft_bin = n_fft // 2 + 1
@@ -51,7 +54,6 @@ class SubtractiveVocoder(nn.Module):
         dtype = periodicity.dtype
         periodicity = periodicity.to(torch.float)
         spectral_envelope = spectral_envelope.to(torch.float)
-        post_filter = post_filter.to(torch.float)
 
         with torch.no_grad():
             # oscillate impulse train and gaussian noise
