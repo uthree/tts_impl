@@ -79,13 +79,18 @@ class SubtractiveVocoder(nn.Module):
         # FIR Filter
         spectral_envelope = self.env2spec(spectral_envelope)
         if self.min_phase:
-            cepst = torch.fft.irfft(
-                torch.log(torch.clamp_min(spectral_envelope, 1e-8)), dim=1
-            )
-            h = self.n_fft // 2
-            cepst[:, h:-1] *= 2.0
-            cepst[:, 1:h] *= 0.0
-            spectral_envelope = torch.exp(torch.fft.rfft(cepst, dim=1))
+            with torch.no_grad():
+                cepst = torch.fft.irfft(
+                    spectral_envelope, dim=1
+                )
+                h = self.n_fft // 2
+                cepst[:, :h] *= 2.0
+                cepst[:, h:] *= 0.0
+                s = torch.fft.rfft(cepst, dim=1)
+
+                # extract only phase to avoid NaN
+                s = (s / torch.clamp_min(s.abs(), 1e-8)).detach()
+            spectral_envelope = spectral_envelope * s
         voi_stft = exc_stft * F.pad(spectral_envelope, (1, 0))
 
         # inverse STFT

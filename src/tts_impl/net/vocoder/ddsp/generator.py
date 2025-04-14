@@ -47,7 +47,7 @@ class DdspGenerator(nn.Module):
         x = self.output_layer(x)
         p, e = torch.split(x, [self.vocoder.dim_periodicity, self.vocoder.n_mels], dim=1)
         p = torch.sigmoid(p)
-        e = torch.exp(e)
+        e = F.softplus(e)
         return p, e
 
     def forward(self, x, f0, uv=None):
