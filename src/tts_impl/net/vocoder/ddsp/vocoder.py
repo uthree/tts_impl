@@ -10,8 +10,38 @@ from tts_impl.functional.ddsp import fft_convolve, impulse_train
 from tts_impl.utils.config import derive_config
 
 
+def estimate_minimum_phase(amplitude_spec: torch.Tensor) -> torch.Tensor:
+    """
+    Convert zero-phase amplitude spectrogram to minimum_phase spectrogram via cepstram method.
+
+    Args:
+        amplitude_spec: torch.Tensor, dtype=float, shape=(batch_size, fft_bin, num_frames)
+    Returns:
+        complex_spec: torch.Tensor, dtype=Complex, shape=(batch_size, fft_bin, num_frames)
+    """
+    with torch.no_grad():
+        # cepstram method
+        cepst = torch.fft.irfft(amplitude_spec, dim=1)
+        n_fft = cepst.shape[1]
+        half = n_fft // 2
+        cepst[:, half:] *= 2.0
+        cepst[:, :half] *= 0.0
+        envelope_min_phase = torch.fft.rfft(cepst, dim=1)
+
+        # extract only phase
+        envelope_min_phase = (
+            envelope_min_phase / torch.clamp_min(envelope_min_phase.abs(), 1e-8)
+        ).detach()
+
+    # rotate elementwise
+    return amplitude_spec * envelope_min_phase
+
+
 @derive_config
 class SubtractiveVocoder(nn.Module):
+    """
+    Subtractive DDSP Vocoder that likely purposed at Meta's [paper](https://arxiv.org/abs/2401.10460)
+    """
     def __init__(
         self,
         dim_periodicity: int = 12,
@@ -19,8 +49,17 @@ class SubtractiveVocoder(nn.Module):
         sample_rate: int = 24000,
         hop_length: int = 256,
         n_fft: int = 1024,
-        min_phase: bool = False,
+        min_phase: bool = True,
     ):
+        """
+        Args:
+            dim_periodicity: dimension of periodicity, int
+            n_mels: mel-bandwidth of vocal tract filter, int
+            sample_rate: int
+            hop_length: hop length of STFT, int
+            n_fft: fft window size of STFT, int
+            min_phase: flag to use minimum phase, bool, default=True
+        """
         super().__init__()
         self.dim_periodicity = dim_periodicity
         self.n_mels = n_mels
@@ -38,32 +77,39 @@ class SubtractiveVocoder(nn.Module):
         self,
         f0: Tensor,
         periodicity: Tensor,
-        spectral_envelope: Tensor,
+        vocal_tract: Tensor,
         post_filter: Optional[Tensor] = None,
     ) -> Tensor:
         """
         Args:
             f0: shape=(batch_size, n_frames)
             periodicity: shape=(batch_size, dim_periodicity, n_frames)
-            spectral_envelope: shape=(batch_size, fft_bin, n_frames)
+            vocal_tract: shape=(batch_size, fft_bin, n_frames)
             post_filter: shape=(batch_size, filter_size)
 
         Returns:
             output: synthesized wave
         """
+
+        # cast to 32-bit float for stability.
         dtype = periodicity.dtype
         periodicity = periodicity.to(torch.float)
-        spectral_envelope = spectral_envelope.to(torch.float)
+        vocal_tract = vocal_tract.to(torch.float)
 
+        # oscillate and calculate complex spectra.
         with torch.no_grad():
-            # oscillate impulse train and gaussian noise
+            # oscillate impulse train and noise
             imp = impulse_train(f0, self.hop_length, self.sample_rate) * F.interpolate(
                 torch.rsqrt(torch.clamp_min(f0, 20.0)[:, None, :]),
                 scale_factor=self.hop_length,
             ).squeeze(1)
-            noi = (torch.rand_like(imp) - 0.5) * 2 / math.sqrt(self.sample_rate)
+            noi = (
+                (torch.rand_like(imp) - 0.5)
+                * 2
+                / math.sqrt(self.sample_rate)
+            )
 
-            # fourier transform
+            # short-time fourier transform
             imp_stft = torch.stft(
                 imp, self.n_fft, window=self.hann_window, return_complex=True
             )
@@ -71,36 +117,39 @@ class SubtractiveVocoder(nn.Module):
                 noi, self.n_fft, window=self.hann_window, return_complex=True
             )
 
-        # excitation
-        imp_stft = imp_stft * F.pad(self.per2spec(periodicity), (1, 0))
-        noi_stft = noi_stft * F.pad(self.per2spec(1.0 - periodicity), (1, 0))
-        exc_stft = imp_stft + noi_stft
+            # replace impulse to noise if unvoiced.
+            imp_stft += noi_stft * (F.pad(f0[:, None, :], (1, 0)) < 20.0).to(
+                torch.float
+            )
 
-        # FIR Filter
-        spectral_envelope = self.env2spec(spectral_envelope)
+        # Convert mel-spectral envelope to linear-spectral envelope.
+        vocal_tract_linear = self.env2spec(vocal_tract)
+
+        # Merge periodicity / apeoridicity.
+        kernel_imp = self.per2spec(periodicity) * vocal_tract_linear
+        kernel_noi = self.per2spec(1 - periodicity) * vocal_tract_linear
+
+        # estimate minimum(causal) phase. (optional)
         if self.min_phase:
-            with torch.no_grad():
-                cepst = torch.fft.irfft(
-                    spectral_envelope, dim=1
-                )
-                h = self.n_fft // 2
-                cepst[:, :h] *= 2.0
-                cepst[:, h:] *= 0.0
-                s = torch.fft.rfft(cepst, dim=1)
+            kernel_imp = estimate_minimum_phase(kernel_imp)
+            kernel_noi = estimate_minimum_phase(kernel_noi)
 
-                # extract only phase to avoid NaN
-                s = (s / torch.clamp_min(s.abs(), 1e-8)).detach()
-            spectral_envelope = spectral_envelope * s
-        voi_stft = exc_stft * F.pad(spectral_envelope, (1, 0))
+        # pad
+        kernel_imp = F.pad(kernel_imp, (1, 0))
+        kernel_noi = F.pad(kernel_noi, (1, 0))
+
+        # apply the filter to impulse / noise, and add them.
+        voi_stft = imp_stft * kernel_imp + noi_stft * kernel_noi
 
         # inverse STFT
         voi = torch.istft(
             voi_stft, self.n_fft, self.hop_length, window=self.hann_window
         )
 
-        # apply post filter
+        # apply post filter. (optional)
         if post_filter is not None:
             voi = fft_convolve(voi, post_filter)
 
+        # cast back to the original dtype.
         voi = voi.to(dtype)
         return voi

@@ -29,6 +29,7 @@ class DdspGenerator(nn.Module):
         in_channels: int = 80,
         channels: int = 256,
         num_layers: int = 3,
+        reverb_size: int=1024,
         vocoder: SubtractiveVocoder.Config = SubtractiveVocoder.Config(),
     ):
         super().__init__()
@@ -40,6 +41,7 @@ class DdspGenerator(nn.Module):
             *[ResBlock(channels) for _ in range(num_layers)]
         )
         self.output_layer = nn.Conv1d(channels, out_channels, 1)
+        self.reverb = nn.Parameter(F.normalize(torch.randn(reverb_size), dim=0)[None, :])
 
     def net(self, x):
         x = self.input_layer(x)
@@ -52,6 +54,6 @@ class DdspGenerator(nn.Module):
 
     def forward(self, x, f0, uv=None):
         p, e = self.net(x)
-        x = self.vocoder.forward(f0, p, e)
+        x = self.vocoder.forward(f0, p, e, self.reverb.expand(x.shape[0], self.reverb.shape[1]))
         x = x.unsqueeze(dim=1)
         return x
