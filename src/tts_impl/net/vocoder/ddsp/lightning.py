@@ -20,12 +20,19 @@ from .generator import DdspGenerator
 
 
 discriminator_cfg_default = HifiganDiscriminator.Config()
-discriminator_cfg_default.msd.scales = []
-discriminator_cfg_default.mpd.periods = [1, 2, 3, 5, 7]
+discriminator_cfg_default.msd.scales = [1]
+discriminator_cfg_default.mpd.periods = [2, 3, 5, 7, 11]
 discriminator_cfg_default.mpd.channels_max = 256
 discriminator_cfg_default.mpd.channels_mul = 2
 discriminator_cfg_default.mrsd.n_fft = [250, 400, 800]
 discriminator_cfg_default.mrsd.hop_size = [60, 120, 240]
+
+
+def crop_center(waveform: torch.Tensor, length: int = 8192):
+    l = (waveform.shape[2] // 2) - length // 2
+    r = (waveform.shape[2] // 2) + length // 2
+    return waveform[:, :, l:r]
+
 
 
 @derive_config
@@ -41,6 +48,7 @@ class DdspVocoderLightningModule(LightningModule):
         weight_adv: float = 1.0,
         lr_decay: float = 0.999,
         betas: List[float] = [0.8, 0.99],
+        segment_size: int = 8192,
         lr: float = 2e-4,
     ):
         super().__init__()
@@ -57,6 +65,7 @@ class DdspVocoderLightningModule(LightningModule):
         self.lr_decay = lr_decay
         self.lr = lr
         self.betas = betas
+        self.segment_size = segment_size
 
         self.save_hyperparameters()
 
@@ -83,8 +92,8 @@ class DdspVocoderLightningModule(LightningModule):
         opt_g, opt_d = self.optimizers()
 
         # forward pass
-        logits, fmap_fake = self.discriminator(fake)
-        _, fmap_real = self.discriminator(real)
+        logits, fmap_fake = self.discriminator(crop_center(fake, self.segment_size))
+        _, fmap_real = self.discriminator(crop_center(real, self.segment_size))
         loss_adv, loss_adv_list = generator_loss(logits)
         loss_feat = feature_loss(fmap_real, fmap_fake)
         loss_mel = F.l1_loss(spec_fake, spec_real)
@@ -150,8 +159,8 @@ class DdspVocoderLightningModule(LightningModule):
 
         # forward pass
         fake = fake.detach()  # stop gradient
-        logits_fake, _ = self.discriminator(fake)
-        logits_real, _ = self.discriminator(real)
+        logits_fake, _ = self.discriminator(crop_center(fake, self.segment_size))
+        logits_real, _ = self.discriminator(crop_center(real, self.segment_size))
         loss_d, loss_d_list_r, loss_d_list_f = discriminator_loss(
             logits_real, logits_fake
         )

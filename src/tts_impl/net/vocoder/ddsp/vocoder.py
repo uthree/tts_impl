@@ -21,12 +21,12 @@ def estimate_minimum_phase(amplitude_spec: torch.Tensor) -> torch.Tensor:
     """
     with torch.no_grad():
         # cepstram method
-        cepst = torch.fft.irfft(amplitude_spec, dim=1)
+        cepst = torch.fft.irfft(torch.clamp_min(amplitude_spec.abs(), 1e-8), dim=1)
         n_fft = cepst.shape[1]
         half = n_fft // 2
-        cepst[:, half:] *= 2.0
-        cepst[:, :half] *= 0.0
-        envelope_min_phase = torch.fft.rfft(cepst, dim=1)
+        cepst[:, :half] *= 2.0
+        cepst[:, half:] *= 0.0
+        envelope_min_phase = torch.exp(torch.fft.rfft(cepst, dim=1))
 
         # extract only phase
         envelope_min_phase = (
@@ -50,6 +50,7 @@ class SubtractiveVocoder(nn.Module):
         hop_length: int = 256,
         n_fft: int = 1024,
         min_phase: bool = True,
+        excitation_scale: float = 32.0
     ):
         """
         Args:
@@ -68,6 +69,7 @@ class SubtractiveVocoder(nn.Module):
         self.fft_bin = n_fft // 2 + 1
         self.hop_length = hop_length
         self.min_phase = min_phase
+        self.excitation_scale = excitation_scale
 
         self.per2spec = InverseMelScale(self.fft_bin, dim_periodicity, sample_rate)
         self.env2spec = InverseMelScale(self.fft_bin, n_mels, sample_rate)
@@ -78,14 +80,16 @@ class SubtractiveVocoder(nn.Module):
         f0: Tensor,
         periodicity: Tensor,
         vocal_tract: Tensor,
+        vocal_cord: Optional[Tensor] = None,
         post_filter: Optional[Tensor] = None,
     ) -> Tensor:
         """
         Args:
             f0: shape=(batch_size, n_frames)
-            periodicity: shape=(batch_size, dim_periodicity, n_frames)
-            vocal_tract: shape=(batch_size, fft_bin, n_frames)
-            post_filter: shape=(batch_size, filter_size)
+            periodicity: shape=(batch_size, dim_periodicity, n_frames), periodicity
+            vocal_tract: shape=(batch_size, fft_bin, n_frames), spectral envelope of vocal tract
+            vocal_cord: shape=(batch_size, kernel_size), Optional, vocal cord impulse response
+            post_filter: shape=(batch_size, filter_size), Optional, room reverb impulse response
 
         Returns:
             output: synthesized wave
@@ -102,25 +106,29 @@ class SubtractiveVocoder(nn.Module):
             imp = impulse_train(f0, self.hop_length, self.sample_rate) * F.interpolate(
                 torch.rsqrt(torch.clamp_min(f0, 20.0)[:, None, :]),
                 scale_factor=self.hop_length,
-            ).squeeze(1)
+            ).squeeze(1) * self.excitation_scale
             noi = (
                 (torch.rand_like(imp) - 0.5)
                 * 2
                 / math.sqrt(self.sample_rate)
-            )
+            ) * self.excitation_scale
 
-            # short-time fourier transform
-            imp_stft = torch.stft(
-                imp, self.n_fft, window=self.hann_window, return_complex=True
-            )
-            noi_stft = torch.stft(
-                noi, self.n_fft, window=self.hann_window, return_complex=True
-            )
+        if vocal_cord is not None:
+            imp = F.pad(imp[None, :, :], (vocal_cord.shape[1]-1, 0))
+            imp = F.conv1d(imp, vocal_cord[:, None, :], groups=vocal_cord.shape[0]).squeeze(0)
 
-            # replace impulse to noise if unvoiced.
-            imp_stft += noi_stft * (F.pad(f0[:, None, :], (1, 0)) < 20.0).to(
-                torch.float
-            )
+        # short-time fourier transform
+        imp_stft = torch.stft(
+            imp, self.n_fft, window=self.hann_window, return_complex=True
+        )
+        noi_stft = torch.stft(
+            noi, self.n_fft, window=self.hann_window, return_complex=True
+        )
+
+        # replace impulse to noise if unvoiced.
+        imp_stft += noi_stft * (F.pad(f0[:, None, :], (1, 0)) < 20.0).to(
+            torch.float
+        )
 
         # Convert mel-spectral envelope to linear-spectral envelope.
         vocal_tract_linear = self.env2spec(vocal_tract)
@@ -146,9 +154,9 @@ class SubtractiveVocoder(nn.Module):
             voi_stft, self.n_fft, self.hop_length, window=self.hann_window
         )
 
-        # apply post filter. (optional)
+        #apply post filter. (optional)
         if post_filter is not None:
-            voi = fft_convolve(voi, post_filter)
+            voi = fft_convolve(voi.unsqueeze(1), post_filter.unsqueeze(1)).squeeze(1)
 
         # cast back to the original dtype.
         voi = voi.to(dtype)

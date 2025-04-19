@@ -18,7 +18,8 @@ def test_synth_ddsp_vocoder():
     per = torch.rand(2, 12, 100)
     senv = torch.randn(2, 80, 100)
     pf = torch.randn(2, 2048)
-    vocoder.forward(f0, per, senv, pf)
+    vc = torch.randn(2, 100)
+    vocoder.forward(f0, per, senv, pf, vc)
 
 
 def test_xcorr():

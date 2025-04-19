@@ -28,8 +28,8 @@ class DdspGenerator(nn.Module):
         self,
         in_channels: int = 80,
         channels: int = 256,
-        num_layers: int = 3,
-        reverb_size: int=1024,
+        num_layers: int = 4,
+        reverb_size: int = 128,
         vocoder: SubtractiveVocoder.Config = SubtractiveVocoder.Config(),
     ):
         super().__init__()
@@ -54,6 +54,7 @@ class DdspGenerator(nn.Module):
 
     def forward(self, x, f0, uv=None):
         p, e = self.net(x)
-        x = self.vocoder.forward(f0, p, e, self.reverb.expand(x.shape[0], self.reverb.shape[1]))
+        r = F.normalize(self.reverb.expand(x.shape[0], self.reverb.shape[1]), dim=1)
+        x = self.vocoder.forward(f0, p, e, vocal_cord=r)
         x = x.unsqueeze(dim=1)
         return x
