@@ -58,6 +58,6 @@ class DdspGenerator(nn.Module):
         p, e = self.net(x)
         v = F.normalize(self.vocal_cord.expand(x.shape[0], self.vocal_cord.shape[1]), dim=1)
         r = F.normalize(self.reverb.expand(x.shape[0], self.reverb.shape[1]), dim=1)
-        x = self.vocoder.forward(f0, p, e, vocal_cord=v, post_filter=r)
+        x = self.vocoder.forward(f0, p, e, vocal_cord=v, reverb=r)
         x = x.unsqueeze(dim=1)
         return x

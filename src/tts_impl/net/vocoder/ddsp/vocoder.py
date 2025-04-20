@@ -8,7 +8,7 @@ from torch import Tensor
 from torchaudio.transforms import InverseMelScale
 from tts_impl.functional.ddsp import fft_convolve, impulse_train
 from tts_impl.utils.config import derive_config
-
+from tts_impl.net.base.vocoder import GanVocoderGenerator
 
 def estimate_minimum_phase(amplitude_spec: torch.Tensor) -> torch.Tensor:
     """
@@ -38,7 +38,7 @@ def estimate_minimum_phase(amplitude_spec: torch.Tensor) -> torch.Tensor:
 
 
 @derive_config
-class SubtractiveVocoder(nn.Module):
+class SubtractiveVocoder(nn.Module, GanVocoderGenerator):
     """
     Subtractive DDSP Vocoder that likely purposed at Meta's [paper](https://arxiv.org/abs/2401.10460)
     """
@@ -81,7 +81,8 @@ class SubtractiveVocoder(nn.Module):
         periodicity: Tensor,
         vocal_tract: Tensor,
         vocal_cord: Optional[Tensor] = None,
-        post_filter: Optional[Tensor] = None,
+        reverb: Optional[Tensor] = None,
+        g = None,
     ) -> Tensor:
         """
         Args:
@@ -89,7 +90,7 @@ class SubtractiveVocoder(nn.Module):
             periodicity: shape=(batch_size, dim_periodicity, n_frames), periodicity
             vocal_tract: shape=(batch_size, fft_bin, n_frames), spectral envelope of vocal tract
             vocal_cord: shape=(batch_size, kernel_size), Optional, vocal cord impulse response
-            post_filter: shape=(batch_size, filter_size), Optional, room reverb impulse response
+            reverb: shape=(batch_size, filter_size), Optional, room reverb impulse response
 
         Returns:
             output: synthesized wave
@@ -155,8 +156,8 @@ class SubtractiveVocoder(nn.Module):
         )
 
         #apply post filter. (optional)
-        if post_filter is not None:
-            voi = fft_convolve(voi, post_filter)
+        if reverb is not None:
+            voi = fft_convolve(voi, reverb)
 
         # cast back to the original dtype.
         voi = voi.to(dtype)
