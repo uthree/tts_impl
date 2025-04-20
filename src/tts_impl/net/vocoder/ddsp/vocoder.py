@@ -156,7 +156,7 @@ class SubtractiveVocoder(nn.Module):
 
         #apply post filter. (optional)
         if post_filter is not None:
-            voi = fft_convolve(voi.unsqueeze(1), post_filter.unsqueeze(1)).squeeze(1)
+            voi = fft_convolve(voi, post_filter)
 
         # cast back to the original dtype.
         voi = voi.to(dtype)

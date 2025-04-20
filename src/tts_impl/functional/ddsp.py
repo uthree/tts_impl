@@ -102,10 +102,10 @@ def fft_convolve(signal: torch.Tensor, kernel: torch.Tensor) -> torch.Tensor:
     depthwise causal convolution using fft for performance
 
     args:
-        signal: [batch_size, channels, length]
-        kernel: [batch_size, channels, kernel_size]
+        signal: [..., length]
+        kernel: [..., kernel_size]
     outputs:
-        signal: [batch_size, channels, length]
+        signal: [..., length]
     """
     dtype = signal.dtype
     signal = signal.to(torch.float)

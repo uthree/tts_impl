@@ -19,7 +19,7 @@ class NsfHifigan(Recipe):
         self,
         target_dir: str = "your_target_dir",
         sample_rate: int = 24000,
-        length: int = 12800,
+        length: int = 120000,
     ):
         preprocess = Preprocessor()
         preprocess.with_collector(
