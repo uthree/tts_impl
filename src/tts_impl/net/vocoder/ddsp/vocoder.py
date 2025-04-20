@@ -84,7 +84,6 @@ class SubtractiveVocoder(nn.Module):
         vocal_tract: Tensor,
         vocal_cord: Optional[Tensor] = None,
         reverb: Optional[Tensor] = None,
-        g=None,
     ) -> Tensor:
         """
         Args:
