@@ -7,8 +7,9 @@ import torch.nn.functional as F
 from torch import Tensor
 from torchaudio.transforms import InverseMelScale
 from tts_impl.functional.ddsp import fft_convolve, impulse_train
-from tts_impl.utils.config import derive_config
 from tts_impl.net.base.vocoder import GanVocoderGenerator
+from tts_impl.utils.config import derive_config
+
 
 def estimate_minimum_phase(amplitude_spec: torch.Tensor) -> torch.Tensor:
     """
@@ -38,10 +39,11 @@ def estimate_minimum_phase(amplitude_spec: torch.Tensor) -> torch.Tensor:
 
 
 @derive_config
-class SubtractiveVocoder(nn.Module, GanVocoderGenerator):
+class SubtractiveVocoder(nn.Module):
     """
     Subtractive DDSP Vocoder that likely purposed at Meta's [paper](https://arxiv.org/abs/2401.10460)
     """
+
     def __init__(
         self,
         dim_periodicity: int = 12,
@@ -50,7 +52,7 @@ class SubtractiveVocoder(nn.Module, GanVocoderGenerator):
         hop_length: int = 256,
         n_fft: int = 1024,
         min_phase: bool = True,
-        excitation_scale: float = 32.0
+        excitation_scale: float = 32.0,
     ):
         """
         Args:
@@ -82,7 +84,7 @@ class SubtractiveVocoder(nn.Module, GanVocoderGenerator):
         vocal_tract: Tensor,
         vocal_cord: Optional[Tensor] = None,
         reverb: Optional[Tensor] = None,
-        g = None,
+        g=None,
     ) -> Tensor:
         """
         Args:
@@ -104,19 +106,23 @@ class SubtractiveVocoder(nn.Module, GanVocoderGenerator):
         # oscillate and calculate complex spectra.
         with torch.no_grad():
             # oscillate impulse train and noise
-            imp = impulse_train(f0, self.hop_length, self.sample_rate) * F.interpolate(
-                torch.rsqrt(torch.clamp_min(f0, 20.0)[:, None, :]),
-                scale_factor=self.hop_length,
-            ).squeeze(1) * self.excitation_scale
+            imp = (
+                impulse_train(f0, self.hop_length, self.sample_rate)
+                * F.interpolate(
+                    torch.rsqrt(torch.clamp_min(f0, 20.0)[:, None, :]),
+                    scale_factor=self.hop_length,
+                ).squeeze(1)
+                * self.excitation_scale
+            )
             noi = (
-                (torch.rand_like(imp) - 0.5)
-                * 2
-                / math.sqrt(self.sample_rate)
+                (torch.rand_like(imp) - 0.5) * 2 / math.sqrt(self.sample_rate)
             ) * self.excitation_scale
 
         if vocal_cord is not None:
-            imp = F.pad(imp[None, :, :], (vocal_cord.shape[1]-1, 0))
-            imp = F.conv1d(imp, vocal_cord[:, None, :], groups=vocal_cord.shape[0]).squeeze(0)
+            imp = F.pad(imp[None, :, :], (vocal_cord.shape[1] - 1, 0))
+            imp = F.conv1d(
+                imp, vocal_cord[:, None, :], groups=vocal_cord.shape[0]
+            ).squeeze(0)
 
         # short-time fourier transform
         imp_stft = torch.stft(
@@ -127,9 +133,7 @@ class SubtractiveVocoder(nn.Module, GanVocoderGenerator):
         )
 
         # replace impulse to noise if unvoiced.
-        imp_stft += noi_stft * (F.pad(f0[:, None, :], (1, 0)) < 20.0).to(
-            torch.float
-        )
+        imp_stft += noi_stft * (F.pad(f0[:, None, :], (1, 0)) < 20.0).to(torch.float)
 
         # Convert mel-spectral envelope to linear-spectral envelope.
         vocal_tract_linear = self.env2spec(vocal_tract)
@@ -155,7 +159,7 @@ class SubtractiveVocoder(nn.Module, GanVocoderGenerator):
             voi_stft, self.n_fft, self.hop_length, window=self.hann_window
         )
 
-        #apply post filter. (optional)
+        # apply post filter. (optional)
         if reverb is not None:
             voi = fft_convolve(voi, reverb)
 

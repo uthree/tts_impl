@@ -131,7 +131,7 @@ class PitchEstimation(Extractor):
         self,
         frame_size: int,
         algorithm: Literal["harvest", "dio", "fcpe", "yin"] = "harvest",
-        device: torch.device = torch.device("cpu")
+        device: torch.device = torch.device("cpu"),
     ):
         super().__init__()
         self.algorithm = algorithm
@@ -142,9 +142,16 @@ class PitchEstimation(Extractor):
         wf = data["waveform"]
         sr = data["sample_rate"]
 
-        f0 = estimate_f0(
-            wf.unsqueeze(0).to(self.device), sr, self.frame_size, algorithm=self.algorithm
-        ).squeeze(0).cpu()
+        f0 = (
+            estimate_f0(
+                wf.unsqueeze(0).to(self.device),
+                sr,
+                self.frame_size,
+                algorithm=self.algorithm,
+            )
+            .squeeze(0)
+            .cpu()
+        )
         data["f0"] = f0
 
         return data

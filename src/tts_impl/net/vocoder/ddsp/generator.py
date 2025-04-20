@@ -42,21 +42,29 @@ class DdspGenerator(nn.Module):
             *[ResBlock(channels) for _ in range(num_layers)]
         )
         self.output_layer = nn.Conv1d(channels, out_channels, 1)
-        self.vocal_cord = nn.Parameter(F.normalize(torch.randn(vocal_cord_size), dim=0)[None, :])
-        self.reverb = nn.Parameter(F.normalize(torch.randn(reverb_size), dim=0)[None, :])
+        self.vocal_cord = nn.Parameter(
+            F.normalize(torch.randn(vocal_cord_size), dim=0)[None, :]
+        )
+        self.reverb = nn.Parameter(
+            F.normalize(torch.randn(reverb_size), dim=0)[None, :]
+        )
 
     def net(self, x):
         x = self.input_layer(x)
         x = self.mid_layers(x)
         x = self.output_layer(x)
-        p, e = torch.split(x, [self.vocoder.dim_periodicity, self.vocoder.n_mels], dim=1)
+        p, e = torch.split(
+            x, [self.vocoder.dim_periodicity, self.vocoder.n_mels], dim=1
+        )
         p = torch.sigmoid(p)
         e = F.softplus(e)
         return p, e
 
     def forward(self, x, f0, uv=None):
         p, e = self.net(x)
-        v = F.normalize(self.vocal_cord.expand(x.shape[0], self.vocal_cord.shape[1]), dim=1)
+        v = F.normalize(
+            self.vocal_cord.expand(x.shape[0], self.vocal_cord.shape[1]), dim=1
+        )
         r = F.normalize(self.reverb.expand(x.shape[0], self.reverb.shape[1]), dim=1)
         x = self.vocoder.forward(f0, p, e, vocal_cord=v, reverb=r)
         x = x.unsqueeze(dim=1)

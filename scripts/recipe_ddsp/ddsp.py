@@ -27,7 +27,9 @@ class NsfHifigan(Recipe):
         )
         # mixdown
         preprocess.with_extractor(Mixdown())
-        preprocess.with_extractor(PitchEstimation(frame_size=256, algorithm="fcpe", device="cuda"))
+        preprocess.with_extractor(
+            PitchEstimation(frame_size=256, algorithm="fcpe", device="cuda")
+        )
         preprocess.with_writer(AudioCacheWriter("dataset_cache"))
         preprocess.run()
 

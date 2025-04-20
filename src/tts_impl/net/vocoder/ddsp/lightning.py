@@ -18,7 +18,6 @@ from tts_impl.utils.config import derive_config
 
 from .generator import DdspGenerator
 
-
 discriminator_cfg_default = HifiganDiscriminator.Config()
 discriminator_cfg_default.msd.scales = [1]
 discriminator_cfg_default.mpd.periods = [2, 3, 5, 7, 11]
@@ -32,7 +31,6 @@ def crop_center(waveform: torch.Tensor, length: int = 8192):
     l = (waveform.shape[2] // 2) - length // 2
     r = (waveform.shape[2] // 2) + length // 2
     return waveform[:, :, l:r]
-
 
 
 @derive_config
