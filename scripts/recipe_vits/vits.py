@@ -64,11 +64,10 @@ class Vits(Recipe):
         )
         return datamodule
 
-    def infer(self, text: str, sid: int = 0):
+    def infer(self, text: str = "", sid: int = 0):
         with torch.inference_mode():
             outputs_dir = Path("outputs")
-            model = self.load_model()
-            gen = model.generator
+            gen = self.model.generator
             g2p = Grapheme2Phoneme({"ja": PyopenjtalkG2P()})
             x, x_lengths, _ = g2p.encode([text], ["ja"])
             wf = gen.infer(x, x_lengths, sid=torch.LongTensor([sid])).squeeze(1)

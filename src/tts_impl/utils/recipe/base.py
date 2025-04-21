@@ -58,6 +58,7 @@ class Recipe:
         self.ckpt_root_dir = Path("checkpoint") / self.name
 
         self.ckpt_name = "model"
+        self.model = None
 
         self._prepare_parsers()
 
@@ -100,11 +101,9 @@ class Recipe:
             torch.backends.cudnn.benchmark = True
             torch.set_float32_matmul_precision("medium")
 
-    def load_model(
-        self, ckpt_path: Optional[Path] = None, model_config: Any = {}
-    ) -> LightningModule:
-        if ckpt_path is None:
-            ckpt_path = self.ckpt_root_dir / "default.ckpt"
+    def load_model(self, config_name: str = "default"):
+        model_config = self.load_config(config_name=config_name).model
+        ckpt_path = self.ckpt_root_dir / f"{config_name}.ckpt"
         if ckpt_path.exists():
             print(f"Ckeckpoint {ckpt_path} found, loading ckeckpoint")
             model = self.TargetModule.load_from_checkpoint(
@@ -113,23 +112,19 @@ class Recipe:
         else:
             print(f"Ckeckpoint {ckpt_path} is not found. initializing model")
             model = self.TargetModule(**model_config)
-        return model
+        self.model = model
 
-    def train(self, config_name: str = "default"):
-        self._indeterministic_mode()
-        self.ckpt_name = config_name
+    def train(self, config_name:str="default"):
         config = self.load_config(config_name)
         datamodule = self.prepare_datamodule(**config["datamodule"])
         trainer = self.prepare_trainer(**config["trainer"])
-        ckpt_path = self.ckpt_root_dir / (config_name + ".ckpt")
-        model = self.load_model(ckpt_path, config["model"])
-        trainer.fit(model, datamodule)
+        trainer.fit(self.model, datamodule)
         print("Training Complete!")
 
-    def preprocess(self, **config):
+    def preprocess(self):
         raise NotImplemented("preprocess is not implemented!!")
 
-    def infer(self, **config):
+    def infer(self):
         raise NotImplemented("infer is not implemented!!")
 
     def prepare_config_dir(self, config_name):
@@ -175,12 +170,14 @@ class Recipe:
         parser.add_argument("-c", "--config", default="default")
         args, remaining_argv = parser.parse_known_args(cli_args)
         if args.command == "train":
-            self.train(args.config)
+            self.load_model(config_name=args.config)
+            self.train(config_name=args.config)
         elif args.command == "preprocess":
-            cfg = self.load_config(args.config)
+            cfg = self.load_config(config_name=args.config)
             self.preprocess(**(dict(cfg["preprocess"])))
         elif args.command == "infer":
-            cfg = self.load_config(args.config)
+            self.load_model(config_name=args.config)
+            cfg = self.load_config(config_name=args.config)
             additional_args = vars(self.argparsers["infer"].parse_args(remaining_argv))
             self.infer(**(dict(cfg["infer"]) | additional_args))
         elif args.command == "setup":
