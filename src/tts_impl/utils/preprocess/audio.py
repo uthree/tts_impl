@@ -9,7 +9,6 @@ import torch
 import torchaudio
 from rich.progress import track
 from torchaudio.functional import resample
-
 from tts_impl.functional import adjust_size, estimate_f0
 
 from .base import CacheWriter, DataCollector, Extractor, FunctionalExtractor

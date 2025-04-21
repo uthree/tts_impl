@@ -21,6 +21,7 @@ def gaussian_upsampling(
         x_masks (Tensor): Mask tensor (B, T_text)
         y_masks (Tensor): Mask tensor (B, T_feats)
         delta: (float), Temperature
+
     Returns:
         Tensor: Expanded hidden state (B, channels, T_feat)
     """
@@ -94,6 +95,7 @@ def duplicate_by_duration(
         w (Tensor): Batched token duration (B, T_text)
         x_masks (Tensor): Mask tensor (B, T_text)
         y_masks (Tensor): Mask tensor (B, feats)
+
     Returns:
         Tensor: Expanded hidden state (B, channels, T_feat)
     """

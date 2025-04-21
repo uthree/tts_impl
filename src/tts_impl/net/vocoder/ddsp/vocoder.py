@@ -6,37 +6,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 from torchaudio.transforms import InverseMelScale
-
-from tts_impl.functional.ddsp import fft_convolve, impulse_train
-from tts_impl.net.base.vocoder import GanVocoderGenerator
+from tts_impl.functional.ddsp import estimate_minimum_phase, fft_convolve, impulse_train
 from tts_impl.utils.config import derive_config
-
-
-def estimate_minimum_phase(amplitude_spec: torch.Tensor) -> torch.Tensor:
-    """
-    Convert zero-phase amplitude spectrogram to minimum_phase spectrogram via cepstram method.
-
-    Args:
-        amplitude_spec: torch.Tensor, dtype=float, shape=(batch_size, fft_bin, num_frames)
-    Returns:
-        complex_spec: torch.Tensor, dtype=Complex, shape=(batch_size, fft_bin, num_frames)
-    """
-    with torch.no_grad():
-        # cepstram method
-        cepst = torch.fft.irfft(torch.clamp_min(amplitude_spec.abs(), 1e-8), dim=1)
-        n_fft = cepst.shape[1]
-        half = n_fft // 2
-        cepst[:, :half] *= 2.0
-        cepst[:, half:] *= 0.0
-        envelope_min_phase = torch.exp(torch.fft.rfft(cepst, dim=1))
-
-        # extract only phase
-        envelope_min_phase = (
-            envelope_min_phase / torch.clamp_min(envelope_min_phase.abs(), 1e-8)
-        ).detach()
-
-    # rotate elementwise
-    return amplitude_spec * envelope_min_phase
 
 
 @derive_config

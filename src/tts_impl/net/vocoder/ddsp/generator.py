@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
+from tts_impl.net.base.vocoder import GanVocoderGenerator
 from tts_impl.utils.config import derive_config
 
 from .vocoder import SubtractiveVocoder
@@ -24,7 +24,7 @@ class ResBlock(nn.Module):
 
 
 @derive_config
-class DdspGenerator(nn.Module):
+class DdspGenerator(nn.Module, GanVocoderGenerator):
     def __init__(
         self,
         in_channels: int = 80,

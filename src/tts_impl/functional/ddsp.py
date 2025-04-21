@@ -13,13 +13,13 @@ def framewise_fir_filter(
     """
     apply different FIR filter frame-wise.
 
-    args:
+    Args:
         signal: [batch_size, length * hop_length]
         filter: [batch_size, n_fft, length]
         n_fft: int
         hop_length: int
 
-    outputs:
+    Returns:
         signal: [batch_size, length * hop_length]
     """
 
@@ -41,10 +41,11 @@ def spectral_envelope_filter(
     signal: torch.Tensor, envelope: torch.Tensor, n_fft: int, hop_length: int
 ) -> torch.Tensor:
     """
-    args:
+    Args:
         signal: [batch_size, length * hop_length]
         envelope: [batch_size, fft_bin, length], where fft_bin = n_fft // 2 + 1
-    outputs:
+
+    Returns:
         signal: [batch_size, length * hop_length]
     """
     dtype = signal.dtype
@@ -70,12 +71,13 @@ def impulse_train(
     uv: Optional[torch.Tensor] = None,
 ) -> torch.Tensor:
     """
-    args:
+    Args:
         f0: [batch_size, length]
         sample_rate: int
         hop_length: int
         uv: [batch_size, length]
-    outputs:
+
+    Outputs:
         signal: [batch_size, length * hop_length]
     """
     with torch.no_grad():
@@ -101,10 +103,11 @@ def fft_convolve(signal: torch.Tensor, kernel: torch.Tensor) -> torch.Tensor:
     """ "
     depthwise causal convolution using fft for performance
 
-    args:
+    Args:
         signal: [..., length]
         kernel: [..., kernel_size]
-    outputs:
+
+    Returns:
         signal: [..., length]
     """
     dtype = signal.dtype
@@ -188,3 +191,31 @@ def cross_correlation(
     ]
     x_corr = torch.fft.irfft(x_stft * x_stft.conj(), dim=1).to(dtype)
     return x_corr
+
+
+def estimate_minimum_phase(amplitude_spec: torch.Tensor) -> torch.Tensor:
+    """
+    Convert zero-phase amplitude spectrogram to minimum_phase spectrogram via cepstram method.
+
+    Args:
+        amplitude_spec: torch.Tensor, dtype=float, shape=(batch_size, fft_bin, num_frames)
+
+    Returns:
+        complex_spec: torch.Tensor, dtype=Complex, shape=(batch_size, fft_bin, num_frames)
+    """
+    with torch.no_grad():
+        # cepstram method
+        cepst = torch.fft.irfft(torch.clamp_min(amplitude_spec.abs(), 1e-8), dim=1)
+        n_fft = cepst.shape[1]
+        half = n_fft // 2
+        cepst[:, :half] *= 2.0
+        cepst[:, half:] *= 0.0
+        envelope_min_phase = torch.exp(torch.fft.rfft(cepst, dim=1))
+
+        # extract only phase
+        envelope_min_phase = (
+            envelope_min_phase / torch.clamp_min(envelope_min_phase.abs(), 1e-8)
+        ).detach()
+
+    # rotate elementwise
+    return amplitude_spec * envelope_min_phase

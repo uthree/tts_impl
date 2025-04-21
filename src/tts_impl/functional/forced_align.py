@@ -45,6 +45,7 @@ def viterbi_decode(log_p_attn, text_lengths, feats_lengths):
         log_p_attn (Tensor): Batched log probability of attention matrix (B, T_feats, T_text)
         text_lengths (Tensor): Text length tensor (B,)
         feats_legnths (Tensor): Feature length tensor (B,)
+
     Returns:
         Tensor: Batched token duration extracted from `log_p_attn` (B,T_text)
         Tensor: binarization loss tensor ()

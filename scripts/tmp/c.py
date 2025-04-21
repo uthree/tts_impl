@@ -3,7 +3,6 @@ import torch
 import torch.utils.data.dataloader
 from lightning import Trainer
 from lightning.pytorch.callbacks import Checkpoint, RichProgressBar
-
 from tts_impl.net.vocoder.hifigan import HifiganLightningModule
 from tts_impl.net.vocoder.nsf_hifigan import NsfhifiganLightningModule
 from tts_impl.utils.datamodule import AudioDataModule

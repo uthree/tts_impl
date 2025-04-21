@@ -9,7 +9,6 @@ from typing import Any, Generator, List, Literal, Mapping, Optional, Union
 import torch
 import torchaudio
 from torchaudio.functional import resample
-
 from tts_impl.g2p import Grapheme2Phoneme
 
 from .base import CacheWriter, DataCollector, Extractor
