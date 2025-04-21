@@ -60,7 +60,7 @@ class TTSDataCollector(DataCollector):
         lines = transcriptions.split("\n")
         r = dict()
         for line in lines:
-            m = re.match("(.+)\:(.+)", line)
+            m = re.match("(.+):(.+)", line)
             if m is not None:
                 fname, trns = m.groups()
                 r[fname] = {"name": fname, "transcription": trns}
