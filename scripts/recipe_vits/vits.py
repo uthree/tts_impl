@@ -3,18 +3,14 @@ from pathlib import Path
 import torch
 import torchaudio
 from lightning import LightningDataModule
+
 from tts_impl.g2p import Grapheme2Phoneme
 from tts_impl.g2p.pyopenjtalk import PyopenjtalkG2P
 from tts_impl.net.tts.vits import VitsLightningModule
 from tts_impl.utils.datamodule import TTSDataModule
-from tts_impl.utils.preprocess import (
-    G2PExtractor,
-    Mixdown,
-    Preprocessor,
-    TTSCacheWriter,
-    TTSDataCollector,
-    WaveformLengthExtractor,
-)
+from tts_impl.utils.preprocess import (G2PExtractor, Mixdown, Preprocessor,
+                                       TTSCacheWriter, TTSDataCollector,
+                                       WaveformLengthExtractor)
 from tts_impl.utils.recipe import Recipe
 
 

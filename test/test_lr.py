@@ -1,10 +1,9 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from tts_impl.functional.length_regurator import (
-    duplicate_by_duration,
-    gaussian_upsampling,
-)
+
+from tts_impl.functional.length_regurator import (duplicate_by_duration,
+                                                  gaussian_upsampling)
 
 
 def test_length_regurator():

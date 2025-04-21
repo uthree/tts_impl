@@ -1,11 +1,8 @@
 import torch.nn as nn
+
 from tts_impl.transforms import LogMelSpectrogram
-from tts_impl.utils.preprocess import (
-    AudioCacheWriter,
-    AudioDataCollector,
-    FunctionalExtractor,
-    Preprocessor,
-)
+from tts_impl.utils.preprocess import (AudioCacheWriter, AudioDataCollector,
+                                       FunctionalExtractor, Preprocessor)
 
 # Initialize "Preprocessor"
 preprocess = Preprocessor()

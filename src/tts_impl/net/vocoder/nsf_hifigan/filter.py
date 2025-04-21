@@ -4,12 +4,10 @@ import numpy as np
 import torch
 import torch.nn as nn
 from torch.nn.utils.parametrizations import weight_norm
-from tts_impl.net.vocoder.hifigan.generator import (
-    ResBlock1,
-    ResBlock2,
-    init_activation,
-    init_weights,
-)
+
+from tts_impl.net.vocoder.hifigan.generator import (ResBlock1, ResBlock2,
+                                                    init_activation,
+                                                    init_weights)
 from tts_impl.utils.config import derive_config
 
 

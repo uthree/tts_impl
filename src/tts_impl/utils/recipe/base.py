@@ -3,7 +3,7 @@ import inspect
 import sys
 from dataclasses import asdict
 from pathlib import Path
-from typing import Any, List, Optional
+from typing import Optional
 
 import torch
 from lightning import LightningDataModule, LightningModule, Trainer
@@ -11,6 +11,7 @@ from lightning.pytorch.callbacks import ModelCheckpoint, RichProgressBar
 from omegaconf import OmegaConf
 from rich import print
 from rich_argparse import RichHelpFormatter
+
 from tts_impl.utils.config import arguments_dataclass_of
 
 
@@ -115,6 +116,7 @@ class Recipe:
         self.model = model
 
     def train(self, config_name: str = "default"):
+        self._indeterministic_mode()
         config = self.load_config(config_name)
         datamodule = self.prepare_datamodule(**config["datamodule"])
         trainer = self.prepare_trainer(**config["trainer"])

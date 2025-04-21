@@ -6,6 +6,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 from torchaudio.transforms import InverseMelScale
+
 from tts_impl.functional.ddsp import fft_convolve, impulse_train
 from tts_impl.net.base.vocoder import GanVocoderGenerator
 from tts_impl.utils.config import derive_config

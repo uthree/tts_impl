@@ -9,6 +9,7 @@ import torch.nn.functional as F
 from alias_free_torch import Activation1d as AliasFreeActivation1d
 from torch.nn.utils import remove_weight_norm
 from torch.nn.utils.parametrizations import weight_norm
+
 from tts_impl.net.base.vocoder import GanVocoderGenerator
 from tts_impl.utils.config import derive_config
 
