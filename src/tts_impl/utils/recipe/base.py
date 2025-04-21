@@ -114,7 +114,7 @@ class Recipe:
             model = self.TargetModule(**model_config)
         self.model = model
 
-    def train(self, config_name:str="default"):
+    def train(self, config_name: str = "default"):
         config = self.load_config(config_name)
         datamodule = self.prepare_datamodule(**config["datamodule"])
         trainer = self.prepare_trainer(**config["trainer"])
