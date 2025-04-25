@@ -7,7 +7,7 @@ from tts_impl.utils.config import derive_config
 from .vocoder import SubtractiveVocoder
 
 
-# とりあえず仮実装
+# とりあえず仮実装, DDSPのパラメータ推定をするだけなのでここの設計は割と適当でいい。
 class ResBlock(nn.Module):
     def __init__(self, channels: int):
         super().__init__()

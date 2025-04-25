@@ -5,4 +5,5 @@ from .models import (
     StochasticDurationPredictor,
     TextEncoder,
     VitsGenerator,
+    ResidualCouplingBlock
 )

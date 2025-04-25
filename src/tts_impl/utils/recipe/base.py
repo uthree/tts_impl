@@ -103,7 +103,7 @@ class Recipe:
 
     def load_model(self, config_name: str = "default"):
         model_config = self.load_config(config_name=config_name).model
-        ckpt_path = self.ckpt_root_dir / f"{config_name}.ckpt"
+        ckpt_path = self.ckpt_root_dir / f"{self.ckpt_name}.ckpt"
         if ckpt_path.exists():
             print(f"Ckeckpoint {ckpt_path} found, loading ckeckpoint")
             model = self.TargetModule.load_from_checkpoint(
@@ -171,12 +171,15 @@ class Recipe:
         parser.add_argument("-c", "--config", default="default")
         args, remaining_argv = parser.parse_known_args(cli_args)
         if args.command == "train":
+            self.ckpt_name = args.config
             self.load_model(config_name=args.config)
             self.train(config_name=args.config)
         elif args.command == "preprocess":
+            self.ckpt_name = args.config
             cfg = self.load_config(config_name=args.config)
             self.preprocess(**(dict(cfg["preprocess"])))
         elif args.command == "infer":
+            self.ckpt_name = args.config
             self.load_model(config_name=args.config)
             cfg = self.load_config(config_name=args.config)
             additional_args = vars(self.argparsers["infer"].parse_args(remaining_argv))
