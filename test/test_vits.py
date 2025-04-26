@@ -18,13 +18,17 @@ def test_vits_generator():
 from tts_impl.net.tts.vits.attentions import Decoder, Encoder
 
 
+@pytest.mark.parametrize("batch_size", [1, 2])
+@pytest.mark.parametrize("length", [100, 200])
 @pytest.mark.parametrize("activation", ["relu", "silu", "gelu"])
 @pytest.mark.parametrize("glu", [True, False])
 @pytest.mark.parametrize("rotary_pos_emb", [True, False])
 @pytest.mark.parametrize("norm", ["rmsnorm", "layernorm", "none", "tanh"])
 @pytest.mark.parametrize("prenorm", [True, False])
 @pytest.mark.parametrize("window_size", [None, 4])
-def test_vits_encoder(activation, glu, rotary_pos_emb, norm, prenorm, window_size):
+def test_vits_encoder(
+    batch_size, length, activation, glu, rotary_pos_emb, norm, prenorm, window_size
+):
     enc = Encoder(
         192,
         768,
@@ -39,18 +43,31 @@ def test_vits_encoder(activation, glu, rotary_pos_emb, norm, prenorm, window_siz
         rotary_pos_emb=rotary_pos_emb,
         activation=activation,
     )
-    x = torch.randn(2, 192, 64)
-    x_mask = torch.ones(2, 1, 64)
-    o = enc(x, x_mask)
+    x = torch.randn(batch_size, 192, length)
+    x_mask = torch.ones(batch_size, 1, length)
+    o = enc.forward(x, x_mask)
 
 
+@pytest.mark.parametrize("batch_size", [1, 2])
+@pytest.mark.parametrize("x_length", [100, 200])
+@pytest.mark.parametrize("h_length", [100, 200])
 @pytest.mark.parametrize("activation", ["relu", "silu", "gelu"])
 @pytest.mark.parametrize("glu", [True, False])
 @pytest.mark.parametrize("rotary_pos_emb", [True, False])
 @pytest.mark.parametrize("norm", ["rmsnorm", "layernorm", "none", "tanh"])
 @pytest.mark.parametrize("prenorm", [True, False])
 @pytest.mark.parametrize("window_size", [None, 4])
-def test_vits_decoder(activation, glu, rotary_pos_emb, norm, prenorm, window_size):
+def test_vits_decoder(
+    batch_size,
+    x_length,
+    h_length,
+    activation,
+    glu,
+    rotary_pos_emb,
+    norm,
+    prenorm,
+    window_size,
+):
     dec = Decoder(
         192,
         768,
@@ -65,8 +82,8 @@ def test_vits_decoder(activation, glu, rotary_pos_emb, norm, prenorm, window_siz
         rotary_pos_emb=rotary_pos_emb,
         activation=activation,
     )
-    x = torch.randn(2, 192, 64)
-    x_mask = torch.ones(2, 1, 64)
-    h = torch.randn(2, 192, 32)
-    h_mask = torch.ones(2, 1, 32)
+    x = torch.randn(batch_size, 192, x_length)
+    x_mask = torch.ones(batch_size, 1, x_length)
+    h = torch.randn(batch_size, 192, h_length)
+    h_mask = torch.ones(batch_size, 1, h_length)
     o = dec(x, x_mask, h, h_mask)

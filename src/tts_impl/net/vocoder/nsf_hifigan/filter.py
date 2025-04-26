@@ -17,7 +17,7 @@ from tts_impl.utils.config import derive_config
 class NsfhifiganFilter(nn.Module):
     def __init__(
         self,
-        input_channels: int = 80,
+        in_channels: int = 80,
         upsample_initial_channels: int = 512,
         resblock_type: str = "1",
         resblock_kernel_sizes: List[int] = [3, 7, 11],
@@ -36,7 +36,7 @@ class NsfhifiganFilter(nn.Module):
         self.num_kernels = len(resblock_kernel_sizes)
         self.num_upsamples = len(upsample_rates)
 
-        self.input_channels = input_channels
+        self.in_channels = in_channels
         self.gin_channels = gin_channels
         self.upsample_initial_channels = upsample_initial_channels
         self.resblock_type = resblock_type
@@ -54,7 +54,7 @@ class NsfhifiganFilter(nn.Module):
             raise "invalid resblock type"
 
         self.conv_pre = weight_norm(
-            nn.Conv1d(input_channels, upsample_initial_channels, 7, 1, 3)
+            nn.Conv1d(in_channels, upsample_initial_channels, 7, 1, 3)
         )
         if gin_channels > 0:
             self.with_condition = True

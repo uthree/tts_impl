@@ -6,20 +6,44 @@ from torch import nn
 from torch.nn import functional as F
 from tts_impl.functional import monotonic_align
 from tts_impl.net.tts.length_regurator import DuplicateByDuration
+from tts_impl.net.tts.vits import (
+    DurationPredictor,
+    PosteriorEncoder,
+    ResidualCouplingBlock,
+    StochasticDurationPredictor,
+    TextEncoder,
+    commons,
+    modules,
+)
 from tts_impl.net.vocoder.nsf_hifigan import NsfhifiganGenerator
 from tts_impl.utils.config import derive_config
 
-from tts_impl.net.tts.vits import PosteriorEncoder, TextEncoder, ResidualCouplingBlock, DurationPredictor, StochasticDurationPredictor, commons, modules
-
+from .losses import log_f0_loss
 
 
 @derive_config
 class PitchEstimator(nn.Module):
-    def __init__(self, in_channels:int=192, hidden_channels:int = 192, kernel_size:int=5, dilation_rate:int=1, n_layers:int=4, gin_channels:int=0, p_dropout:float=0.0):
+    def __init__(
+        self,
+        in_channels: int = 192,
+        hidden_channels: int = 192,
+        kernel_size: int = 5,
+        dilation_rate: int = 1,
+        n_layers: int = 4,
+        gin_channels: int = 0,
+        p_dropout: float = 0.0,
+    ):
         super().__init__()
         self.in_conv = nn.Conv1d(in_channels, hidden_channels, 1)
-        self.wn = modules.WN(hidden_channels, kernel_size, dilation_rate, n_layers, gin_channels, p_dropout)
-        self.out_conv = nn.Conv1d(hidden_channels, 1)
+        self.wn = modules.WN(
+            hidden_channels,
+            kernel_size,
+            dilation_rate,
+            n_layers,
+            gin_channels,
+            p_dropout,
+        )
+        self.out_conv = nn.Conv1d(hidden_channels, 1, 1)
 
     def forward(self, x, x_mask, g=None):
         x = self.in_conv(x) * x_mask
@@ -30,7 +54,7 @@ class PitchEstimator(nn.Module):
 
 
 _default_decoder_config = NsfhifiganGenerator.Config()
-_default_decoder_config.in_channels = 192
+_default_decoder_config.filter.in_channels = 192
 
 
 @derive_config
@@ -70,7 +94,7 @@ class NsfvitsGenerator(nn.Module):
         self.pe = PitchEstimator(**pitch_estimator)
         self.lr = DuplicateByDuration()
 
-        self.dec.sample_rate = self.sample_rate
+        self.dec.source_module.sample_rate = self.sample_rate
 
         if use_sdp:
             self.sdp = StochasticDurationPredictor(**stochastic_duration_predictor)
@@ -129,10 +153,15 @@ class NsfvitsGenerator(nn.Module):
             l_length = l_length / torch.sum(x_mask)
             l_length_all += l_length
         return l_length_all, logw, logw_hat
-        
+
+    def pitch_estimation_loss(self, x, x_mask, f0, g=None):
+        f0_hat = self.pe.forward(x, x_mask, g=g)
+        uv = (f0 > 20.0).float()
+        l_pitch = log_f0_loss(f0_hat, f0, x_mask * uv)
+        return l_pitch, f0, f0_hat
 
     def forward(
-        self, x, x_lengths, y, y_lengths, sid=None, w=None
+        self, x, x_lengths, y, y_lengths, f0, sid=None, w=None
     ) -> dict[str, torch.Tensor]:
         if self.n_speakers > 0:
             g = self.emb_g(sid).unsqueeze(-1)  # [b, h, 1]
@@ -156,15 +185,20 @@ class NsfvitsGenerator(nn.Module):
         m_p = self.lr(m_p, w, x_mask, y_mask)
         logs_p = self.lr(logs_p, w, x_mask, y_mask)
 
+        # pitch estimation loss
+        loss_f0, f0, f0_hat = self.pitch_estimation_loss(z, y_mask, f0, g=g)
+
         # slice
         z_slice, ids_slice = commons.rand_slice_segments(
             z, y_lengths, self.segment_size
         )
-        o = self.dec(z_slice, g=g)
+        f0_slice = commons.slice_segments(f0, ids_slice, self.segment_size)
+        o = self.dec.forward(z_slice, f0=f0_slice.squeeze(1), g=g)
 
         outputs = {
             "fake": o,
             "loss_dur": loss_dur,
+            "loss_f0": loss_f0,
             "ids_slice": ids_slice,
             "x_mask": x_mask,
             "y_mask": y_mask,
@@ -176,6 +210,8 @@ class NsfvitsGenerator(nn.Module):
             "logs_q": logs_q,
             "logw": logw,
             "logw_hat": logw_hat,
+            "f0": f0,
+            "f0_hat": f0_hat,
         }
 
         return outputs
@@ -215,9 +251,16 @@ class NsfvitsGenerator(nn.Module):
         m_p = self.lr(m_p, w, x_mask, y_mask)
         logs_p = self.lr(logs_p, w, x_mask, y_mask)
 
+        # sample from gaussian dist.
         z_p = m_p + torch.randn_like(m_p) * torch.exp(logs_p) * noise_scale
+
+        # flow
         z = self.flow(z_p, y_mask, g=g, reverse=True)
-        o = self.dec((z * y_mask)[:, :, :max_len], g=g)
+
+        # decode
+        f0 = self.pe.forward(z, y_mask, g=g)  # estimate pitch
+        f0 = f0.squeeze(1)
+        o = self.dec((z * y_mask)[:, :, :max_len], f0=f0, g=g)
         return o
 
     def voice_conversion(self, y, y_lengths, sid_src, sid_tgt):

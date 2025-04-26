@@ -21,9 +21,9 @@ def test_hifigan_generator(activation, alias_free, resblock_type):
     G = HifiganGenerator(
         activation=activation, alias_free=alias_free, resblock_type=resblock_type
     )
-    mel = torch.randn(2, 80, 100)
+    mel = torch.randn(2, 80, 32)
     wf = G(mel)
-    assert wf.shape == torch.Size((2, 1, 25600))
+    assert wf.shape == torch.Size((2, 1, 8192))
 
 
 def test_hifigan_discriminator():

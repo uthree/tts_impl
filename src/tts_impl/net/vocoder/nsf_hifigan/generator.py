@@ -31,6 +31,14 @@ class NsfhifiganGenerator(nn.Module, GanVocoderGenerator):
         f0: Optional[torch.Tensor] = None,
         uv: Optional[torch.Tensor] = None,
     ) -> torch.Tensor:
+        """
+        Args:
+            x: shape=[batch_size, in_channels, num_frames]
+            g: shape=[batch_size, gin_channels, 1]
+            f0: shape=[batch, num_frames]
+            uv: shape=[batch, num_frames]
+        """
+        assert f0 is not None, RuntimeError("f0 shoud be given")
 
         if f0 is None:
             f0 = torch.zeros((x.shape[0], x.shape[2]), device=x.device)

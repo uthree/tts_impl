@@ -1,3 +1,4 @@
+import pytest
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -12,14 +13,47 @@ from tts_impl.functional import (
 from tts_impl.net.vocoder.ddsp import SubtractiveVocoder
 
 
-def test_synth_ddsp_vocoder():
-    vocoder = SubtractiveVocoder()
-    f0 = torch.ones(2, 100) * 440.0
-    per = torch.rand(2, 12, 100)
-    senv = torch.randn(2, 80, 100)
-    pf = torch.randn(2, 2048)
-    vc = torch.randn(2, 100)
-    vocoder.forward(f0, per, senv, pf, vc)
+@pytest.mark.parametrize("batch_size", [1, 2])
+@pytest.mark.parametrize("num_frames", [100, 200])
+@pytest.mark.parametrize("min_phase", [True, False])
+@pytest.mark.parametrize("dim_periodicity", [12, 16])
+@pytest.mark.parametrize("n_mels", [80])
+@pytest.mark.parametrize("post_filter_length", [0, 2048, 1024])
+@pytest.mark.parametrize("vocal_cord_filter_length", [0, 256, 128])
+@pytest.mark.parametrize("n_fft", [1024])
+@pytest.mark.parametrize("hop_length", [256])
+def test_subtractive_vocoder(
+    batch_size: int,
+    num_frames: int,
+    min_phase: bool,
+    dim_periodicity: int,
+    n_mels: int,
+    post_filter_length: int,
+    vocal_cord_filter_length,
+    n_fft: int,
+    hop_length: int,
+):
+    vocoder = SubtractiveVocoder(
+        dim_periodicity=dim_periodicity,
+        n_fft=n_fft,
+        hop_length=hop_length,
+        min_phase=min_phase,
+        n_mels=n_mels,
+    )
+    f0 = torch.ones(batch_size, num_frames) * 440.0
+    per = torch.rand(batch_size, dim_periodicity, num_frames)
+    senv = torch.randn(batch_size, n_mels, num_frames)
+    pf = (
+        torch.randn(batch_size, post_filter_length) if post_filter_length != 0 else None
+    )
+    vc = (
+        torch.randn(batch_size, vocal_cord_filter_length)
+        if vocal_cord_filter_length != 0
+        else None
+    )
+    o = vocoder.forward(f0, per, senv, pf, vc)
+    assert o.shape[0] == batch_size
+    assert o.shape[1] == num_frames * hop_length
 
 
 def test_xcorr():

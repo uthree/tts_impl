@@ -15,7 +15,7 @@ from tts_impl.net.vocoder.hifigan import HifiganDiscriminator
 from tts_impl.transforms import LogMelSpectrogram
 from tts_impl.utils.config import derive_config
 
-from .models import VitsGenerator
+from .models import NsfvitsGenerator
 
 _vits_discriminator_config = HifiganDiscriminator.Config()
 _vits_discriminator_config.msd.scales = [1]
@@ -25,10 +25,10 @@ _vits_discriminator_config.mrsd.hop_size = [50, 100, 200]
 
 
 @derive_config
-class VitsLightningModule(L.LightningModule):
+class NsfvitsLightningModule(L.LightningModule):
     def __init__(
         self,
-        generator: VitsGenerator.Config = VitsGenerator.Config(),
+        generator: NsfvitsGenerator.Config = NsfvitsGenerator.Config(),
         discriminator: HifiganDiscriminator.Config = _vits_discriminator_config,
         mel: LogMelSpectrogram.Config = LogMelSpectrogram.Config(),
         weight_mel: float = 45.0,
@@ -41,7 +41,7 @@ class VitsLightningModule(L.LightningModule):
         super().__init__()
         self.automatic_optimization = False
 
-        self.generator = VitsGenerator(**generator)
+        self.generator = NsfvitsGenerator(**generator)
         self.discriminator = HifiganDiscriminator(**discriminator)
         self.spectrogram = LogMelSpectrogram(**mel)
 
