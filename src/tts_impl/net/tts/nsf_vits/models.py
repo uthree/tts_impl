@@ -46,6 +46,7 @@ class PitchEstimator(nn.Module):
         self.out_conv = nn.Conv1d(hidden_channels, 1, 1)
 
     def forward(self, x, x_mask, g=None):
+        x = x.detach()
         x = self.in_conv(x) * x_mask
         x = self.wn(x, x_mask, g=g)
         x = self.out_conv(x) * x_mask
@@ -156,6 +157,7 @@ class NsfvitsGenerator(nn.Module):
 
     def pitch_estimation_loss(self, x, x_mask, f0, g=None):
         f0_hat = self.pe.forward(x, x_mask, g=g)
+        f0_hat = f0_hat.squeeze(1)
         uv = (f0 > 20.0).float()
         l_pitch = log_f0_loss(f0_hat, f0, x_mask * uv)
         return l_pitch, f0, f0_hat
@@ -195,7 +197,7 @@ class NsfvitsGenerator(nn.Module):
         f0_slice = commons.slice_segments(
             f0.unsqueeze(1), ids_slice, self.segment_size
         ).squeeze(1)
-        o = self.dec.forward(z_slice, f0=f0_slice.squeeze(1), g=g)
+        o = self.dec.forward(z_slice, f0=f0_slice, g=g)
 
         outputs = {
             "fake": o,
