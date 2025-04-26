@@ -67,23 +67,24 @@ class NsfvitsLightningModule(L.LightningModule):
         x_lengths = batch["phonemes_lengths"]
         sid = batch.get("speaker_id", None)
         w = batch.get("duration", None)
+        f0 = batch.get("f0", None)
 
         # generator step
         real, fake = self._generator_training_step(
-            x, x_lengths, y, y_lengths, waveform, sid=sid, w=w
+            x, x_lengths, y, y_lengths, waveform, f0, sid=sid, w=w
         )
 
         # discriminator step
         self._discriminator_training_step(real, fake)
 
     def _generator_training_step(
-        self, x, x_lengths, y, y_lengths, waveform, sid=None, w=None
+        self, x, x_lengths, y, y_lengths, waveform, f0, sid=None, w=None
     ):
         opt_g, _opt_d = self.optimizers()  # get optimizer
 
         # forward pass
         real, fake, loss_gen_tts = self._generator_forward(
-            x, x_lengths, y, y_lengths, waveform, sid=sid, w=w
+            x, x_lengths, y, y_lengths, waveform, f0, sid=sid, w=w
         )
         loss_gen_vocoder = self._vocoder_adversarial_loss(real, fake)
         loss_g = loss_gen_tts + loss_gen_vocoder
@@ -104,7 +105,7 @@ class NsfvitsLightningModule(L.LightningModule):
         return real, fake
 
     def _generator_forward(
-        self, x, x_lengths, y, y_lengths, waveform, sid=None, w=None
+        self, x, x_lengths, y, y_lengths, waveform, f0, sid=None, w=None
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
 
         # get frame size and segment size
@@ -112,7 +113,7 @@ class NsfvitsLightningModule(L.LightningModule):
         dec_frame_size = self.generator.dec.frame_size
 
         outputs = self.generator.forward(
-            x, x_lengths, y, y_lengths, sid=sid, w=w
+            x, x_lengths, y, y_lengths, f0, sid=sid, w=w
         )  # forward pass
 
         # expand return dict.
@@ -127,18 +128,20 @@ class NsfvitsLightningModule(L.LightningModule):
         # losses
         loss_dur = outputs["loss_dur"]
         loss_dur = loss_dur.mean()
+        loss_f0 = outputs["loss_f0"]
         loss_kl = kl_loss(z_p, logs_q, m_p, logs_p, z_mask)
 
         # logs
         self.log("train loss/KL divergence", loss_kl)
         self.log("train loss/duration", loss_dur)
+        self.log("train loss/pitch estimation", loss_f0)
 
         # slice real input
         real = slice_segments(
             waveform, ids_slice * dec_frame_size, segment_size * dec_frame_size
         ).detach()
 
-        loss = loss_dur + loss_kl
+        loss = loss_dur + loss_kl + loss_f0
         return real, fake, loss
 
     def _vocoder_adversarial_loss(

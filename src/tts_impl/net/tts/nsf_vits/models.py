@@ -192,7 +192,9 @@ class NsfvitsGenerator(nn.Module):
         z_slice, ids_slice = commons.rand_slice_segments(
             z, y_lengths, self.segment_size
         )
-        f0_slice = commons.slice_segments(f0, ids_slice, self.segment_size)
+        f0_slice = commons.slice_segments(
+            f0.unsqueeze(1), ids_slice, self.segment_size
+        ).squeeze(1)
         o = self.dec.forward(z_slice, f0=f0_slice.squeeze(1), g=g)
 
         outputs = {

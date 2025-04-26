@@ -121,6 +121,8 @@ def adjust_size(
     Returns:
         torch.Tensor: Resized tensor.
     """
+    if x.ndim == 1:
+        return adjust_size_1d(x[None, None, :], size)[0, 0, :]
     if x.ndim == 2:
         return adjust_size_1d(x.unsqueeze(0), size).squeeze(0)
     if x.ndim == 3:
@@ -131,5 +133,5 @@ def adjust_size(
         return adjust_size_3d(x, size)
     else:
         raise RuntimeError(
-            f"adjust_size supports only 2 to 5 dimensional tensor, got shape={x.shape}, ndim={x.ndim}"
+            f"adjust_size supports only 1 to 5 dimensional tensor, got shape={x.shape}, ndim={x.ndim}"
         )

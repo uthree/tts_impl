@@ -24,6 +24,10 @@ class NsfhifiganGenerator(nn.Module, GanVocoderGenerator):
     def sample_rate(self) -> int:
         return self.source_module.sample_rate
 
+    @property
+    def frame_size(self) -> int:
+        return self.source_module.frame_size
+
     def forward(
         self,
         x,

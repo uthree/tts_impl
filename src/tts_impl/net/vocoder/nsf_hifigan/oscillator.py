@@ -177,7 +177,7 @@ class CyclicNoiseOscillator(nn.Module):
             sawtooth = rad % 1.0
             impluse = sawtooth - sawtooth.roll(1, dims=(2))
             noise = torch.randn(N, 1, L, device=f0.device)
-            impluse = F.pad(impluse, (0, self.pad_size))
+            impluse = F.pad(impluse, (self.pad_size, 0))
             cyclic_noise = F.conv1d(impluse, self.kernel)
             source = cyclic_noise * voiced_mask + (1 - voiced_mask) * noise
             source = source.to(dtype)
