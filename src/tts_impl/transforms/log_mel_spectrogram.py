@@ -64,7 +64,7 @@ class LogMelSpectrogram(nn.Module):
         Returns:
             spectrogram: Tensor, shape=(batch_size, n_mels, length // hop_length)
         """
-        x = signal
+        x = signal.float()
         x = F.pad(
             x,
             (

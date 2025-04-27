@@ -47,7 +47,7 @@ class NsfhifiganGenerator(nn.Module, GanVocoderGenerator):
         if f0 is None:
             f0 = torch.zeros((x.shape[0], x.shape[2]), device=x.device)
         if uv is None:
-            uv = (f0 > 0.0).to(x.dtype)
+            uv = (f0 >= 20.0).to(x.dtype) * (f0 <= (self.sample_rate / 2)).to(x.dtype)
 
         f0 = f0.unsqueeze(1)
         uv = uv.unsqueeze(1)

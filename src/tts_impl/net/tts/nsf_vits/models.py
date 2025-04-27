@@ -43,15 +43,17 @@ class PitchEstimator(nn.Module):
             gin_channels,
             p_dropout,
         )
-        self.out_conv = nn.Conv1d(hidden_channels, 1, 1)
+        self.out_conv = nn.Conv1d(hidden_channels, 2, 1)
 
     def forward(self, x, x_mask, g=None):
         x = x.detach()
         x = self.in_conv(x) * x_mask
         x = self.wn(x, x_mask, g=g)
         x = self.out_conv(x) * x_mask
-        x = torch.exp(x)
-        return x
+        f0_hat, uv_hat = torch.chunk(x, 2, dim=1)
+        f0_hat = torch.exp(f0_hat)
+        uv_hat = torch.sigmoid(uv_hat)
+        return f0_hat, uv_hat
 
 
 _default_decoder_config = NsfhifiganGenerator.Config()
@@ -156,11 +158,13 @@ class NsfvitsGenerator(nn.Module):
         return l_length_all, logw, logw_hat
 
     def pitch_estimation_loss(self, x, x_mask, f0, g=None):
-        f0_hat = self.pe.forward(x, x_mask, g=g)
+        f0_hat, uv_hat = self.pe.forward(x, x_mask, g=g)
         f0_hat = f0_hat.squeeze(1)
         uv = (f0 > 20.0).float()
         l_pitch = log_f0_loss(f0_hat, f0, x_mask * uv)
-        return l_pitch, f0, f0_hat
+        l_uv = F.mse_loss(uv_hat, uv[:, None, :])
+
+        return l_pitch, f0, f0_hat, l_uv, uv, uv_hat
 
     def forward(
         self, x, x_lengths, y, y_lengths, f0, sid=None, w=None
@@ -188,7 +192,7 @@ class NsfvitsGenerator(nn.Module):
         logs_p = self.lr(logs_p, w, x_mask, y_mask)
 
         # pitch estimation loss
-        loss_f0, f0, f0_hat = self.pitch_estimation_loss(z, y_mask, f0, g=g)
+        loss_f0, f0, f0_hat, loss_uv, uv, uv_hat = self.pitch_estimation_loss(z, y_mask, f0, g=g)
 
         # slice
         z_slice, ids_slice = commons.rand_slice_segments(
@@ -216,6 +220,9 @@ class NsfvitsGenerator(nn.Module):
             "logw_hat": logw_hat,
             "f0": f0,
             "f0_hat": f0_hat,
+            "loss_uv": loss_uv,
+            "uv": uv,
+            "uv_hat": uv_hat
         }
 
         return outputs
@@ -262,9 +269,10 @@ class NsfvitsGenerator(nn.Module):
         z = self.flow(z_p, y_mask, g=g, reverse=True)
 
         # decode
-        f0 = self.pe.forward(z, y_mask, g=g)  # estimate pitch
+        f0, uv = self.pe.forward(z, y_mask, g=g)  # estimate pitch
         f0 = f0.squeeze(1)
-        o = self.dec((z * y_mask)[:, :, :max_len], f0=f0, g=g)
+        uv = (uv >= 0.5).float().squeeze(1) # quantize to 0 or 1
+        o = self.dec.forward((z * y_mask)[:, :, :max_len], f0=f0, uv=uv, g=g)
         return o
 
     def voice_conversion(self, y, y_lengths, sid_src, sid_tgt):

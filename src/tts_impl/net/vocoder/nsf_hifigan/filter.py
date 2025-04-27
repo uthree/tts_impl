@@ -23,7 +23,7 @@ class NsfhifiganFilter(nn.Module):
         resblock_kernel_sizes: List[int] = [3, 7, 11],
         resblock_dilations: List[List[int]] = [[1, 3, 5], [1, 3, 5], [1, 3, 5]],
         upsample_rates: List[int] = [8, 8, 2, 2],
-        output_channels: int = 1,
+        out_channels: int = 1,
         tanh_post_activation: bool = True,
         activation: str = "silu",
         alias_free: bool = False,
@@ -43,7 +43,7 @@ class NsfhifiganFilter(nn.Module):
         self.resblock_kernel_sizes = resblock_kernel_sizes
         self.resblock_dilations = resblock_dilations
         self.upsample_rates = upsample_rates
-        self.output_channels = output_channels
+        self.out_channels = out_channels
         self.tanh_post_activation = tanh_post_activation
 
         if resblock_type == "1":
@@ -106,7 +106,7 @@ class NsfhifiganFilter(nn.Module):
                 self.resblocks.append(resblock(ch, k, d, alias_free=alias_free))
 
         self.post_act = init_activation(activation, channels=ch, alias_free=alias_free)
-        self.conv_post = weight_norm(nn.Conv1d(ch, output_channels, 7, 1, padding=3))
+        self.conv_post = weight_norm(nn.Conv1d(ch, out_channels, 7, 1, padding=3))
 
         self.apply(init_weights)
 

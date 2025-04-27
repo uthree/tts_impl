@@ -29,14 +29,11 @@ class HarmonicNoiseOscillator(nn.Module):
 
         if gin_channels > 0:
             self.take_condition = True
-            self.cond_proj = nn.Conv1d(gin_channels, num_harmonics * 2, 1)
+            self.cond_proj = nn.Conv1d(gin_channels, num_harmonics, 1)
         else:
             self.take_condition = False
             self.cond = nn.Parameter(
-                torch.cat(
-                    [torch.zeros(1, num_harmonics, 1), torch.rand(1, num_harmonics, 1)],
-                    dim=1,
-                )
+                    torch.zeros(1, num_harmonics, 1),
             )
 
     def forward(self, f0, uv, g=None, **kwargs):
@@ -67,11 +64,9 @@ class HarmonicNoiseOscillator(nn.Module):
             integrated = torch.cumsum(fs / self.sample_rate, dim=2)
 
         if self.take_condition and g is not None:
-            amps, phase = F.softplus(self.cond_proj(g)).chunk(2, dim=1)
+            amps = F.softplus(self.cond_proj(g))
         else:
-            amps, phase = F.softplus(self.cond).chunk(2, dim=1)
-
-        integrated += phase
+            amps = F.softplus(self.cond)
 
         rad = 2 * math.pi * (integrated % 1.0)
         noise = torch.randn(rad.shape[0], 1, rad.shape[2], device=rad.device).expand(
