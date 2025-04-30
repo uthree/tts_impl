@@ -10,11 +10,11 @@ from tts_impl.utils.datamodule import TTSDataModule
 from tts_impl.utils.preprocess import (
     G2PExtractor,
     Mixdown,
+    PitchEstimation,
     Preprocessor,
     TTSCacheWriter,
     TTSDataCollector,
     WaveformLengthExtractor,
-    PitchEstimation
 )
 from tts_impl.utils.recipe import Recipe
 
@@ -29,7 +29,7 @@ class Nsfvits(Recipe):
         sample_rate: int = 22050,
         transcriptions_filename: str = "transcripts_utf8.txt",
         frame_size: int = 256,
-        pe_algorithm: str= "fcpe",
+        pe_algorithm: str = "fcpe",
         num_frames: int = 1000,
     ):
         preprocess = Preprocessor()
@@ -52,7 +52,15 @@ class Nsfvits(Recipe):
             ),
         )
         preprocess.with_extractor(
-            PitchEstimation(frame_size, pe_algorithm, device=(torch.device('cuda') if torch.cuda.is_available else torch.device('cpu')))
+            PitchEstimation(
+                frame_size,
+                pe_algorithm,
+                device=(
+                    torch.device("cuda")
+                    if torch.cuda.is_available
+                    else torch.device("cpu")
+                ),
+            )
         )
         preprocess.with_extractor(
             WaveformLengthExtractor(frame_size=frame_size, max_frames=num_frames)
@@ -61,7 +69,11 @@ class Nsfvits(Recipe):
         preprocess.run()
 
     def prepare_datamodule(
-        self, root_dir: str = "dataset_cache", batch_size: int = 16, frame_size:int=256, num_frames: int=1000
+        self,
+        root_dir: str = "dataset_cache",
+        batch_size: int = 16,
+        frame_size: int = 256,
+        num_frames: int = 1000,
     ) -> LightningDataModule:
         datamodule = TTSDataModule(
             root=root_dir,

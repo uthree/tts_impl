@@ -27,13 +27,13 @@ def test_hifigan_generator(activation, alias_free, resblock_type):
 
 
 def test_hifigan_discriminator():
-    wf = torch.randn(2, 1, 10000)
+    wf = torch.randn(2, 1, 8192)
     D = HifiganDiscriminator()
     logits, fmap = D(wf)
 
 
 def test_custom_discriminator():
-    wf = torch.randn(2, 1, 10000)
+    wf = torch.randn(2, 1, 8192)
     D = CombinedDiscriminator(
         MultiPeriodDiscriminator([2, 3, 5, 7, 11]),
         MultiScaleDiscriminator([1, 2]),

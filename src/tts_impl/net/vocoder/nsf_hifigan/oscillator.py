@@ -33,7 +33,7 @@ class HarmonicNoiseOscillator(nn.Module):
         else:
             self.take_condition = False
             self.cond = nn.Parameter(
-                    torch.zeros(1, num_harmonics, 1),
+                torch.zeros(1, num_harmonics, 1),
             )
 
     def forward(self, f0, uv, g=None, **kwargs):

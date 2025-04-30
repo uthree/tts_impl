@@ -192,7 +192,9 @@ class NsfvitsGenerator(nn.Module):
         logs_p = self.lr(logs_p, w, x_mask, y_mask)
 
         # pitch estimation loss
-        loss_f0, f0, f0_hat, loss_uv, uv, uv_hat = self.pitch_estimation_loss(z, y_mask, f0, g=g)
+        loss_f0, f0, f0_hat, loss_uv, uv, uv_hat = self.pitch_estimation_loss(
+            z, y_mask, f0, g=g
+        )
 
         # slice
         z_slice, ids_slice = commons.rand_slice_segments(
@@ -222,7 +224,7 @@ class NsfvitsGenerator(nn.Module):
             "f0_hat": f0_hat,
             "loss_uv": loss_uv,
             "uv": uv,
-            "uv_hat": uv_hat
+            "uv_hat": uv_hat,
         }
 
         return outputs
@@ -271,7 +273,7 @@ class NsfvitsGenerator(nn.Module):
         # decode
         f0, uv = self.pe.forward(z, y_mask, g=g)  # estimate pitch
         f0 = f0.squeeze(1)
-        uv = (uv >= 0.5).float().squeeze(1) # quantize to 0 or 1
+        uv = (uv >= 0.5).float().squeeze(1)  # quantize to 0 or 1
         o = self.dec.forward((z * y_mask)[:, :, :max_len], f0=f0, uv=uv, g=g)
         return o
 
