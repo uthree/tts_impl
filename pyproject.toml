@@ -29,6 +29,7 @@ dependencies = [
   "scipy>=1.14.1",
   "torchao>=0.8.0",
   "rotary-embedding-torch>=0.8.6",
+  "rich-argparse>=1.7.0"
 ]
 
 [build-system]
