@@ -1,6 +1,7 @@
-import torch.nn as nn
 import torch
+import torch.nn as nn
 import torch.nn.functional as F
+
 
 class LayerNorm1d(nn.Module):
     """
@@ -28,7 +29,7 @@ class LayerNorm1d(nn.Module):
         x = x.to(dtype)
         return x
 
- 
+
 class DynamicTanh1d(nn.Module):
     """
     dynamic tanh layer for 1d-sequence instead of normalization.
@@ -50,18 +51,18 @@ class DynamicTanh1d(nn.Module):
             x: shape=(batch_size, channels, length)
         """
         return F.tanh(self.alpha * x) * self.gamma + self.beta
-    
+
 
 class GlobalResponseNorm1d(nn.Module):
     """
     global response normalization
     """
+
     def __init__(self, channels, eps=1e-12):
         super().__init__()
         self.beta = nn.Parameter(torch.zeros(1, channels, 1))
         self.gamma = nn.Parameter(torch.zeros(1, channels, 1))
         self.eps = eps
-
 
     def forward(self, x):
         """

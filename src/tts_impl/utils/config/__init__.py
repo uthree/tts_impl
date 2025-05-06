@@ -1,1 +1,1 @@
-from .base import derive_config, arguments_dataclass_of
+from .base import arguments_dataclass_of, derive_config

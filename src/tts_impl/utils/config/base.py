@@ -4,11 +4,11 @@ from dataclasses import field, make_dataclass
 from functools import partial
 from typing import Any, Optional
 
-
 """
 激ヤバ黒魔術コード！！！！
 using DARK-SIDE POWER !!!!
 """
+
 
 def arguments_dataclass_of(fn: callable, cls_name: Optional[str] = None) -> type:
     """
@@ -28,9 +28,7 @@ def arguments_dataclass_of(fn: callable, cls_name: Optional[str] = None) -> type
 
         # Handle default value
         if param.default is not inspect.Parameter.empty:
-            default = field(
-                default_factory=partial(lambda v: copy(v), param.default)
-            )
+            default = field(default_factory=partial(lambda v: copy(v), param.default))
         elif param.annotation:
             default = field(default_factory=lambda: None)
 
