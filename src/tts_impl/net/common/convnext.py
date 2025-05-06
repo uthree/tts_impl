@@ -67,7 +67,7 @@ class FeedForward1d(nn.Module):
         else:
             self.grn = nn.Identity()
 
-        self.act = init_activation(activation, channels=channels)
+        self.act = init_activation(activation, channels=internal_channels)
 
     def forward(self, x):
         if self.glu:

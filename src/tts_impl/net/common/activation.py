@@ -75,8 +75,9 @@ def init_activation(name: ActivationName = "lrelu", channels: int = 0, alias_fre
         act = init_activation(name, channels=channels, alias_free=False)
         act = AliasFreeActivation1d(act)
         return act
-
-    if name == "lrelu":
+    if name == "relu":
+        return nn.ReLU()
+    elif name == "lrelu":
         return nn.LeakyReLU(LRELU_SLOPE)
     elif name == "silu" or name == "swish":
         return nn.SiLU()
