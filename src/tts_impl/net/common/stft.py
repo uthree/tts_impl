@@ -16,7 +16,7 @@ class STFT(nn.Module):
         n_fft: int,
         hop_length: int,
         window: Literal["rectangle", "hann"] = "hann",
-        padding: Literal["none", "causal", "center"] = "None",
+        padding: Literal["none", "causal", "center"] = "none",
     ):
         super().__init__()
         self.hop_length = hop_length
@@ -73,7 +73,7 @@ class ISTFT(nn.Module):
         n_fft: int,
         hop_length: int,
         window: Literal["rectangle", "hann"] = "hann",
-        padding: Literal["none", "causal", "center"] = "None",
+        padding: Literal["none", "causal", "center"] = "none",
     ):
         super().__init__()
         self.hop_length = hop_length

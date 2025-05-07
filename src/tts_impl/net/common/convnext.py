@@ -9,6 +9,17 @@ from .activation import ActivationName, init_activation
 from .normalization import DynamicTanh1d, GlobalResponseNorm1d, LayerNorm1d
 
 
+def init_norm(norm: str, channels: int = 0) -> nn.Module:
+    if norm == "tanh":
+        return DynamicTanh1d(channels)
+    elif norm == "none":
+        return nn.Identity()
+    elif norm == "layernorm":
+        return LayerNorm1d(channels)
+    else:
+        raise RuntimeError("invalid norm")
+
+
 class DepthwiseConv1d(nn.Module):
     def __init__(
         self,
@@ -22,14 +33,7 @@ class DepthwiseConv1d(nn.Module):
             channels, channels, kernel_size, groups=channels, bias=False
         )
         self.kernel_size = kernel_size
-        if norm == "tanh":
-            self.norm = DynamicTanh1d(channels)
-        elif norm == "none":
-            self.norm = nn.Identity()
-        elif norm == "layernorm":
-            self.norm = LayerNorm1d(channels)
-        else:
-            raise RuntimeError("invalid norm")
+        self.norm = init_norm(norm, channels)
 
         if causal:
             self.pad = nn.ReflectionPad1d((0, self.kernel_size - 1))
@@ -116,8 +120,8 @@ class ConvNeXt1d(nn.Module):
         self,
         in_channels: int,
         out_channels: int,
-        inter_channels: int = 256,
-        ffn_channels: int = 512,
+        inter_channels: int = 512,
+        ffn_channels: int = 1536,
         kernel_size: int = 7,
         num_layers: int = 6,
         grn: bool = False,
@@ -156,7 +160,7 @@ class ConvNeXt1d(nn.Module):
                 for _ in range(num_layers)
             ]
         )
-        self.post_norm = LayerNorm1d(inter_channels) if norm else nn.Identity()
+        self.post_norm = init_norm(norm, inter_channels)
         self.out_conv = nn.Conv1d(inter_channels, out_channels, 1)
 
     def forward(self, x):

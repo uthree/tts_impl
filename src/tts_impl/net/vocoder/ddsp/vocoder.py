@@ -21,10 +21,10 @@ class SubtractiveVocoder(nn.Module):
         dim_periodicity: int = 12,
         n_mels: int = 80,
         sample_rate: int = 24000,
-        hop_length: int = 256,
-        n_fft: int = 1024,
+        hop_length: int = 128,
+        n_fft: int = 512,
         min_phase: bool = True,
-        excitation_scale: float = 32.0,
+        excitation_scale: float = 64.0,
     ):
         """
         Args:

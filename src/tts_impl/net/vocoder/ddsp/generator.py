@@ -28,7 +28,7 @@ class DdspGenerator(nn.Module, GanVocoderGenerator):
     def __init__(
         self,
         in_channels: int = 80,
-        channels: int = 512,
+        channels: int = 256,
         num_layers: int = 4,
         vocal_cord_size: int = 256,
         reverb_size: int = 2048,

@@ -1,11 +1,14 @@
+from typing import Literal, TypeAlias
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from alias_free_torch import Activation1d as AliasFreeActivation1d
-from typing import TypeAlias, Literal
 
-ActivationName : TypeAlias = Literal["lrelu", "silu", "gelu", "snake", "snakebeta", "linear", "elu"]
-LRELU_SLOPE=0.1
+ActivationName: TypeAlias = Literal[
+    "lrelu", "silu", "gelu", "snake", "snakebeta", "linear", "elu"
+]
+LRELU_SLOPE = 0.1
 
 
 class Snake(nn.Module):
@@ -70,7 +73,9 @@ class SnakeBeta(nn.Module):
         return x
 
 
-def init_activation(name: ActivationName = "lrelu", channels: int = 0, alias_free: bool = False) -> nn.Module:
+def init_activation(
+    name: ActivationName = "lrelu", channels: int = 0, alias_free: bool = False
+) -> nn.Module:
     if alias_free:
         act = init_activation(name, channels=channels, alias_free=False)
         act = AliasFreeActivation1d(act)
