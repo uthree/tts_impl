@@ -76,7 +76,12 @@ class SubtractiveVocoder(nn.Module):
         with torch.no_grad():
             # oscillate impulse train and noise
             imp_scale = torch.rsqrt(
-                F.interpolate(f0.unsqueeze(1), scale_factor=self.hop_length).squeeze(1)
+                torch.clamp_min(
+                    F.interpolate(
+                        f0.unsqueeze(1), scale_factor=self.hop_length, mode="linear"
+                    ).squeeze(1),
+                    min=20.0,
+                )
             ) * math.sqrt(self.sample_rate)
             imp = impulse_train(f0, self.hop_length, self.sample_rate) * imp_scale
             noi = torch.rand_like(imp)
@@ -118,9 +123,15 @@ class SubtractiveVocoder(nn.Module):
         # apply the filter to impulse / noise, and add them.
         voi_stft = imp_stft * kernel_imp + noi_stft * kernel_noi
 
+        # adjust scale for STFT
+        voi_stft *= self.n_fft * (self.hann_window.sum() / self.n_fft)
+
         # inverse STFT
         voi = torch.istft(
-            voi_stft, self.n_fft, self.hop_length, window=self.hann_window
+            voi_stft,
+            self.n_fft,
+            self.hop_length,
+            window=self.hann_window,
         )
 
         # apply post filter. (optional)
