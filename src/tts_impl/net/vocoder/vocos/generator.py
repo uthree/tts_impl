@@ -1,7 +1,6 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
 from tts_impl.net.base import GanVocoderGenerator
 from tts_impl.net.common.convnext import ConvNeXt1d
 from tts_impl.net.common.normalization import LayerNorm1d
@@ -11,6 +10,11 @@ from tts_impl.utils.config import derive_config
 
 @derive_config
 class VocosGenerator(nn.Module, GanVocoderGenerator):
+    """
+    Unofficial implementation of [Vocos](https://arxiv.org/abs/2306.00814)'s generator.
+    Using transpose-convolution instead of `torch.istft` for onnx exporting compatibility.
+    """
+
     def __init__(
         self,
         in_channels: int = 80,
@@ -44,8 +48,9 @@ class VocosGenerator(nn.Module, GanVocoderGenerator):
 
     def forward(self, x):
         x = self.convnext(x)
+        x = x.float()
         log_mag, phase = torch.chunk(x, 2, dim=1)
-        mag = torch.exp(log_mag)
+        mag = torch.exp(torch.clamp_max(log_mag, max=6.0))
         real = torch.cos(phase) * mag
         imag = torch.sin(phase) * mag
         output = self.istft.forward(real, imag)

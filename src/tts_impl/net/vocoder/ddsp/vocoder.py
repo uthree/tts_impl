@@ -21,10 +21,9 @@ class SubtractiveVocoder(nn.Module):
         dim_periodicity: int = 12,
         n_mels: int = 80,
         sample_rate: int = 24000,
-        hop_length: int = 128,
-        n_fft: int = 512,
+        hop_length: int = 256,
+        n_fft: int = 1024,
         min_phase: bool = True,
-        excitation_scale: float = 64.0,
     ):
         """
         Args:
@@ -43,7 +42,6 @@ class SubtractiveVocoder(nn.Module):
         self.fft_bin = n_fft // 2 + 1
         self.hop_length = hop_length
         self.min_phase = min_phase
-        self.excitation_scale = excitation_scale
 
         self.per2spec = InverseMelScale(self.fft_bin, dim_periodicity, sample_rate)
         self.env2spec = InverseMelScale(self.fft_bin, n_mels, sample_rate)
@@ -77,18 +75,10 @@ class SubtractiveVocoder(nn.Module):
         # oscillate and calculate complex spectra.
         with torch.no_grad():
             # oscillate impulse train and noise
-            imp = (
-                impulse_train(f0, self.hop_length, self.sample_rate)
-                * F.interpolate(
-                    torch.rsqrt(torch.clamp_min(f0, 20.0)[:, None, :]),
-                    scale_factor=self.hop_length,
-                ).squeeze(1)
-                * self.excitation_scale
-            )
-            noi = (
-                (torch.rand_like(imp) - 0.5) * 2 / math.sqrt(self.sample_rate)
-            ) * self.excitation_scale
+            imp = impulse_train(f0, self.hop_length, self.sample_rate)
+            noi = torch.randn_like(imp)
 
+        # vocal cord filter
         if vocal_cord is not None:
             imp = F.pad(imp[None, :, :], (vocal_cord.shape[1] - 1, 0))
             imp = F.conv1d(

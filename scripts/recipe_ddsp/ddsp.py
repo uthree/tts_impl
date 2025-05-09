@@ -20,6 +20,7 @@ class NsfHifigan(Recipe):
         target_dir: str = "your_target_dir",
         sample_rate: int = 24000,
         length: int = 36800,
+        frame_size: int = 256,
     ):
         preprocess = Preprocessor()
         preprocess.with_collector(
@@ -28,7 +29,7 @@ class NsfHifigan(Recipe):
         # mixdown
         preprocess.with_extractor(Mixdown())
         preprocess.with_extractor(
-            PitchEstimation(frame_size=256, algorithm="fcpe", device="cuda")
+            PitchEstimation(frame_size=frame_size, algorithm="fcpe", device="cuda")
         )
         preprocess.with_writer(AudioCacheWriter("dataset_cache"))
         preprocess.run()
