@@ -42,16 +42,30 @@ def log_g(x: torch.Tensor) -> torch.Tensor:
 
 @derive_config
 class MinGRU(nn.Module):
-    def __init__(self, d_model: int, bias: bool = True):
+    def __init__(
+        self,
+        d_model: int,
+        d_hidden: Optional[int] = None,
+        p_dropout: float = 0.0,
+        bias: bool = True,
+    ):
         """
+        Unofficial implementation of [minGRU](https://arxiv.org/abs/2410.01201v1).
+
         Args:
-            d_model: int, hidden dimension
+            d_model: int, input dimension
+            d_hidden: Optional[int], hidden dimension, if `None` given, set same to `d_model` automatically.
+            p_dropout: float, probabilities of dropout
             bias: bool, if True is given, add bias to Linear module., default is `True`
         """
         super().__init__()
         self.d_model = d_model
-        self.linear_h = nn.Linear(d_model, d_model, bias=bias)
-        self.linear_z = nn.Linear(d_model, d_model, bias=bias)
+        if d_hidden is None:
+            d_hidden = d_model
+        self.d_hidden = d_hidden
+        self.p_dropout = p_dropout
+        self.linear_h = nn.Linear(d_model, d_hidden, bias=bias)
+        self.linear_z = nn.Linear(d_model, d_hidden, bias=bias)
 
     def forward(self, x: torch.Tensor, h_prev: Optional[torch.Tensor] = None):
         """
@@ -60,11 +74,11 @@ class MinGRU(nn.Module):
             h_prev: Optional[Tensor], shape=(batch_size, 1, d_model), initial state.
 
         Retrun:
-            h: Tensor, shape=(batch_size, seq_len, d_model)
+            h: Tensor, shape=(batch_size, seq_len, d_hidden)
         """
         if h_prev is None:
-            h_prev = torch.zeros(size=(x.shape[0], 1, self.d_model), device=x.device)
-
+            h_prev = torch.zeros(size=(x.shape[0], 1, self.d_hidden), device=x.device)
+        x = F.dropout(x, self.p_dropout)
         if x.shape[1] == 1:
             return self._sequential_forward(x, h_prev)
         else:

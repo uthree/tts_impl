@@ -13,11 +13,11 @@ from tts_impl.functional import (
 from tts_impl.net.vocoder.ddsp import SubtractiveVocoder
 
 
-@pytest.mark.parametrize("batch_size", [1, 2])
+@pytest.mark.parametrize("batch_size", [1, 4])
 @pytest.mark.parametrize("num_frames", [100, 200])
 @pytest.mark.parametrize("min_phase", [True, False])
 @pytest.mark.parametrize("dim_periodicity", [12, 16])
-@pytest.mark.parametrize("n_mels", [80])
+@pytest.mark.parametrize("n_mels", [80, 40])
 @pytest.mark.parametrize("post_filter_length", [0, 2048, 1024])
 @pytest.mark.parametrize("vocal_cord_filter_length", [0, 256, 128])
 @pytest.mark.parametrize("n_fft", [1024])

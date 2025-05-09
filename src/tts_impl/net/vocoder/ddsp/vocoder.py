@@ -75,8 +75,11 @@ class SubtractiveVocoder(nn.Module):
         # oscillate and calculate complex spectra.
         with torch.no_grad():
             # oscillate impulse train and noise
-            imp = impulse_train(f0, self.hop_length, self.sample_rate)
-            noi = torch.randn_like(imp)
+            imp_scale = torch.rsqrt(
+                F.interpolate(f0.unsqueeze(1), scale_factor=self.hop_length).squeeze(1)
+            ) * math.sqrt(self.sample_rate)
+            imp = impulse_train(f0, self.hop_length, self.sample_rate) * imp_scale
+            noi = torch.rand_like(imp)
 
         # vocal cord filter
         if vocal_cord is not None:
