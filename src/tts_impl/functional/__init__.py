@@ -1,4 +1,4 @@
-from . import midi, monotonic_align, parallel_scan
+from . import midi, monotonic_align
 from .average_by_duration import average_by_duration
 from .ddsp import (
     cross_correlation,
