@@ -99,6 +99,5 @@ class MinGRU(nn.Module):
         h = parallel_scan_log(
             log_coeffs, torch.cat([log_h_0, log_z + log_tilde_h], dim=1)
         )
-        print(h)
         h = h[:, 1:]
         return h

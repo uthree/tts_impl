@@ -123,7 +123,7 @@ class SubtractiveVocoder(nn.Module):
         # apply the filter to impulse / noise, and add them.
         voi_stft = imp_stft * kernel_imp + noi_stft * kernel_noi
 
-        # adjust scale for STFT
+        # scaling for STFT
         voi_stft *= self.n_fft * (self.hann_window.sum() / self.n_fft)
 
         # inverse STFT
