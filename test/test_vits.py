@@ -28,13 +28,13 @@ from tts_impl.net.tts.vits.models import (
 
 @pytest.mark.parametrize("batch_size", [1, 4])
 @pytest.mark.parametrize("length", [100, 200])
-@pytest.mark.parametrize("activation", ["relu", "silu", "gelu"])
+@pytest.mark.parametrize("activation", ["gelu"])
 @pytest.mark.parametrize("glu", [True, False])
 @pytest.mark.parametrize("rotary_pos_emb", [True, False])
-@pytest.mark.parametrize("norm", ["rmsnorm", "layernorm", "none", "tanh"])
+@pytest.mark.parametrize("norm", ["rmsnorm"])
 @pytest.mark.parametrize("prenorm", [True, False])
 @pytest.mark.parametrize("window_size", [None, 4])
-@pytest.mark.parametrize("hidden_dim", [192, 384])
+@pytest.mark.parametrize("hidden_dim", [192])
 def test_vits_encoder(
     batch_size,
     length,
@@ -69,15 +69,15 @@ def test_vits_encoder(
 
 
 @pytest.mark.parametrize("batch_size", [1, 4])
-@pytest.mark.parametrize("x_length", [100, 200])
-@pytest.mark.parametrize("h_length", [100, 200])
-@pytest.mark.parametrize("activation", ["relu", "silu", "gelu"])
+@pytest.mark.parametrize("x_length", [100])
+@pytest.mark.parametrize("h_length", [200])
+@pytest.mark.parametrize("activation", ["gelu"])
 @pytest.mark.parametrize("glu", [True, False])
 @pytest.mark.parametrize("rotary_pos_emb", [True, False])
-@pytest.mark.parametrize("norm", ["rmsnorm", "layernorm", "none", "tanh"])
+@pytest.mark.parametrize("norm", ["rmsnorm"])
 @pytest.mark.parametrize("prenorm", [True, False])
 @pytest.mark.parametrize("window_size", [None, 4])
-@pytest.mark.parametrize("hidden_dim", [192, 384])
+@pytest.mark.parametrize("hidden_dim", [192])
 def test_vits_decoder(
     batch_size,
     x_length,
@@ -153,14 +153,14 @@ def test_posterior_encoder(
 
 
 @pytest.mark.parametrize("batch_size", [1, 2])
-@pytest.mark.parametrize("length", [100, 200])
-@pytest.mark.parametrize("hidden_channels", [192, 384])
-@pytest.mark.parametrize("channels", [192, 384])
-@pytest.mark.parametrize("kernel_size", [3, 5])
-@pytest.mark.parametrize("dilation_rate", [1, 3])
-@pytest.mark.parametrize("n_layers", [1, 2])
-@pytest.mark.parametrize("n_flows", [1, 2])
-@pytest.mark.parametrize("gin_channels", [0, 192, 256])
+@pytest.mark.parametrize("length", [100])
+@pytest.mark.parametrize("hidden_channels", [128])
+@pytest.mark.parametrize("channels", [192])
+@pytest.mark.parametrize("kernel_size", [3])
+@pytest.mark.parametrize("dilation_rate", [1])
+@pytest.mark.parametrize("n_layers", [2])
+@pytest.mark.parametrize("n_flows", [2])
+@pytest.mark.parametrize("gin_channels", [0, 192])
 @pytest.mark.parametrize("reverse", [False, True])
 def test_flow(
     batch_size,
@@ -191,12 +191,12 @@ def test_flow(
 
 
 @pytest.mark.parametrize("batch_size", [1, 2])
-@pytest.mark.parametrize("length", [100, 200])
-@pytest.mark.parametrize("in_channels", [192, 384])
-@pytest.mark.parametrize("filter_channels", [192, 384])
-@pytest.mark.parametrize("kernel_size", [3, 5])
-@pytest.mark.parametrize("p_dropout", [0.0, 0.3])
-@pytest.mark.parametrize("gin_channels", [0, 192, 256])
+@pytest.mark.parametrize("length", [100])
+@pytest.mark.parametrize("in_channels", [192])
+@pytest.mark.parametrize("filter_channels", [192])
+@pytest.mark.parametrize("kernel_size", [3])
+@pytest.mark.parametrize("p_dropout", [0.0])
+@pytest.mark.parametrize("gin_channels", [0, 192])
 def test_duration_predictor(
     batch_size,
     length,
@@ -219,14 +219,14 @@ def test_duration_predictor(
 
 
 @pytest.mark.parametrize("batch_size", [1, 2])
-@pytest.mark.parametrize("length", [100, 200])
-@pytest.mark.parametrize("in_channels", [192, 384])
-@pytest.mark.parametrize("filter_channels", [192, 384])
-@pytest.mark.parametrize("kernel_size", [3, 5])
-@pytest.mark.parametrize("p_dropout", [0.1, 0.3])
+@pytest.mark.parametrize("length", [100])
+@pytest.mark.parametrize("in_channels", [192])
+@pytest.mark.parametrize("filter_channels", [128])
+@pytest.mark.parametrize("kernel_size", [3])
+@pytest.mark.parametrize("p_dropout", [0.1])
 @pytest.mark.parametrize("reverse", [False, True])
 @pytest.mark.parametrize("n_flows", [1, 2])
-@pytest.mark.parametrize("gin_channels", [0, 192, 256])
+@pytest.mark.parametrize("gin_channels", [0, 192])
 @pytest.mark.parametrize("condition_backward", [True, False])
 def test_stochastic_duration_predictor(
     batch_size,

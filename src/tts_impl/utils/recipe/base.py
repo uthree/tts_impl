@@ -98,7 +98,8 @@ class Recipe:
 
     def _indeterministic_mode(self):
         if torch.cuda.is_available():
-            torch.backends.cudnn.benchmark = True
+            if torch.backends.cudnn.is_available():
+                torch.backends.cudnn.benchmark = True
             torch.set_float32_matmul_precision("medium")
 
     def load_model(self, config_name: str = "default"):

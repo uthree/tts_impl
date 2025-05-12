@@ -169,9 +169,11 @@ class NsfhifiganLightningModule(LightningModule):
         sch_d.step()
         self.log("scheduler/learning rate", sch_g.get_last_lr()[0])
 
+    @torch.no_grad
     def validation_step(self, batch, id):
         return self._test_or_validate_batch(batch, id)
 
+    @torch.no_grad
     def test_step(self, batch, id):
         return self._test_or_validate_batch(batch, id)
 

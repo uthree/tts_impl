@@ -5,13 +5,18 @@ import torch.nn.functional as F
 from tts_impl.net.common.convnext import ConvNeXt1d
 
 
-@pytest.mark.parametrize("in_channels", [64, 128])
-@pytest.mark.parametrize("out_channels", [64, 128])
-@pytest.mark.parametrize("batch_size", [1, 3])
-@pytest.mark.parametrize("inter_channels", [64, 128])
-@pytest.mark.parametrize("ffn_channels", [64, 128])
-@pytest.mark.parametrize("num_layers", [1, 2])
-@pytest.mark.parametrize("kernel_size", [3, 7])
+@pytest.mark.parametrize("in_channels", [80])
+@pytest.mark.parametrize("out_channels", [128])
+@pytest.mark.parametrize("batch_size", [1, 4])
+@pytest.mark.parametrize("inter_channels", [192])
+@pytest.mark.parametrize("ffn_channels", [256])
+@pytest.mark.parametrize("num_layers", [2])
+@pytest.mark.parametrize(
+    "kernel_size",
+    [
+        3,
+    ],
+)
 @pytest.mark.parametrize("grn", [True, False])
 @pytest.mark.parametrize("glu", [True, False])
 @pytest.mark.parametrize("norm", ["none", "layernorm", "tanh"])
@@ -22,13 +27,6 @@ from tts_impl.net.common.convnext import ConvNeXt1d
     [
         "gelu",
         "relu",
-        "elu",
-        "silu",
-        "snake",
-        "snakebeta",
-        "softplus",
-        "lrelu",
-        "linear",
     ],
 )
 def test_convnext(

@@ -67,7 +67,9 @@ class MinGRU(nn.Module):
         self.linear_h = nn.Linear(d_model, d_hidden, bias=bias)
         self.linear_z = nn.Linear(d_model, d_hidden, bias=bias)
 
-    def forward(self, x: torch.Tensor, h_prev: Optional[torch.Tensor] = None):
+    def forward(
+        self, x: torch.Tensor, h_prev: Optional[torch.Tensor] = None
+    ) -> torch.Tensor:
         """
         Args:
             x: Tensor, shape=(batch_size, seq_len, d_model), input sequence
@@ -84,13 +86,17 @@ class MinGRU(nn.Module):
         else:
             return self._parallel_forward(x, h_prev)
 
-    def _sequential_forward(self, x: torch.Tensor, h_prev: Optional[torch.Tensor]):
+    def _sequential_forward(
+        self, x: torch.Tensor, h_prev: Optional[torch.Tensor]
+    ) -> torch.Tensor:
         z = torch.sigmoid(self.linear_z(x))
         h_tilde = g(self.linear_h(x))
         h = (1 - z) * h_prev + z * h_tilde
         return h
 
-    def _parallel_forward(self, x: torch.Tensor, h_0: Optional[torch.Tensor]):
+    def _parallel_forward(
+        self, x: torch.Tensor, h_0: Optional[torch.Tensor]
+    ) -> torch.Tensor:
         k = self.linear_z(x)
         log_z = -F.softplus(-k)
         log_coeffs = -F.softplus(k)

@@ -6,7 +6,7 @@ from tts_impl.net.common.mingru import MinGRU
 @pytest.mark.parametrize("d_model", [64, 128])
 @pytest.mark.parametrize("d_hidden", [64, 128])
 @pytest.mark.parametrize("batch_size", [1, 4])
-@pytest.mark.parametrize("seq_len", [1, 10])
+@pytest.mark.parametrize("seq_len", [1, 10, 20])
 def test_mingru(d_model, d_hidden, batch_size, seq_len):
     model = MinGRU(d_model=d_model, d_hidden=d_hidden)
     x = torch.randn(batch_size, seq_len, d_model)
@@ -19,7 +19,7 @@ def test_mingru(d_model, d_hidden, batch_size, seq_len):
 @pytest.mark.parametrize("d_model", [64, 128])
 @pytest.mark.parametrize("d_hidden", [64, 128])
 @pytest.mark.parametrize("batch_size", [1, 4])
-@pytest.mark.parametrize("seq_len", [10])
+@pytest.mark.parametrize("seq_len", [10, 20])
 def test_mingru_sanity_check(d_model, d_hidden, batch_size, seq_len):
     model = MinGRU(d_model=d_model, d_hidden=d_hidden)
     x = torch.randn(batch_size, seq_len, d_model)
