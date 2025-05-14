@@ -95,10 +95,18 @@ class SubtractiveVocoder(nn.Module):
 
         # short-time fourier transform
         imp_stft = torch.stft(
-            imp, self.n_fft, window=self.hann_window, return_complex=True
+            imp,
+            self.n_fft,
+            hop_length=self.hop_length,
+            window=self.hann_window,
+            return_complex=True,
         )
         noi_stft = torch.stft(
-            noi, self.n_fft, window=self.hann_window, return_complex=True
+            noi,
+            self.n_fft,
+            hop_length=self.hop_length,
+            window=self.hann_window,
+            return_complex=True,
         )
 
         # replace impulse to noise if unvoiced.

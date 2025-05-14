@@ -13,8 +13,8 @@ class DdspGenerator(nn.Module, GanVocoderGenerator):
     def __init__(
         self,
         in_channels: int = 80,
-        d_model: int = 256,
-        num_layers: int = 4,
+        d_model: int = 384,
+        num_layers: int = 6,
         vocal_cord_size: int = 256,
         reverb_size: int = 2048,
         vocoder: SubtractiveVocoder.Config = SubtractiveVocoder.Config(),
