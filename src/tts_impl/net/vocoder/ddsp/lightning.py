@@ -32,6 +32,15 @@ def crop_center(waveform: torch.Tensor, length: int = 8192):
     return waveform[:, :, l:r]
 
 
+# normalize tensor for tensorboard's image logging
+def normalize(x: torch.Tensor):
+    x = x.to(torch.float)
+    mu = x.mean()
+    x = x - mu
+    x = x / torch.clamp_min(x.abs().max(), min=1e-8)
+    return x
+
+
 @derive_config
 class DdspVocoderLightningModule(LightningModule):
     def __init__(
@@ -131,11 +140,16 @@ class DdspVocoderLightningModule(LightningModule):
         fake = self.generator(acoustic_features, f0=f0, uv=uv)
         spec_fake = self.spectrogram(fake)
         loss_mel = F.l1_loss(spec_fake, spec_real)
+        per, env = self.generator.net(acoustic_features)
         self.log("validation loss/mel spectrogram", loss_mel)
 
         for i in range(fake.shape[0]):
             f = fake[i].sum(dim=0, keepdim=True).detach().cpu()
             r = waveform[i].sum(dim=0, keepdim=True).detach().cpu()
+            env_img = normalize(env[i].detach().cpu().flip(0))
+            per_img = normalize(per[i].detach().cpu().flip(0))
+            spec_fake_img = normalize(spec_fake[i, 0].detach().cpu().flip(0))
+            spec_real_img = normalize(spec_real[i, 0].detach().cpu().flip(0))
             self.logger.experiment.add_audio(
                 f"synthesized waveform/{bid}_{i}",
                 f,
@@ -147,6 +161,30 @@ class DdspVocoderLightningModule(LightningModule):
                 r,
                 self.current_epoch,
                 sample_rate=self.generator.sample_rate,
+            )
+            self.logger.experiment.add_image(
+                f"synthesized spectral envelope/{bid}_{i}",
+                env_img,
+                self.current_epoch,
+                dataformats="HW",
+            )
+            self.logger.experiment.add_image(
+                f"synthesized periodicity/{bid}_{i}",
+                per_img,
+                self.current_epoch,
+                dataformats="HW",
+            )
+            self.logger.experiment.add_image(
+                f"synthesized mel spectrogram/{bid}_{i}",
+                spec_fake_img,
+                self.current_epoch,
+                dataformats="HW",
+            )
+            self.logger.experiment.add_image(
+                f"reference mel spectrogram/{bid}_{i}",
+                spec_real_img,
+                self.current_epoch,
+                dataformats="HW",
             )
 
         return loss_mel

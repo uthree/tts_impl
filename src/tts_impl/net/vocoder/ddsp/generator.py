@@ -45,7 +45,7 @@ class DdspGenerator(nn.Module, GanVocoderGenerator):
             x, [self.vocoder.dim_periodicity, self.vocoder.n_mels], dim=1
         )
         p = torch.sigmoid(p)
-        e = torch.exp(torch.clamp_max(e, max=4.0))
+        e = torch.exp(torch.clamp_max(e, max=6.0))
         return p, e
 
     def forward(self, x, f0, uv=None):

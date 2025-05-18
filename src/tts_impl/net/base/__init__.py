@@ -12,3 +12,4 @@ from .vocoder import (
     GanVocoderGenerator,
     SanVocoderDiscriminator,
 )
+from .state import Stateful, Pointwise
