@@ -207,56 +207,87 @@ class GlobalResponseNorm(nn.Module):
         return self.gamma * (x * nx) + self.beta + x
 
 
-def _sequential_ema(
-    x: torch.Tensor, h: torch.Tensor, alpha: torch.Tensor
-) -> Tuple[torch.Tensor, torch.Tensor]:
-    """
-    calculate exponential moving average.
-    Args:
-        x: input signal, shape=(batch_size, 1, d_model)
-        h: previous state, shape=(batch_size, 1, d_model)
-        alpha: ema coeff., shape=(batch_size, 1, d_model)
-    Returns
-        y: output signal, shape=(batch_size, 1, d_model)
-        h_out: last state, shape=(batch_size, 1, d_model)
-    """
-    y = x * alpha + h * (1 - alpha)
-    h_out = y
-    return y, h_out
+class ExponentialMovingAverage(StatefulModule):
+    def __init__(
+        self,
+        d_model: int,
+        alpha: float = 0.99,
+        trainable: bool = True,
+        initial_value: float = 0.0,
+    ):
+        super().__init__()
+        assert alpha >= 0.0, "`alpha` should be greater than 0 or equal to 0."
+        assert alpha <= 1.0, "`alpha` should be less than 1.0 or equal to 0."
 
+        self.d_model = d_model
+        self.trainable = trainable
+        self.initial_value = initial_value
+        alpha_logit = torch.logit(torch.full(size=(1, 1, d_model), fill_value=alpha))
+        with torch.no_grad():
+            if trainable:
+                self.alpha_logit = nn.Parameter(alpha_logit)
+            else:
+                self.register_buffer("alpha_logit", alpha_logit)
 
-def _parallel_ema(
-    x: torch.Tensor, h: torch.Tensor, alpha: torch.Tensor
-) -> Tuple[torch.Tensor, torch.Tensor]:
-    """
-    calculate exponential moving average for each time using cumsum for performance.
+    def _initial_state(self, x):
+        device = x.device
+        batch_size = x.shape[0]
+        return torch.ones(batch_size, 1, self.d_model) * self.initial_value
 
-    Args:
-        x: input signal, shape=(batch_size, seq_len, d_model)
-        h: previous state, shape=(batch_size, 1, d_model)
-        alpha: ema coeff., shape=(batch_size, 1, d_model)
-    Returns
-        y: output signal, shape=(batch_size, seq_len, d_model)
-        h_out: last state, shape=(batch_size, 1, d_model)
-    """
+    def _get_alpha(self):
+        return torch.sigmoid(self.alpha_logit)
 
-    batch_size, seq_len, d_model = x.Shape
-    device = x.device
-    dtype = x.dtype
+    def _sequential_forward(
+        self, x: torch.Tensor, h: torch.Tensor
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        """
+        calculate exponential moving average.
 
-    arange_t = torch.arange(seq_len, device=device, dtype=dtype).view(1, -1, 1)
+        Args:
+            x: input signal, shape=(batch_size, 1, d_model)
+            h: previous state, shape=(batch_size, 1, d_model)
+            alpha: ema coeff., shape=(batch_size, 1, d_model)
+        Returns
+            y: output signal, shape=(batch_size, 1, d_model)
+            h_out: last state, shape=(batch_size, 1, d_model)
+        """
+        alpha = self._get_alpha()
+        y = h * alpha + x * (1 - alpha)
+        h_out = y
+        return y, h_out
 
-    alpha_star_t = alpha**arange_t
-    beta_star_t = alpha**-arange_t
+    def _parallel_forward(
+        self, x: torch.Tensor, h: torch.Tensor
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        """
+        calculate exponential moving average for each time using cumsum for performance.
 
-    x_star = torch.cumsum(x * beta_star_t, dim=1)
+        Args:
+            x: input signal, shape=(batch_size, seq_len, d_model)
+            h: previous state, shape=(batch_size, 1, d_model)
+            alpha: ema coeff., shape=(batch_size, 1, d_model)
+        Returns
+            y: output signal, shape=(batch_size, seq_len, d_model)
+            h_out: last state, shape=(batch_size, 1, d_model)
+        """
+        batch_size, seq_len, d_model = x.shape
+        device = x.device
+        dtype = x.dtype
+        alpha = self._get_alpha()
 
-    term1 = (1.0 - alpha) * alpha_star * x_star
-    term2 = alpha_star * alpha * h
+        arange_t = torch.arange(seq_len, device=device, dtype=dtype).view(1, -1, 1)
 
-    y = term1 + term2
-    h_out = y[:, -1:, :]
-    return y, h_out
+        alpha_star_t = alpha**arange_t
+        beta_star_t = alpha**-arange_t
+
+        x_star = torch.cumsum(x * beta_star_t, dim=1)
+
+        term1 = (1.0 - alpha) * alpha_star_t * x_star
+        term2 = alpha_star_t * alpha * h
+
+        y = term1 + term2
+        h_out = y[:, -1:, :]
+        return y, h_out
 
 
 class EmaLayerNorm(StatefulModule):
@@ -268,59 +299,46 @@ class EmaLayerNorm(StatefulModule):
     def __init__(
         self,
         d_model: int,
-        eps: float = 1e-12,
         elementwise_affine: bool = True,
-        alpha: float = 0.99,
+        alpha_mu: float = 0.99,
+        alpha_sigma: float = 0.99,
         alpha_trainable: bool = True,
+        eps: float = 1e-12,
     ):
         super().__init__()
-        assert alpha >= 0.0, "`alpha` should be greater than 0 or equal to 0."
-        assert alpha <= 1.0, "`alpha` should be less than 1.0 or equal to 0."
-
-        with torch.no_grad():
-            self.elementwise_affine = elementwise_affine
-            self.alpha_trainable = alpha_trainable
-            if elementwise_affine:
-                self.beta = nn.Parameter(torch.zeros(1, 1, d_model))
-                self.gamma = nn.Parameter(torch.ones(1, 1, d_model))
-
-            if alpha_trainable:
-                self.alpha_logit = nn.Parameter(
-                    torch.logit(torch.ones(1, 1, 1) * alpha)
-                )
-            else:
-                self.register_buffer("alpha_buffer", torch.ones(1, 1, 1) * alpha)
-        self.d_model = d_model
+        self.elementwise_affine = elementwise_affine
+        if elementwise_affine:
+            self.beta = nn.Parameter(torch.zeros(1, 1, d_model))
+            self.gamma = nn.Parameter(torch.ones(1, 1, d_model))
+        self.ema_mu = ExponentialMovingAverage(
+            d_model=1, alpha=alpha_mu, trainable=alpha_trainable, initial_value=0.0
+        )
+        self.ema_sigma = ExponentialMovingAverage(
+            d_model=1, alpha=alpha_sigma, trainable=alpha_trainable, initial_value=1.0
+        )
         self.eps = eps
 
-    def _sequential_forward(
+    def _both_forward(
         self, x: torch.Tensor, h: torch.Tensor
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         Args:
-            x: shape=(batch_size, 1, d_model)
-            h: shape=(batch_size, 1, 2)
+            x: shape=(batch_size, seq_len, d_model)
+            h: shape=(batch_size, seq_len, 2)
 
         Returns:
-            x: shape=(batch_size, 1, d_model)
-            h: shape(batch_size, 1, 2)
+            x: shape=(batch_size, seq_len, d_model)
+            h: shape(batch_size, seq_len, 2)
         """
         # expand state to mean and standard deviation.
         h_mu, h_sigma = torch.chunk(h, 2, dim=2)
-
-        # calculate alpha
-        if self.alpha_trainable:
-            alpha = torch.sigmoid(self.alpha_logit)
-        else:
-            alpha = self.alpha_buffer
 
         # calculate mean and standard deviation of x
         mu = x.mean(dim=2, keepdim=True)
         sigma = x.std(dim=2, keepdim=True)
 
-        # update state
-        h_mu = h_mu * alpha + mu * (1 - alpha)
-        h_sigma = h_sigma * alpha + sigma * (1 - alpha)
+        h_mu, h_mu_last = self.ema_mu(mu, h_mu)
+        h_sigma, h_sigma_last = self.ema_sigma(sigma, h_sigma)
 
         # normalize
         x = (x - h_mu) / torch.clamp_min(h_sigma, min=self.eps)
@@ -330,109 +348,14 @@ class EmaLayerNorm(StatefulModule):
             x = x * self.gamma + self.beta
 
         # pack h_mu, h_sigma to h
-        h = torch.cat([h_mu, h_sigma], dim=2)
+        h = torch.cat([h_mu_last, h_sigma_last], dim=2)
         return x, h
 
     def _parallel_forward(self, x, h):
-        dtype = x.dtype
+        return self._both_forward(x, h)
 
-        h = h.float()
-        x = x.float()
-        batch_size, seq_len, _ = x.shape
-
-        h_mu_initial, h_sigma_initial = torch.chunk(h, 2, dim=2)  # (batch, 1, 1) each
-
-        if self.alpha_trainable:
-            current_alpha = torch.sigmoid(self.alpha_logit)  # (1,1,1)
-        else:
-            current_alpha = self.alpha_buffer  # (1,1,1)
-
-        # Calculate mean and stddev for each point in the sequence
-        mu = x.mean(dim=2, keepdim=True)  # (batch, seq_len, 1)
-        sigma = x.std(dim=2, keepdim=True)  # (batch, seq_len, 1)
-
-        # Using torch.isclose for robust floating point comparison
-        # Ensure current_alpha is on the same device and dtype for comparison tensor
-        zero_tensor = torch.tensor(
-            0.0, device=current_alpha.device, dtype=current_alpha.dtype
-        )
-        one_tensor = torch.tensor(
-            1.0, device=current_alpha.device, dtype=current_alpha.dtype
-        )
-
-        if torch.isclose(
-            current_alpha.squeeze(), zero_tensor, atol=self.eps
-        ):  # alpha = 0 case
-            ema_mu_seq = mu
-            ema_sigma_seq = sigma
-        elif torch.isclose(
-            current_alpha.squeeze(), one_tensor, atol=self.eps
-        ):  # alpha = 1 case
-            ema_mu_seq = h_mu_initial.expand(-1, seq_len, -1)
-            ema_sigma_seq = h_sigma_initial.expand(-1, seq_len, -1)
-        else:  # 0 < alpha < 1 case
-            arange_t = torch.arange(seq_len, device=x.device, dtype=x.dtype).view(
-                1, -1, 1
-            )  # (1, seq_len, 1)
-
-            # Calculate powers of alpha: alpha^t = [alpha^0, alpha^1, ..., alpha^{L-1}]
-            # This broadcasts current_alpha (1,1,1) with arange_t (1,seq_len,1)
-            powers_of_alpha_t = current_alpha**arange_t
-
-            # Calculate inverse powers of alpha: alpha^(-t) = [alpha^0, alpha^-1, ..., alpha^{-(L-1)}]
-            # WARNING: Numerical stability issue here!
-            # If alpha is small and t is large, alpha^(-t) can become extremely large and overflow.
-            # For example, (1e-5)^(-100) = 1e500, which overflows float64.
-            # This method is numerically stable only for limited seq_len or alpha close to 1.
-            inv_powers_of_alpha_t = current_alpha**-arange_t
-
-            mu_scaled = mu * inv_powers_of_alpha_t  # (B,L,1) * (1,L,1) -> (B,L,1)
-            sigma_scaled = sigma * inv_powers_of_alpha_t
-
-            cumsum_mu_scaled = torch.cumsum(mu_scaled, dim=1)
-            cumsum_sigma_scaled = torch.cumsum(sigma_scaled, dim=1)
-            # cumsum_mu_scaled contains \sum_{k=0}^{t} (mu_k / alpha^k) at each position t
-
-            # Term 1: (1-alpha) * alpha^t * cumsum(x_k / alpha^k)
-            term1_mu = (1.0 - current_alpha) * powers_of_alpha_t * cumsum_mu_scaled
-            term1_sigma = (
-                (1.0 - current_alpha) * powers_of_alpha_t * cumsum_sigma_scaled
-            )
-
-            # Term 2: alpha^(t+1) * y_{-1}
-            # powers_of_alpha_t_plus_1 = alpha^(t+1) = [alpha^1, alpha^2, ..., alpha^L]
-            powers_of_alpha_t_plus_1 = (
-                powers_of_alpha_t * current_alpha
-            )  # More stable than current_alpha ** (arange_t + 1) if arange_t is large
-
-            term2_mu = (
-                powers_of_alpha_t_plus_1 * h_mu_initial
-            )  # (1,L,1) * (B,1,1) -> (B,L,1)
-            term2_sigma = powers_of_alpha_t_plus_1 * h_sigma_initial
-
-            ema_mu_seq = term1_mu + term2_mu
-            ema_sigma_seq = term1_sigma + term2_sigma
-
-        # Normalize x
-        # x: (batch, seq_len, d_model)
-        # ema_mu_seq, ema_sigma_seq: (batch, seq_len, 1)
-        x_norm = (x - ema_mu_seq) / torch.clamp_min(ema_sigma_seq, min=self.eps)
-
-        # Scale, shift
-        if self.elementwise_affine:
-            x_norm = x_norm * self.gamma + self.beta  # gamma/beta are (1,1,d_model)
-
-        # Determine the final state h_final for the next segment/iteration
-        if seq_len > 0:
-            h_final_mu = ema_mu_seq[:, -1:, :]  # (batch, 1, 1)
-            h_final_sigma = ema_sigma_seq[:, -1:, :]  # (batch, 1, 1)
-        else:  # Should have been caught by seq_len == 0 check earlier, but for safety:
-            h_final_mu = h_mu_initial
-            h_final_sigma = h_sigma_initial
-
-        h_final = torch.cat([h_final_mu, h_final_sigma], dim=2)  # (batch, 1, 2)
-
-        return x_norm.to(dtype), h_final.to(dtype)
+    def _sequential_forward(self, x, h):
+        return self._both_forward(x, h)
 
     def _initial_state(self, x):
         batch_size = x.shape[0]
