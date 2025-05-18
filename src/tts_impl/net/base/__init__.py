@@ -1,4 +1,5 @@
 from .aligner import Aligner
+from .state import PointwiseModule, StatefulModule
 from .tts import (
     AcousticFeatureEncoder,
     Invertible,
@@ -12,4 +13,3 @@ from .vocoder import (
     GanVocoderGenerator,
     SanVocoderDiscriminator,
 )
-from .state import StatefulModule, PointwiseModule

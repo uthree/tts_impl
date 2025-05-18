@@ -1,8 +1,9 @@
-from typing import Optional
+from typing import Optional, Tuple
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from tts_impl.net.base.state import StatefulModule
 from tts_impl.utils.config import derive_config
 
 
@@ -41,7 +42,7 @@ def log_g(x: torch.Tensor) -> torch.Tensor:
 
 
 @derive_config
-class MinGRU(nn.Module):
+class MinGRU(StatefulModule):
     def __init__(
         self,
         d_model: int,
@@ -67,36 +68,17 @@ class MinGRU(nn.Module):
         self.linear_h = nn.Linear(d_model, d_hidden, bias=bias)
         self.linear_z = nn.Linear(d_model, d_hidden, bias=bias)
 
-    def forward(
-        self, x: torch.Tensor, h_prev: Optional[torch.Tensor] = None
-    ) -> torch.Tensor:
-        """
-        Args:
-            x: Tensor, shape=(batch_size, seq_len, d_model), input sequence
-            h_prev: Optional[Tensor], shape=(batch_size, 1, d_model), initial state.
-
-        Retrun:
-            h: Tensor, shape=(batch_size, seq_len, d_hidden)
-        """
-        if h_prev is None:
-            h_prev = torch.zeros(size=(x.shape[0], 1, self.d_hidden), device=x.device)
-        x = F.dropout(x, self.p_dropout)
-        if x.shape[1] == 1:
-            return self._sequential_forward(x, h_prev)
-        else:
-            return self._parallel_forward(x, h_prev)
-
     def _sequential_forward(
         self, x: torch.Tensor, h_prev: Optional[torch.Tensor]
-    ) -> torch.Tensor:
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
         z = torch.sigmoid(self.linear_z(x))
         h_tilde = g(self.linear_h(x))
         h = (1 - z) * h_prev + z * h_tilde
-        return h
+        return h, h
 
     def _parallel_forward(
         self, x: torch.Tensor, h_0: Optional[torch.Tensor]
-    ) -> torch.Tensor:
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
         k = self.linear_z(x)
         log_z = -F.softplus(-k)
         log_coeffs = -F.softplus(k)
@@ -105,5 +87,11 @@ class MinGRU(nn.Module):
         h = parallel_scan_log(
             log_coeffs, torch.cat([log_h_0, log_z + log_tilde_h], dim=1)
         )
-        h = h[:, 1:]
-        return h
+        y = h[:, 1:]
+        h = y[:, -1:]
+        return y, h
+
+    def _initial_state(self, x: torch.Tensor) -> torch.Tensor:
+        return torch.zeros(
+            x.shape[0], 1, self.d_hidden, device=x.device, dtype=torch.float
+        )

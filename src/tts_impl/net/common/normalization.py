@@ -1,8 +1,9 @@
+from typing import Optional, Tuple
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from tts_impl.net.base.state import StatefulModule, PointwiseModule
-from typing import Optional, Tuple
+from tts_impl.net.base.state import PointwiseModule, StatefulModule
 
 
 class LayerNorm1d(nn.Module):
@@ -206,6 +207,58 @@ class GlobalResponseNorm(nn.Module):
         return self.gamma * (x * nx) + self.beta + x
 
 
+def _sequential_ema(
+    x: torch.Tensor, h: torch.Tensor, alpha: torch.Tensor
+) -> Tuple[torch.Tensor, torch.Tensor]:
+    """
+    calculate exponential moving average.
+    Args:
+        x: input signal, shape=(batch_size, 1, d_model)
+        h: previous state, shape=(batch_size, 1, d_model)
+        alpha: ema coeff., shape=(batch_size, 1, d_model)
+    Returns
+        y: output signal, shape=(batch_size, 1, d_model)
+        h_out: last state, shape=(batch_size, 1, d_model)
+    """
+    y = x * alpha + h * (1 - alpha)
+    h_out = y
+    return y, h_out
+
+
+def _parallel_ema(
+    x: torch.Tensor, h: torch.Tensor, alpha: torch.Tensor
+) -> Tuple[torch.Tensor, torch.Tensor]:
+    """
+    calculate exponential moving average for each time using cumsum for performance.
+
+    Args:
+        x: input signal, shape=(batch_size, seq_len, d_model)
+        h: previous state, shape=(batch_size, 1, d_model)
+        alpha: ema coeff., shape=(batch_size, 1, d_model)
+    Returns
+        y: output signal, shape=(batch_size, seq_len, d_model)
+        h_out: last state, shape=(batch_size, 1, d_model)
+    """
+
+    batch_size, seq_len, d_model = x.Shape
+    device = x.device
+    dtype = x.dtype
+
+    arange_t = torch.arange(seq_len, device=device, dtype=dtype).view(1, -1, 1)
+
+    alpha_star_t = alpha**arange_t
+    beta_star_t = alpha**-arange_t
+
+    x_star = torch.cumsum(x * beta_star_t, dim=1)
+
+    term1 = (1.0 - alpha) * alpha_star * x_star
+    term2 = alpha_star * alpha * h
+
+    y = term1 + term2
+    h_out = y[:, -1:, :]
+    return y, h_out
+
+
 class EmaLayerNorm(StatefulModule):
     """
     layer normalization for sequential model with streaming inference.
@@ -297,12 +350,6 @@ class EmaLayerNorm(StatefulModule):
         # Calculate mean and stddev for each point in the sequence
         mu = x.mean(dim=2, keepdim=True)  # (batch, seq_len, 1)
         sigma = x.std(dim=2, keepdim=True)  # (batch, seq_len, 1)
-
-        if seq_len == 0:
-            x_norm = x
-            if self.elementwise_affine:
-                x_norm = x_norm * self.gamma + self.beta
-            return x_norm, h  # Return initial state if sequence is empty
 
         # Using torch.isclose for robust floating point comparison
         # Ensure current_alpha is on the same device and dtype for comparison tensor

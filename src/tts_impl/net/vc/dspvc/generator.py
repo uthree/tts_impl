@@ -1,9 +1,9 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from tts_impl.net.common.mingru import MinGRU
-from tts_impl.net.common.convnext import ConvNeXt1d
 from tts_impl.functional.midi import freq2note, note2freq
+from tts_impl.net.common.convnext import ConvNeXt1d
+from tts_impl.net.common.mingru import MinGRU
 
 
 class FeedForward(nn.Module):
