@@ -10,10 +10,10 @@ from tts_impl.net.common.mingru import MinGRU
 def test_mingru(d_model, d_hidden, batch_size, seq_len):
     model = MinGRU(d_model=d_model, d_hidden=d_hidden)
     x = torch.randn(batch_size, seq_len, d_model)
-    h = model(x)
-    assert h.shape[0] == batch_size
-    assert h.shape[1] == seq_len
-    assert h.shape[2] == d_hidden
+    y = model(x)
+    assert y.shape[0] == batch_size
+    assert y.shape[1] == seq_len
+    assert y.shape[2] == d_hidden
 
 
 @pytest.mark.parametrize("d_model", [64, 128])

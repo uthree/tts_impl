@@ -4,13 +4,13 @@ import torch.nn.functional as F
 from typing import Optional, Tuple
 
 
-class Stateful:
+class StatefulModule(nn.Module):
     """
     An abstract class that represents stateful behavior for sequences. It is used in RNNs, GRUs, etc.
     """
 
     def forward(
-        self, x: torch.Tensor, h: Optional[torch.Tensor]
+        self, x: torch.Tensor, h: Optional[torch.Tensor] = None
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         default implementation of forward pass
@@ -23,13 +23,14 @@ class Stateful:
             x: [batch_size, seq_len, d_model]
             h: [batch_size, 1, d_state]
         """
+        assert x.shape[1] != 0, "input sequence should be longer than 0."
 
         # initialize state if initial state is not given.
         if h is None:
             h = self._initial_state(x)
 
         # if sequence length is 1, use sequential forward implementation. otherwise, use parallel implementation.
-        if sequence.shape[1] == 1:
+        if x.shape[1] == 1:
             x, h = self._sequential_forward(x, h)
         else:
             x, h = self._parallel_forward(x, h)
@@ -50,7 +51,7 @@ class Stateful:
         raise NotImplemented
 
 
-class Pointwise:
+class PointwiseModule:
     """
     An abstract class that indicates that the module is independent of the series direction.
     """
