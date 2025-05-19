@@ -363,3 +363,84 @@ class EmaLayerNorm(StatefulModule):
         h_sigma = torch.ones(batch_size, 1, 1, device=x.device)
         h = torch.cat([h_mu, h_sigma], dim=2)
         return h
+
+
+class EmaInstanceNorm(StatefulModule):
+    """
+    instance normalization for sequential model with streaming inference.
+    apply exponential moving average for mean and standard deviation.
+    """
+
+    def __init__(
+        self,
+        d_model: int,
+        elementwise_affine: bool = True,
+        alpha_mu: float = 0.99,
+        alpha_sigma: float = 0.99,
+        alpha_trainable: bool = True,
+        eps: float = 1e-12,
+    ):
+        super().__init__()
+        self.elementwise_affine = elementwise_affine
+        if elementwise_affine:
+            self.beta = nn.Parameter(torch.zeros(1, 1, d_model))
+            self.gamma = nn.Parameter(torch.ones(1, 1, d_model))
+        self.ema_mu = ExponentialMovingAverage(
+            d_model=d_model,
+            alpha=alpha_mu,
+            trainable=alpha_trainable,
+            initial_value=0.0,
+        )
+        self.ema_sigma = ExponentialMovingAverage(
+            d_model=d_model,
+            alpha=alpha_sigma,
+            trainable=alpha_trainable,
+            initial_value=1.0,
+        )
+        self.eps = eps
+
+    def _both_forward(
+        self, x: torch.Tensor, h: torch.Tensor
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        """
+        Args:
+            x: shape=(batch_size, seq_len, d_model)
+            h: shape=(batch_size, seq_len, 2)
+
+        Returns:
+            x: shape=(batch_size, seq_len, d_model)
+            h: shape(batch_size, seq_len, 2)
+        """
+        # expand state to mean and standard deviation.
+        h_mu, h_sigma = torch.chunk(h, 2, dim=2)
+
+        # calculate mean and standard deviation of x
+        mu = x
+        sigma = torch.abs(mu - x)
+
+        h_mu, h_mu_last = self.ema_mu(mu, h_mu)
+        h_sigma, h_sigma_last = self.ema_sigma(sigma, h_sigma)
+
+        # normalize
+        x = (x - h_mu) / torch.clamp_min(h_sigma, min=self.eps)
+
+        # scale, shift
+        if self.elementwise_affine:
+            x = x * self.gamma + self.beta
+
+        # pack h_mu, h_sigma to h
+        h = torch.cat([h_mu_last, h_sigma_last], dim=2)
+        return x, h
+
+    def _parallel_forward(self, x, h):
+        return self._both_forward(x, h)
+
+    def _sequential_forward(self, x, h):
+        return self._both_forward(x, h)
+
+    def _initial_state(self, x):
+        batch_size = x.shape[0]
+        h_mu = torch.zeros(batch_size, 1, 1, device=x.device)
+        h_sigma = torch.ones(batch_size, 1, 1, device=x.device)
+        h = torch.cat([h_mu, h_sigma], dim=2)
+        return h

@@ -58,3 +58,20 @@ class PointwiseModule:
     """
 
     pass
+
+
+def sanity_check_stateful_module(
+    stateful_module: StatefulModule,
+    x: torch.Tensor,
+    h_0: Optional[torch.Tensor] = None,
+    atol: float = 1e-4,
+):
+    y_par, _ = stateful_module(x, h_0)
+    y_seq = []
+    h_t = h_0
+    for x_t in x.unbind(dim=1):
+        x_t = x_t[:, None]
+        y_t, h_t = stateful_module(x_t, h_t)
+        y_seq.append(y_t)
+    y_seq = torch.cat(y_seq, dim=1)
+    assert torch.allclose(y_par, y_seq, atol=atol)
