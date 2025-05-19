@@ -1,5 +1,5 @@
 from .aligner import Aligner
-from .state import PointwiseModule, StatefulModule
+from .stateful import PointwiseModule, StatefulModule
 from .tts import (
     AcousticFeatureEncoder,
     Invertible,

@@ -41,14 +41,45 @@ class StatefulModule(nn.Module):
     def _sequential_forward(
         self, x: torch.Tensor, h: torch.Tensor
     ) -> Tuple[torch.Tensor, torch.Tensor]:
-        raise NotImplemented
+        """
+        Sequential mode forward pass.
+
+        Args:
+            x: [batch_size, 1, d_model]
+            h: [batch_size, 1, d_state]
+
+        Returns:
+            x: [batch_size, 1, d_model]
+            h: [batch_size, 1, d_state]
+        """
+        return self._parallel_forward(x, h)
 
     def _parallel_forward(
         self, x: torch.Tensor, h: torch.Tensor
     ) -> Tuple[torch.Tensor, torch.Tensor]:
+        """
+        Parallel mode forward pass.
+
+        Args:
+            x: [batch_size, seq_len, d_model]
+            h: [batch_size, 1, d_state]
+
+        Returns:
+            x: [batch_size, seq_len, d_model]
+            h: [batch_size, 1, d_state]
+        """
         raise NotImplemented
 
     def _initial_state(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        Initialize state.
+
+        Args:
+            x: Tensor
+
+        Returns:
+            h: [batch_size, 1, d_state]
+        """
         raise NotImplemented
 
 
@@ -66,12 +97,13 @@ def sanity_check_stateful_module(
     h_0: Optional[torch.Tensor] = None,
     atol: float = 1e-4,
 ):
-    y_par, _ = stateful_module(x, h_0)
-    y_seq = []
-    h_t = h_0
-    for x_t in x.unbind(dim=1):
-        x_t = x_t[:, None]
-        y_t, h_t = stateful_module(x_t, h_t)
-        y_seq.append(y_t)
-    y_seq = torch.cat(y_seq, dim=1)
-    assert torch.allclose(y_par, y_seq, atol=atol)
+    with torch.no_grad():
+        y_par, _ = stateful_module(x, h_0)
+        y_seq = []
+        h_t = h_0
+        for x_t in x.unbind(dim=1):
+            x_t = x_t[:, None]
+            y_t, h_t = stateful_module(x_t, h_t)
+            y_seq.append(y_t)
+        y_seq = torch.cat(y_seq, dim=1)
+        assert torch.allclose(y_par, y_seq, atol=atol)
