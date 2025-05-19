@@ -1,7 +1,7 @@
 import pytest
 import torch
 from tts_impl.net.common.normalization import EmaLayerNorm, EmaInstanceNorm
-from tts_impl.net.base.state import sanity_check_stateful_module
+from tts_impl.net.base.stateful import sanity_check_stateful_module
 
 
 @pytest.mark.parametrize("d_model", [64, 128])
