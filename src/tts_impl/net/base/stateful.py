@@ -1,4 +1,4 @@
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Sequence
 
 import torch
 import torch.nn as nn
@@ -89,6 +89,41 @@ class PointwiseModule:
     """
 
     pass
+
+
+class StatefulModuleSequential(StatefulModule):
+    def __init__(self, *stateful_modules: Sequence[StatefulModule]):
+        super().__init__()
+        self.stateful_modules = nn.ModuleList(stateful_modules)
+        self.h_dim_list = []
+
+    def _initial_state(self, x: torch.Tensor) -> torch.Tensor:
+        hs = []
+        h_dim_list = []
+        for module in self.stateful_modules:
+            h = module._initial_state(x)
+            hs.append(h)
+            h_dim_list.append(h.shape[2])
+        self.h_dim_list = h_dim_list
+        return torch.cat(hs, dim=2)
+
+    def _parallel_forward(
+        self, x: torch.Tensor, h: torch.Tensor
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
+
+        # calculate sum of all hidden state dimension if it's not already calculated.
+        if self.h_dim_list is None:
+            self._initial_state(x)
+
+        # forward pass each layer
+        hs = list(torch.split(h, self.h_dim_list, dim=2))
+        for i in range(len(self.stateful_modules)):
+            x, hs[i] = self.stateful_modules[i](x, hs[i])
+        hs = torch.cat(hs, dim=2)
+        return x, hs
+
+    def append(self, m):
+        self.stateful_modules.append(m)
 
 
 def sanity_check_stateful_module(

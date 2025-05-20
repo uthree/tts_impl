@@ -211,7 +211,7 @@ class ExponentialMovingAverage(StatefulModule):
     def __init__(
         self,
         d_model: int,
-        alpha: float = 0.99,
+        alpha: float = 0.995,
         trainable: bool = True,
         initial_value: float = 0.0,
     ):
@@ -300,12 +300,13 @@ class EmaLayerNorm(StatefulModule):
         self,
         d_model: int,
         elementwise_affine: bool = True,
-        alpha_mu: float = 0.99,
-        alpha_sigma: float = 0.99,
+        alpha_mu: float = 0.995,
+        alpha_sigma: float = 0.998,
         alpha_trainable: bool = True,
         eps: float = 1e-12,
     ):
         super().__init__()
+        self.d_model = d_model
         self.elementwise_affine = elementwise_affine
         if elementwise_affine:
             self.beta = nn.Parameter(torch.zeros(1, 1, d_model))
@@ -324,11 +325,11 @@ class EmaLayerNorm(StatefulModule):
         """
         Args:
             x: shape=(batch_size, seq_len, d_model)
-            h: shape=(batch_size, seq_len, 2)
+            h: shape=(batch_size, 1, 2)
 
         Returns:
             x: shape=(batch_size, seq_len, d_model)
-            h: shape(batch_size, seq_len, 2)
+            h: shape(batch_size, 1, 2)
         """
         # expand state to mean and standard deviation.
         h_mu, h_sigma = torch.chunk(h, 2, dim=2)
@@ -359,8 +360,8 @@ class EmaLayerNorm(StatefulModule):
 
     def _initial_state(self, x):
         batch_size = x.shape[0]
-        h_mu = torch.zeros(batch_size, 1, 1, device=x.device)
-        h_sigma = torch.ones(batch_size, 1, 1, device=x.device)
+        h_mu = torch.mean(x[:, :1], dim=2, keepdim=True)
+        h_sigma = torch.std(x[:, :1], dim=2, keepdim=True)
         h = torch.cat([h_mu, h_sigma], dim=2)
         return h
 
@@ -375,16 +376,17 @@ class EmaInstanceNorm(StatefulModule):
         self,
         d_model: int,
         elementwise_affine: bool = True,
-        alpha_mu: float = 0.99,
-        alpha_sigma: float = 0.99,
+        alpha_mu: float = 0.995,
+        alpha_sigma: float = 0.998,
         alpha_trainable: bool = True,
         eps: float = 1e-12,
     ):
         super().__init__()
+        self.d_model = d_model
         self.elementwise_affine = elementwise_affine
         if elementwise_affine:
             self.beta = nn.Parameter(torch.zeros(1, 1, d_model))
-            self.gamma = nn.Parameter(torch.ones(1, 1, d_model))
+            self.gamma = nn.Parameter(torch.ones(1, 1, 1))
         self.ema_mu = ExponentialMovingAverage(
             d_model=d_model,
             alpha=alpha_mu,
@@ -405,11 +407,11 @@ class EmaInstanceNorm(StatefulModule):
         """
         Args:
             x: shape=(batch_size, seq_len, d_model)
-            h: shape=(batch_size, seq_len, 2)
+            h: shape=(batch_size, 1, d_model * 2)
 
         Returns:
             x: shape=(batch_size, seq_len, d_model)
-            h: shape(batch_size, seq_len, 2)
+            h: shape(batch_size, 1, d_model * 2)
         """
         # expand state to mean and standard deviation.
         h_mu, h_sigma = torch.chunk(h, 2, dim=2)
@@ -440,7 +442,7 @@ class EmaInstanceNorm(StatefulModule):
 
     def _initial_state(self, x):
         batch_size = x.shape[0]
-        h_mu = torch.zeros(batch_size, 1, 1, device=x.device)
-        h_sigma = torch.ones(batch_size, 1, 1, device=x.device)
+        h_mu = x[:, :1]
+        h_sigma = torch.ones(batch_size, 1, self.d_model, device=x.device)
         h = torch.cat([h_mu, h_sigma], dim=2)
         return h

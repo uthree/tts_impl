@@ -11,7 +11,7 @@ class DepthwiseCachedConv(StatefulModule):
     Depthwise causal convoluition with cache for streaming inference.
     """
 
-    def __init__(self, d_model: int, kernel_size: int = 4, bias: bool = False):
+    def __init__(self, d_model: int, kernel_size: int = 4, bias: bool = True):
         super().__init__()
         assert kernel_size > 1, "kernel size should greater than 1"
         self.d_model = d_model

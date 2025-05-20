@@ -47,7 +47,6 @@ class MinGRU(StatefulModule):
         self,
         d_model: int,
         d_hidden: Optional[int] = None,
-        p_dropout: float = 0.0,
         bias: bool = True,
     ):
         """
@@ -56,7 +55,6 @@ class MinGRU(StatefulModule):
         Args:
             d_model: int, input dimension
             d_hidden: Optional[int], hidden dimension, if `None` given, set same to `d_model` automatically.
-            p_dropout: float, probabilities of dropout
             bias: bool, if True is given, add bias to Linear module., default is `True`
         """
         super().__init__()
@@ -64,12 +62,11 @@ class MinGRU(StatefulModule):
         if d_hidden is None:
             d_hidden = d_model
         self.d_hidden = d_hidden
-        self.p_dropout = p_dropout
         self.linear_h = nn.Linear(d_model, d_hidden, bias=bias)
         self.linear_z = nn.Linear(d_model, d_hidden, bias=bias)
 
     def _sequential_forward(
-        self, x: torch.Tensor, h_prev: Optional[torch.Tensor]
+        self, x: torch.Tensor, h_prev: torch.Tensor
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         z = torch.sigmoid(self.linear_z(x))
         h_tilde = g(self.linear_h(x))
@@ -77,7 +74,7 @@ class MinGRU(StatefulModule):
         return h, h
 
     def _parallel_forward(
-        self, x: torch.Tensor, h_0: Optional[torch.Tensor]
+        self, x: torch.Tensor, h_0: torch.Tensor
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         k = self.linear_z(x)
         log_z = -F.softplus(-k)
