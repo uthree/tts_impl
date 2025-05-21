@@ -6,18 +6,18 @@ import torch.nn.functional as F
 from tts_impl.net.base.stateful import StatefulModule
 
 
-class DepthwiseCachedConv(StatefulModule):
+class CachedCausalConv(StatefulModule):
     """
-    Depthwise causal convoluition with cache for streaming inference.
+    causal convoluition with cache for streaming inference.
     """
 
-    def __init__(self, d_model: int, kernel_size: int = 4, bias: bool = True):
+    def __init__(self, d_model: int, kernel_size: int = 4, bias: bool = True, groups=1):
         super().__init__()
         assert kernel_size > 1, "kernel size should greater than 1"
         self.d_model = d_model
         self.kernel_size = kernel_size
         self.conv = nn.Conv1d(
-            d_model, d_model, kernel_size, groups=d_model, bias=bias, padding=0
+            d_model, d_model, kernel_size, groups=groups, bias=bias, padding=0
         )
 
     def _sequential_forward(self, x, h):

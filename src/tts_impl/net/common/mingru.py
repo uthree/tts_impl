@@ -41,6 +41,55 @@ def log_g(x: torch.Tensor) -> torch.Tensor:
     return torch.where(x >= 0, (F.relu(x) + 0.5).log(), -F.softplus(-x))
 
 
+@torch.jit.script
+def mingru_parallel(
+    z: torch.Tensor, h: torch.Tensor, h_prev: torch.Tensor
+) -> Tuple[torch.Tensor, torch.Tensor]:
+    """
+    Parallel forward pass for minGRU.
+
+    Args:
+        z: gate signal, shape=(batch_size, seq_len, d_hidden)
+        h: hidden state each time, shape=(batch_size, seq_len, d_hidden)
+        h_prev: initial hidden state, shape=(batch_size, 1, d_hidden)
+
+    Retruns:
+        y: output signal, shape=(batch_size, seq_len, d_hidden)
+        h_next: las hidden state, shape=(batch_size, 1, d_hidden)
+    """
+    log_z = -F.softplus(-z)
+    log_coeffs = -F.softplus(z)
+    log_tilde_h = log_g(h)
+    log_h_prev = torch.log(h_prev)
+    h = parallel_scan_log(
+        log_coeffs, torch.cat([log_h_prev, log_z + log_tilde_h], dim=1)
+    )
+    y = h[:, 1:]
+    h_next = y[:, -1:]
+    return y, h_next
+
+
+@torch.jit.script
+def mingru_sequential(
+    z: torch.Tensor, h: torch.Tensor, h_prev: torch.Tensor
+) -> torch.Tensor:
+    """
+    Sequential forward pass for minGRU.
+
+    Args:
+        z: gate signal, shape=(batch_size, 1, d_hidden)
+        h: input signal shape=(batch_size, 1, d_hidden)
+        h_prev: previous hidden state, shape=(batch_size, 1, d_hidden)
+
+    Returns:
+        h_next: output / next hidden state, shape=(batch_size, 1, d_hidden)
+    """
+    z = torch.sigmoid(z)
+    h_tilde = g(h)
+    h_next = (1 - z) * h_prev + z * h_tilde
+    return h_next
+
+
 @derive_config
 class MinGRU(StatefulModule):
     def __init__(
@@ -68,25 +117,18 @@ class MinGRU(StatefulModule):
     def _sequential_forward(
         self, x: torch.Tensor, h_prev: torch.Tensor
     ) -> Tuple[torch.Tensor, torch.Tensor]:
-        z = torch.sigmoid(self.linear_z(x))
-        h_tilde = g(self.linear_h(x))
-        h = (1 - z) * h_prev + z * h_tilde
+        z = self.linear_z(x)
+        h = self.linear_h(x)
+        h = mingru_sequential(z, h, h_prev)
         return h, h
 
     def _parallel_forward(
-        self, x: torch.Tensor, h_0: torch.Tensor
+        self, x: torch.Tensor, h_prev: torch.Tensor
     ) -> Tuple[torch.Tensor, torch.Tensor]:
-        k = self.linear_z(x)
-        log_z = -F.softplus(-k)
-        log_coeffs = -F.softplus(k)
-        log_tilde_h = log_g(self.linear_h(x))
-        log_h_0 = torch.log(h_0)
-        h = parallel_scan_log(
-            log_coeffs, torch.cat([log_h_0, log_z + log_tilde_h], dim=1)
-        )
-        y = h[:, 1:]
-        h = y[:, -1:]
-        return y, h
+        z = self.linear_z(x)
+        h = self.linear_h(x)
+        y, h_next = mingru_parallel(z, h, h_prev)
+        return y, h_next
 
     def _initial_state(self, x: torch.Tensor) -> torch.Tensor:
         return torch.zeros(

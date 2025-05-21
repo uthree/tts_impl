@@ -1,4 +1,4 @@
-from typing import Optional, Tuple, Sequence
+from typing import Optional, Sequence, Tuple
 
 import torch
 import torch.nn as nn
@@ -92,7 +92,7 @@ class PointwiseModule:
 
 
 class StatefulModuleSequential(StatefulModule):
-    def __init__(self, *stateful_modules: Sequence[StatefulModule]):
+    def __init__(self, stateful_modules: Sequence[StatefulModule]):
         super().__init__()
         self.stateful_modules = nn.ModuleList(stateful_modules)
         self.h_dim_list = []
