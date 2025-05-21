@@ -1,12 +1,13 @@
+from typing import Literal, Optional
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from tts_impl.net.common.causal_conv import CachedCausalConv
-from tts_impl.net.common.normalization import EmaInstanceNorm
-from tts_impl.net.common.mingru import mingru_parallel, mingru_sequential
 from tts_impl.net.base.stateful import StatefulModule, StatefulModuleSequential
+from tts_impl.net.common.causal_conv import CachedCausalConv
+from tts_impl.net.common.mingru import mingru_parallel, mingru_sequential
+from tts_impl.net.common.normalization import EmaInstanceNorm, EmaLayerNorm
 from tts_impl.utils.config import derive_config
-from typing import Optional
 
 
 class GruxLayer(StatefulModule):
@@ -17,6 +18,7 @@ class GruxLayer(StatefulModule):
         kernel_size: int = 4,
         p_dropout: float = 0.0,
         layer_scale: float = 1.0,
+        norm: Literal["layernorm", "instancenorm"] = "layernorm",
     ):
         super().__init__()
         if d_ffn is None:
@@ -24,11 +26,9 @@ class GruxLayer(StatefulModule):
         with torch.no_grad():
             self.d_model = d_model
             self.kernel_size = kernel_size
-            self.d_h_norm = d_model * 2
             self.d_h_conv = d_model * (kernel_size - 1)
             self.d_h_gru = d_model
 
-            self.norm = EmaInstanceNorm(d_model, elementwise_affine=False)
             self.linear_z = nn.Linear(d_model, d_model)
             self.conv_h = CachedCausalConv(d_model, kernel_size=kernel_size)
             self.ffn_in = nn.Linear(d_model, d_ffn)
@@ -37,6 +37,15 @@ class GruxLayer(StatefulModule):
             self.ffn_out.weight.normal_(0.0, layer_scale)
             self.ffn_out.bias.zero_()
             self.dropout = nn.Dropout(p=p_dropout)
+
+            if norm == "layernorm":
+                self.norm = EmaLayerNorm(d_model, elementwise_affine=True)
+                self.d_h_norm = 2
+            elif norm == "instancenorm":
+                self.norm = EmaInstanceNorm(d_model, elementwise_affine=True)
+                self.d_h_norm = d_model * 2
+            else:
+                raise "Invalid normalization."
 
     def ffn(self, x):
         x = self.dropout(x)
@@ -93,10 +102,18 @@ class Grux(StatefulModuleSequential):
         kernel_size: int = 4,
         d_ffn: Optional[int] = None,
         p_dropout: float = 0.0,
+        norm: Literal["layernorm", "instancenorm"] = "layernorm",
     ):
         mods = []
         for _ in range(num_layers):
             layer_scale = 1.0 / num_layers
-            mods.append(GruxLayer(d_model, d_ffn, kernel_size, p_dropout, layer_scale))
-        mods.append(EmaInstanceNorm(d_model, elementwise_affine=True))
+            mods.append(
+                GruxLayer(
+                    d_model, d_ffn, kernel_size, p_dropout, layer_scale, norm=norm
+                )
+            )
+        if norm == "instancenorm":
+            mods.append(EmaInstanceNorm(d_model, elementwise_affine=True))
+        elif norm == "layernorm":
+            mods.append(EmaLayerNorm(d_model, elementwise_affine=True))
         super().__init__(mods)

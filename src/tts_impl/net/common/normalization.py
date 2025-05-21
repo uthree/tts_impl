@@ -386,7 +386,7 @@ class EmaInstanceNorm(StatefulModule):
         self.elementwise_affine = elementwise_affine
         if elementwise_affine:
             self.beta = nn.Parameter(torch.zeros(1, 1, d_model))
-            self.gamma = nn.Parameter(torch.ones(1, 1, 1))
+            self.gamma = nn.Parameter(torch.ones(1, 1, d_model))
         self.ema_mu = ExponentialMovingAverage(
             d_model=d_model,
             alpha=alpha_mu,
