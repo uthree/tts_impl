@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from tts_impl.net.base.vocoder import GanVocoderGenerator
-from tts_impl.net.common.mingru import MinGRU
+from tts_impl.net.common.grux import Grux
 from tts_impl.utils.config import derive_config
 
 from .vocoder import SubtractiveVocoder
@@ -13,7 +13,7 @@ class DdspGenerator(nn.Module, GanVocoderGenerator):
     def __init__(
         self,
         in_channels: int = 80,
-        d_model: int = 384,
+        d_model: int = 128,
         num_layers: int = 6,
         vocal_cord_size: int = 256,
         reverb_size: int = 2048,
@@ -25,7 +25,7 @@ class DdspGenerator(nn.Module, GanVocoderGenerator):
         self.vocoder = SubtractiveVocoder(**vocoder)
         self.conv_pre = nn.Conv1d(in_channels, d_model, 1)
         self.conv_post = nn.Conv1d(d_model, out_channels, 1)
-        self.layers = nn.ModuleList([MinGRU(d_model) for _ in range(num_layers)])
+        self.grux = Grux(d_model, num_layers)
         self.vocal_cord = nn.Parameter(
             F.normalize(torch.randn(vocal_cord_size), dim=0)[None, :]
         )
@@ -36,8 +36,7 @@ class DdspGenerator(nn.Module, GanVocoderGenerator):
     def net(self, x):
         x = self.conv_pre(x)
         x = x.transpose(1, 2)
-        for layer in self.layers:
-            x = layer(x)
+        x, _ = self.grux(x)
         x = x.transpose(1, 2)
         x = self.conv_post(x)
         x = x.float()
@@ -45,7 +44,7 @@ class DdspGenerator(nn.Module, GanVocoderGenerator):
             x, [self.vocoder.dim_periodicity, self.vocoder.n_mels], dim=1
         )
         p = torch.sigmoid(p)
-        e = torch.exp(torch.clamp_max(e, max=6.0))
+        e = torch.sigmoid(e)
         return p, e
 
     def forward(self, x, f0, uv=None):
