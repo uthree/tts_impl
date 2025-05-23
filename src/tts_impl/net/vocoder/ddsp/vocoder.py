@@ -18,7 +18,7 @@ class SubtractiveVocoder(nn.Module):
 
     def __init__(
         self,
-        dim_periodicity: int = 12,
+        dim_periodicity: int = 8,
         n_mels: int = 80,
         sample_rate: int = 24000,
         hop_length: int = 256,

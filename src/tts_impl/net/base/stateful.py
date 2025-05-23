@@ -11,7 +11,7 @@ class StatefulModule(nn.Module):
     """
 
     def forward(
-        self, x: torch.Tensor, h: Optional[torch.Tensor] = None
+        self, x: torch.Tensor, h: Optional[torch.Tensor] = None, *args, **kwargs
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         default implementation of forward pass
@@ -39,7 +39,7 @@ class StatefulModule(nn.Module):
         return x, h
 
     def _sequential_forward(
-        self, x: torch.Tensor, h: torch.Tensor
+        self, x: torch.Tensor, h: torch.Tensor, *args, **kwargs
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         Sequential mode forward pass.
@@ -55,7 +55,7 @@ class StatefulModule(nn.Module):
         return self._parallel_forward(x, h)
 
     def _parallel_forward(
-        self, x: torch.Tensor, h: torch.Tensor
+        self, x: torch.Tensor, h: torch.Tensor, *args, **kwargs
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         Parallel mode forward pass.
@@ -70,7 +70,7 @@ class StatefulModule(nn.Module):
         """
         raise NotImplemented
 
-    def _initial_state(self, x: torch.Tensor) -> torch.Tensor:
+    def _initial_state(self, x: torch.Tensor, *args, **kwargs) -> torch.Tensor:
         """
         Initialize state.
 
@@ -85,7 +85,7 @@ class StatefulModule(nn.Module):
 
 class PointwiseModule:
     """
-    An abstract class that indicates that the module is independent of the series direction.
+    An abstract class that indicates that the module is independent of the time-sequential direction.
     """
 
     pass
@@ -97,18 +97,18 @@ class StatefulModuleSequential(StatefulModule):
         self.stateful_modules = nn.ModuleList(stateful_modules)
         self.h_dim_list = []
 
-    def _initial_state(self, x: torch.Tensor) -> torch.Tensor:
+    def _initial_state(self, x: torch.Tensor, *args, **kwargs) -> torch.Tensor:
         hs = []
         h_dim_list = []
         for module in self.stateful_modules:
-            h = module._initial_state(x)
+            h = module._initial_state(x, *args, **kwargs)
             hs.append(h)
             h_dim_list.append(h.shape[2])
         self.h_dim_list = h_dim_list
         return torch.cat(hs, dim=2)
 
     def _parallel_forward(
-        self, x: torch.Tensor, h: torch.Tensor
+        self, x: torch.Tensor, h: torch.Tensor, *args, **kwargs
     ) -> Tuple[torch.Tensor, torch.Tensor]:
 
         # calculate sum of all hidden state dimension if it's not already calculated.
@@ -118,7 +118,7 @@ class StatefulModuleSequential(StatefulModule):
         # forward pass each layer
         hs = list(torch.split(h, self.h_dim_list, dim=2))
         for i in range(len(self.stateful_modules)):
-            x, hs[i] = self.stateful_modules[i](x, hs[i])
+            x, hs[i] = self.stateful_modules[i](x, hs[i], *args, **kwargs)
         hs = torch.cat(hs, dim=2)
         return x, hs
 

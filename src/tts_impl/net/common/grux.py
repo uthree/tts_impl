@@ -19,30 +19,36 @@ class GruxLayer(StatefulModule):
         p_dropout: float = 0.0,
         layer_scale: float = 1.0,
         norm: Literal["layernorm", "instancenorm"] = "layernorm",
+        d_condition: int = 0,
     ):
         super().__init__()
+        self.d_condition = d_condition
         if d_ffn is None:
             d_ffn = d_model * 3
-        with torch.no_grad():
-            self.d_model = d_model
-            self.kernel_size = kernel_size
-            self.d_h_conv = d_model * (kernel_size - 1)
-            self.d_h_gru = d_model
+        if self.d_condition > 0:
+            self.cond = nn.Linear(d_condition, d_model * 2)
 
-            self.linear_z = nn.Linear(d_model, d_model)
-            self.conv_h = CachedCausalConv(d_model, kernel_size=kernel_size)
-            self.ffn_in = nn.Linear(d_model, d_ffn)
-            self.ffn_gate = nn.Linear(d_model, d_ffn)
-            self.ffn_out = nn.Linear(d_ffn, d_model)
+        self.d_model = d_model
+        self.kernel_size = kernel_size
+        self.d_h_conv = d_model * (kernel_size - 1)
+        self.d_h_gru = d_model
+
+        self.linear_z = nn.Linear(d_model, d_model)
+        self.conv_h = CachedCausalConv(d_model, kernel_size=kernel_size, groups=d_model)
+        self.ffn_in = nn.Linear(d_model, d_ffn)
+        self.ffn_gate = nn.Linear(d_model, d_ffn)
+        self.ffn_out = nn.Linear(d_ffn, d_model)
+
+        self.dropout = nn.Dropout(p=p_dropout)
+        with torch.no_grad():
             self.ffn_out.weight.normal_(0.0, layer_scale)
             self.ffn_out.bias.zero_()
-            self.dropout = nn.Dropout(p=p_dropout)
 
             if norm == "layernorm":
-                self.norm = EmaLayerNorm(d_model, elementwise_affine=True)
+                self.norm = EmaLayerNorm(d_model, elementwise_affine=False)
                 self.d_h_norm = 2
             elif norm == "instancenorm":
-                self.norm = EmaInstanceNorm(d_model, elementwise_affine=True)
+                self.norm = EmaInstanceNorm(d_model, elementwise_affine=False)
                 self.d_h_norm = d_model * 2
             else:
                 raise "Invalid normalization."
@@ -54,12 +60,15 @@ class GruxLayer(StatefulModule):
         x = self.ffn_out(x)
         return x
 
-    def _parallel_forward(self, x, h):
-        res = x
+    def _parallel_forward(self, x, h, c=None):
         h_norm, h_conv, h_gru = torch.split(
             h, [self.d_h_norm, self.d_h_conv, self.d_h_gru], dim=2
         )  # unpack hidden state
+        res = x
         x, h_norm = self.norm(x, h_norm)
+        if self.d_condition > 0 and c is not None:
+            c_beta, c_gamma = self.cond(c).chunk(2, dim=1)
+            x = x * c_beta + c_gamma
         x_z = self.linear_z(x)
         x_h, h_conv = self.conv_h(x, h_conv)
         x, h_gru = mingru_parallel(x_z, x_h, h_gru)
@@ -69,11 +78,14 @@ class GruxLayer(StatefulModule):
         return x, h
 
     def _sequential_forward(self, x, h):
-        res = x
         h_norm, h_conv, h_gru = torch.split(
             h, [self.d_h_norm, self.d_h_conv, self.d_h_gru], dim=2
         )  # unpack hidden state
+        res = x
         x, h_norm = self.norm(x, h_norm)
+        if self.d_condition > 0 and c is not None:
+            c_beta, c_gamma = self.cond(c).chunk(2, dim=1)
+            x = x * c_beta + c_gamma
         x_z = self.linear_z(x)
         x_h, h_conv = self.conv_h(x, h_conv)
         h_gru = mingru_sequential(x_z, x_h, h_gru)
