@@ -203,7 +203,10 @@ class NsfvitsGenerator(nn.Module):
         f0_slice = commons.slice_segments(
             f0.unsqueeze(1), ids_slice, self.segment_size
         ).squeeze(1)
-        o = self.dec.forward(z_slice, f0=f0_slice, g=g)
+        uv_slice = commons.slice_segments(
+            f0.unsqueeze(1), ids_slice, self.segment_size
+        ).squeeze(1)
+        o = self.dec.forward(z_slice, f0=f0_slice, uv=uv_slice, g=g)
 
         outputs = {
             "fake": o,

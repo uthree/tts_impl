@@ -19,6 +19,15 @@ from tts_impl.utils.config import derive_config
 from .generator import NsfhifiganGenerator
 
 
+# normalize tensor for tensorboard's image logging
+def normalize(x: torch.Tensor):
+    x = x.to(torch.float)
+    mu = x.mean()
+    x = x - mu
+    x = x / torch.clamp_min(x.abs().max(), min=1e-8)
+    return x
+
+
 @derive_config
 class NsfhifiganLightningModule(LightningModule):
     def __init__(
@@ -116,6 +125,8 @@ class NsfhifiganLightningModule(LightningModule):
         fake = self.generator(acoustic_features, f0=f0, uv=uv)
         spec_fake = self.spectrogram(fake)
         loss_mel = F.l1_loss(spec_fake, spec_real)
+        spec_real_img = normalize(spec_real)
+        spec_fake_img = normalize(spec_fake)
         self.log("validation loss/mel spectrogram", loss_mel)
 
         for i in range(fake.shape[0]):
@@ -132,6 +143,18 @@ class NsfhifiganLightningModule(LightningModule):
                 r,
                 self.current_epoch,
                 sample_rate=self.generator.sample_rate,
+            )
+            self.logger.experiment.add_image(
+                f"synthesized mel spectrogram/{bid}_{i}",
+                spec_fake_img,
+                self.current_epoch,
+                dataformats="HW",
+            )
+            self.logger.experiment.add_image(
+                f"reference mel spectrogram/{bid}_{i}",
+                spec_real_img,
+                self.current_epoch,
+                dataformats="HW",
             )
 
         return loss_mel

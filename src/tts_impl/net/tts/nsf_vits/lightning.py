@@ -24,6 +24,15 @@ _vits_discriminator_config.mrsd.n_fft = [240, 400, 600]
 _vits_discriminator_config.mrsd.hop_size = [50, 100, 200]
 
 
+# normalize tensor for tensorboard's image logging
+def normalize(x: torch.Tensor):
+    x = x.to(torch.float)
+    mu = x.mean()
+    x = x - mu
+    x = x / torch.clamp_min(x.abs().max(), min=1e-8)
+    return x
+
+
 @derive_config
 class NsfvitsLightningModule(L.LightningModule):
     def __init__(
@@ -223,13 +232,18 @@ class NsfvitsLightningModule(L.LightningModule):
         self.log("scheduler/learning rate", sch_g.get_last_lr()[0])
 
     def validation_step(self, batch, bid):
-        reference_waveform = batch["waveform"]
-        synthesized_waveform = self.generator.infer(
+        real_waveform = batch["waveform"]
+        fake_waveform = self.generator.infer(
             batch["phonemes"], batch["phonemes_lengths"], batch["speaker_id"]
         )
-        for i in range(synthesized_waveform.shape[0]):
-            r = reference_waveform[i].sum(dim=0, keepdim=True).detach().cpu()
-            f = synthesized_waveform[i].sum(dim=0, keepdim=True).detach().cpu()
+        spec_real = self.spectrogram(real_waveform).detach()
+        spec_fake = self.spectrogram(fake_waveform)
+
+        for i in range(fake_waveform.shape[0]):
+            r = real_waveform[i].sum(dim=0, keepdim=True).detach().cpu()
+            f = fake_waveform[i].sum(dim=0, keepdim=True).detach().cpu()
+            spec_fake_img = normalize(spec_fake[i, 0].detach().cpu().flip(0))
+            spec_real_img = normalize(spec_real[i, 0].detach().cpu().flip(0))
             self.logger.experiment.add_audio(
                 f"synthesized waveform/{bid}_{i}",
                 f,
@@ -241,4 +255,16 @@ class NsfvitsLightningModule(L.LightningModule):
                 r,
                 self.current_epoch,
                 sample_rate=self.generator.sample_rate,
+            )
+            self.logger.experiment.add_image(
+                f"synthesized mel spectrogram/{bid}_{i}",
+                spec_fake_img,
+                self.current_epoch,
+                dataformats="HW",
+            )
+            self.logger.experiment.add_image(
+                f"reference mel spectrogram/{bid}_{i}",
+                spec_real_img,
+                self.current_epoch,
+                dataformats="HW",
             )
