@@ -26,12 +26,18 @@ class DdspGenerator(nn.Module, GanVocoderGenerator):
         self.conv_pre = nn.Conv1d(in_channels, d_model, 1)
         self.conv_post = nn.Conv1d(d_model, out_channels, 1)
         self.grux = Grux(d_model, num_layers)
-        self.vocal_cord = nn.Parameter(
-            F.normalize(torch.randn(vocal_cord_size), dim=0)[None, :]
-        )
-        self.reverb = nn.Parameter(
-            F.normalize(torch.randn(reverb_size), dim=0)[None, :]
-        )
+        if vocal_cord_size > 0:
+            self.vocal_cord = nn.Parameter(
+                F.normalize(torch.randn(vocal_cord_size), dim=0)[None, :]
+            )
+        else:
+            self.vocal_cord = None
+        if reverb_size > 0:
+            self.reverb = nn.Parameter(
+                F.normalize(torch.randn(reverb_size), dim=0)[None, :]
+            )
+        else:
+            self.reverb = None
 
     def net(self, x):
         x = self.conv_pre(x)
@@ -49,10 +55,16 @@ class DdspGenerator(nn.Module, GanVocoderGenerator):
 
     def forward(self, x, f0, uv=None):
         p, e = self.net(x)
-        v = F.normalize(
-            self.vocal_cord.expand(x.shape[0], self.vocal_cord.shape[1]), dim=1
-        )
-        r = F.normalize(self.reverb.expand(x.shape[0], self.reverb.shape[1]), dim=1)
+        if self.vocal_cord is not None:
+            v = F.normalize(
+                self.vocal_cord.expand(x.shape[0], self.vocal_cord.shape[1]), dim=1
+            )
+        else:
+            v = None
+        if self.reverb is not None:
+            r = F.normalize(self.reverb.expand(x.shape[0], self.reverb.shape[1]), dim=1)
+        else:
+            r = None
         x = self.vocoder.forward(f0, p, e, vocal_cord=v, reverb=r)
         x = x.unsqueeze(dim=1)
         return x

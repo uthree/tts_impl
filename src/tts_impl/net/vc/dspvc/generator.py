@@ -21,9 +21,10 @@ class Encoder(StatefulModule):
         num_f0_classes: int = 192,
     ):
         super().__init__()
+        self.pre = nn.Linear(in_channels, d_model)
         self.grux = Grux(d_model=d_model, num_layers=num_layers)
+        self.to_phone = nn.Linear(d_model, phoneme_embedding_dim)
+        self.to_f0 = nn.Linear(d_model, num_f0_classes)
 
-
-@derive_config
-class StatefulOscillator(StatefulModule):
-    pass
+    def forward(self, x):
+        pass
