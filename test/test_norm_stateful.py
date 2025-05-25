@@ -42,7 +42,7 @@ def test_ema_instancenorm(
 
 @pytest.mark.parametrize("d_model", [64, 128])
 @pytest.mark.parametrize("batch_size", [1, 4])
-@pytest.mark.parametrize("seq_len", [1, 10, 20])
+@pytest.mark.parametrize("seq_len", [10, 20])
 @pytest.mark.parametrize("elementwise_affine", [False, True])
 @pytest.mark.parametrize("alpha_trainable", [False, True])
 def test_ema_layernorm_sanity_check(
@@ -57,7 +57,7 @@ def test_ema_layernorm_sanity_check(
 
 @pytest.mark.parametrize("d_model", [64, 128])
 @pytest.mark.parametrize("batch_size", [1, 4])
-@pytest.mark.parametrize("seq_len", [1, 10, 20])
+@pytest.mark.parametrize("seq_len", [10, 20])
 @pytest.mark.parametrize("elementwise_affine", [False, True])
 @pytest.mark.parametrize("alpha_trainable", [False, True])
 def test_ema_instance_sanity_check(

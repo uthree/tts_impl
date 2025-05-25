@@ -49,7 +49,7 @@ class GruxLayer(StatefulModule):
                 self.d_h_norm = 2
             elif norm == "instancenorm":
                 self.norm = EmaInstanceNorm(d_model, elementwise_affine=False)
-                self.d_h_norm = d_model * 2
+                self.d_h_norm = d_model + 1
             else:
                 raise "Invalid normalization."
 

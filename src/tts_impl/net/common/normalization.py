@@ -394,7 +394,7 @@ class EmaInstanceNorm(StatefulModule):
             initial_value=0.0,
         )
         self.ema_sigma = ExponentialMovingAverage(
-            d_model=d_model,
+            d_model=1,
             alpha=alpha_sigma,
             trainable=alpha_trainable,
             initial_value=1.0,
@@ -418,7 +418,7 @@ class EmaInstanceNorm(StatefulModule):
 
         # calculate mean and standard deviation of x
         mu = x
-        sigma = torch.abs(h_mu - x)
+        sigma = torch.sqrt(x.pow(2).mean(dim=2, keepdim=True))
 
         h_mu, h_mu_last = self.ema_mu(mu, h_mu)
         h_sigma, h_sigma_last = self.ema_sigma(sigma, h_sigma)
