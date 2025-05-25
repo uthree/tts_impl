@@ -265,6 +265,9 @@ class MultiHeadAttention(nn.Module):
         super().__init__()
         assert channels % n_heads == 0
 
+        if window_size == 0:  # 0 means None (not use window attention)
+            window_size = None
+
         self.channels = channels
         self.out_channels = out_channels
         self.n_heads = n_heads

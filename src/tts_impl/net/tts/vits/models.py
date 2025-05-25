@@ -22,16 +22,18 @@ class StochasticDurationPredictor(nn.Module):
     def __init__(
         self,
         in_channels: int = 192,
+        out_channels: int = 1,
         filter_channels: int = 192,
         kernel_size: int = 5,
         p_dropout: float = 0.1,
         n_flows: int = 4,
         gin_channels: int = 0,
         condition_backward: bool = False,
+        n_conv_layers: int = 3,
+        n_layers_per_flow: int = 3,
     ):
         super().__init__()
-        # it needs to be removed from future version.
-        filter_channels = in_channels
+        self.out_channels = out_channels
         self.in_channels = in_channels
         self.filter_channels = filter_channels
         self.kernel_size = kernel_size
@@ -42,30 +44,40 @@ class StochasticDurationPredictor(nn.Module):
 
         self.log_flow = modules.Log()
         self.flows = nn.ModuleList()
-        self.flows.append(modules.ElementwiseAffine(2))
+        self.flows.append(modules.ElementwiseAffine(out_channels * 2))
         for i in range(n_flows):
             self.flows.append(
-                modules.ConvFlow(2, filter_channels, kernel_size, n_layers=3)
+                modules.ConvFlow(
+                    out_channels * 2,
+                    filter_channels,
+                    kernel_size,
+                    n_layers=n_layers_per_flow,
+                )
             )
             self.flows.append(modules.Flip())
 
-        self.post_pre = nn.Conv1d(1, filter_channels, 1)
+        self.post_pre = nn.Conv1d(out_channels, filter_channels, 1)
         self.post_proj = nn.Conv1d(filter_channels, filter_channels, 1)
         self.post_convs = modules.DDSConv(
-            filter_channels, kernel_size, n_layers=3, p_dropout=p_dropout
+            filter_channels, kernel_size, n_layers=n_conv_layers, p_dropout=p_dropout
         )
         self.post_flows = nn.ModuleList()
-        self.post_flows.append(modules.ElementwiseAffine(2))
+        self.post_flows.append(modules.ElementwiseAffine(out_channels * 2))
         for i in range(4):
             self.post_flows.append(
-                modules.ConvFlow(2, filter_channels, kernel_size, n_layers=3)
+                modules.ConvFlow(
+                    out_channels * 2,
+                    filter_channels,
+                    kernel_size,
+                    n_layers=n_layers_per_flow,
+                )
             )
             self.post_flows.append(modules.Flip())
 
         self.pre = nn.Conv1d(in_channels, filter_channels, 1)
         self.proj = nn.Conv1d(filter_channels, filter_channels, 1)
         self.convs = modules.DDSConv(
-            filter_channels, kernel_size, n_layers=3, p_dropout=p_dropout
+            filter_channels, kernel_size, n_layers=n_conv_layers, p_dropout=p_dropout
         )
         if gin_channels != 0:
             self.cond = nn.Conv1d(gin_channels, filter_channels, 1)
@@ -89,14 +101,16 @@ class StochasticDurationPredictor(nn.Module):
             h_w = self.post_convs(h_w, x_mask)
             h_w = self.post_proj(h_w) * x_mask
             e_q = (
-                torch.randn(w.size(0), 2, w.size(2)).to(device=x.device, dtype=x.dtype)
+                torch.randn(w.size(0), self.out_channels * 2, w.size(2)).to(
+                    device=x.device, dtype=x.dtype
+                )
                 * x_mask
             )
             z_q = e_q
             for flow in self.post_flows:
                 z_q, logdet_q = flow(z_q, x_mask, g=(x + h_w))
                 logdet_tot_q += logdet_q
-            z_u, z1 = torch.split(z_q, [1, 1], 1)
+            z_u, z1 = torch.split(z_q, [self.out_channels, self.out_channels], 1)
             u = torch.sigmoid(z_u) * x_mask
             z0 = (w - u) * x_mask
             logdet_tot_q += torch.sum(
@@ -123,12 +137,14 @@ class StochasticDurationPredictor(nn.Module):
             flows = list(reversed(self.flows))
             flows = flows[:-2] + [flows[-1]]  # remove a useless vflow
             z = (
-                torch.randn(x.size(0), 2, x.size(2)).to(device=x.device, dtype=x.dtype)
+                torch.randn(x.size(0), self.out_channels * 2, x.size(2)).to(
+                    device=x.device, dtype=x.dtype
+                )
                 * noise_scale
             )
             for flow in flows:
                 z = flow(z, x_mask, g=x, reverse=reverse)
-            z0, z1 = torch.split(z, [1, 1], 1)
+            z0, z1 = torch.split(z, [self.out_channels, self.out_channels], 1)
             logw = z0
             return logw
 

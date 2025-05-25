@@ -20,5 +20,5 @@ def log_f0_loss(
         log_f0 = safe_log(f0.float()).detach()
 
     delta = (log_f0_hat - log_f0).abs()
-    loss = (delta * uv).sum() / (uv.sum() + 1e-4)
+    loss = (delta * uv).sum() / (uv.sum() + 1e-8)
     return loss

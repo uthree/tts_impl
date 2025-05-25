@@ -218,9 +218,10 @@ def test_duration_predictor(
     assert o.shape[2] == length
 
 
-@pytest.mark.parametrize("batch_size", [1, 2])
+@pytest.mark.parametrize("batch_size", [1, 4])
 @pytest.mark.parametrize("length", [100])
 @pytest.mark.parametrize("in_channels", [192])
+@pytest.mark.parametrize("out_channels", [1, 4])
 @pytest.mark.parametrize("filter_channels", [128])
 @pytest.mark.parametrize("kernel_size", [3])
 @pytest.mark.parametrize("p_dropout", [0.1])
@@ -232,6 +233,7 @@ def test_stochastic_duration_predictor(
     batch_size,
     length,
     in_channels,
+    out_channels,
     filter_channels,
     kernel_size,
     p_dropout,
@@ -242,6 +244,7 @@ def test_stochastic_duration_predictor(
 ):
     stochastic_duration_predictor = StochasticDurationPredictor(
         in_channels,
+        out_channels,
         filter_channels,
         kernel_size,
         p_dropout,
@@ -252,10 +255,10 @@ def test_stochastic_duration_predictor(
     x = torch.randn(batch_size, in_channels, length)
     x_mask = torch.ones(batch_size, 1, length)
     g = torch.randn(batch_size, gin_channels, 1) if gin_channels > 0 else None
-    w = torch.randint(low=1, high=10, size=(batch_size, 1, length)).float()
+    w = torch.randint(low=1, high=10, size=(batch_size, out_channels, length)).float()
     o = stochastic_duration_predictor.forward(x, x_mask, g=g, w=w, reverse=reverse)
     assert o.shape[0] == batch_size
     if reverse:
-        assert o.shape[1] == 1
+        assert o.shape[1] == out_channels
     else:
         o.mean().backward()
