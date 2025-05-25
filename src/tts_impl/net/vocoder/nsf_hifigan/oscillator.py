@@ -30,6 +30,9 @@ class HarmonicNoiseOscillator(nn.Module):
         if gin_channels > 0:
             self.take_condition = True
             self.cond_proj = nn.Conv1d(gin_channels, num_harmonics, 1)
+            with torch.no_grad():
+                self.cond_proj.weight.zero_()
+                self.cond_proj.bias.zero_()
         else:
             self.take_condition = False
             self.cond = nn.Parameter(
@@ -64,9 +67,9 @@ class HarmonicNoiseOscillator(nn.Module):
             integrated = torch.cumsum(fs / self.sample_rate, dim=2)
 
         if self.take_condition and g is not None:
-            amps = F.softplus(self.cond_proj(g))
+            amps = torch.exp(self.cond_proj(g).float())
         else:
-            amps = F.softplus(self.cond)
+            amps = torch.exp(self.cond.float())
 
         rad = 2 * math.pi * (integrated % 1.0)
         noise = torch.randn(rad.shape[0], 1, rad.shape[2], device=rad.device).expand(

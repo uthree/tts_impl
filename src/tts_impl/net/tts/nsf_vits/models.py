@@ -31,9 +31,9 @@ class PitchPredictor(nn.Module):
         self,
         inter_channels: int = 192,
         hidden_channels: int = 192,
-        kernel_size: int = 3,
-        dilation_rate: int = 3,
-        n_layers: int = 3,
+        kernel_size: int = 5,
+        dilation_rate: int = 1,
+        n_layers: int = 8,
         gin_channels: int = 0,
     ):
         super().__init__()
