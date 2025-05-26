@@ -2,8 +2,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from tts_impl.functional.midi import freq2note, note2freq
-from tts_impl.net.common.grux import Grux
 from tts_impl.net.base.stateful import StatefulModule
+from tts_impl.net.common.grux import Grux
 from tts_impl.utils.config import derive_config
 
 

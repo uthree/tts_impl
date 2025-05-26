@@ -207,8 +207,8 @@ class DiscriminatorR(nn.Module):
         channels: int = 32,
         num_layers: int = 4,
         use_spectral_norm: bool = False,
-        log_scale: bool = False,
-        pre_layernorm: bool = False,
+        log_scale: bool = True,
+        pre_layernorm: bool = True,
     ):
         super().__init__()
         self.log_scale = log_scale
@@ -240,7 +240,9 @@ class DiscriminatorR(nn.Module):
         if self.log_scale:
             x = self.safe_log(x)
         if self.pre_layernorm:
-            x = F.normalize(x, dim=(1, 2))
+            x = (x - x.mean(dim=(1, 2), keepdim=True)) / (
+                x.std(dim=(1, 2), keepdim=True) + 1e-8
+            )
         return x
 
     def safe_log(self, x):
@@ -267,10 +269,21 @@ class MultiResolutionStftDiscriminator(CombinedDiscriminator):
         hop_size: List[int] = [50, 120, 240],
         channels: int = 32,
         num_layers: int = 4,
+        pre_layernorm: bool = True,
+        log_scale: bool = True,
     ):
         super().__init__()
         for n, h in zip(n_fft, hop_size):
-            self.discriminators.append(DiscriminatorR(n, h, channels, num_layers))
+            self.discriminators.append(
+                DiscriminatorR(
+                    n,
+                    h,
+                    channels,
+                    num_layers,
+                    pre_layernorm=pre_layernorm,
+                    log_scale=log_scale,
+                )
+            )
 
 
 __all__ = [
