@@ -130,7 +130,7 @@ class NsfhifiganFilter(nn.Module):
         if g is not None:
             x = x + self.conv_cond(g)
 
-        x + self.source_convs[0](s)
+        x = x + self.source_convs[0](s)
 
         for i in range(self.num_upsamples):
             x = self.up_acts[i](x)

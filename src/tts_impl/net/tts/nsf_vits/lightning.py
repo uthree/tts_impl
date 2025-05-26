@@ -231,12 +231,17 @@ class NsfvitsLightningModule(L.LightningModule):
         sch_d.step()
         self.log("scheduler/learning rate", sch_g.get_last_lr()[0])
 
+    @torch.no_grad
     def validation_step(self, batch, bid):
         real_waveform = batch["waveform"]
-        fake_waveform = self.generator.infer(
-            batch["phonemes"], batch["phonemes_lengths"], batch["speaker_id"]
-        )
         spec_real = self.spectrogram(real_waveform).detach()
+        max_len = spec_real.shape[3]
+        fake_waveform = self.generator.infer(
+            batch["phonemes"],
+            batch["phonemes_lengths"],
+            batch["speaker_id"],
+            max_len=max_len,
+        )
         spec_fake = self.spectrogram(fake_waveform)
 
         for i in range(fake_waveform.shape[0]):

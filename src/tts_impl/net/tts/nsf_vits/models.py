@@ -33,7 +33,7 @@ class PitchPredictor(nn.Module):
         hidden_channels: int = 192,
         kernel_size: int = 5,
         dilation_rate: int = 1,
-        n_layers: int = 8,
+        n_layers: int = 4,
         gin_channels: int = 0,
     ):
         super().__init__()
@@ -48,6 +48,11 @@ class PitchPredictor(nn.Module):
             gin_channels=gin_channels,
         )
         self.post = nn.Conv1d(hidden_channels, 2, 1)
+        with torch.no_grad():
+            self.pre.weight.zero_()
+            self.pre.bias.zero_()
+            self.post.weight.zero_()
+            self.post.weight.zero_()
 
     def _net(self, x, x_mask, g=None):
         """
@@ -84,7 +89,7 @@ class PitchPredictor(nn.Module):
 
 
 _default_decoder_config = NsfhifiganGenerator.Config()
-_default_decoder_config.filter.in_channels = 192
+_default_decoder_config.filter_module.in_channels = 192
 
 
 @derive_config
@@ -293,7 +298,9 @@ class NsfvitsGenerator(nn.Module):
         # flow
         z = self.flow(z_p, y_mask, g=g, reverse=True)
 
-        o = self.dec.forward((z * y_mask)[:, :, :max_len], f0=f0, uv=uv, g=g)
+        o = self.dec.forward(
+            (z * y_mask)[:, :, :max_len], f0=f0[:, :max_len], uv=uv[:, :max_len], g=g
+        )
         return o
 
     def voice_conversion(self, y, y_lengths, sid_src, sid_tgt):

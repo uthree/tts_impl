@@ -13,12 +13,12 @@ from .oscillator import HarmonicNoiseOscillator
 class NsfhifiganGenerator(nn.Module, GanVocoderGenerator):
     def __init__(
         self,
-        source: HarmonicNoiseOscillator.Config = HarmonicNoiseOscillator.Config(),
-        filter: NsfhifiganFilter.Config = NsfhifiganFilter.Config(),
+        source_module: HarmonicNoiseOscillator.Config = HarmonicNoiseOscillator.Config(),
+        filter_module: NsfhifiganFilter.Config = NsfhifiganFilter.Config(),
     ):
         super().__init__()
-        self.source_module = HarmonicNoiseOscillator(**source)
-        self.filter = NsfhifiganFilter(**filter)
+        self.filter_module = NsfhifiganFilter(**filter_module)
+        self.source_module = HarmonicNoiseOscillator(**source_module)
 
     @property
     def sample_rate(self) -> int:
@@ -43,15 +43,9 @@ class NsfhifiganGenerator(nn.Module, GanVocoderGenerator):
             uv: shape=[batch, num_frames]
         """
         assert f0 is not None, RuntimeError("f0 shoud be given")
-
-        if f0 is None:
-            f0 = torch.zeros((x.shape[0], x.shape[2]), device=x.device)
         if uv is None:
             uv = (f0 >= 20.0).to(x.dtype) * (f0 <= (self.sample_rate / 2)).to(x.dtype)
 
-        f0 = f0.unsqueeze(1)
-        uv = uv.unsqueeze(1)
-
-        s = self.source_module(f0, uv, g=g)
-        out = self.filter(x, s, g=g)
+        s = self.source_module(f0.unsqueeze(1), uv.unsqueeze(1), g=g)
+        out = self.filter_module(x, s, g=g)
         return out
