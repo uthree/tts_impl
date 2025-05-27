@@ -12,6 +12,7 @@ from tts_impl.net.tts.vits.losses import (
     kl_loss,
 )
 from tts_impl.net.vocoder.hifigan import HifiganDiscriminator
+from tts_impl.net.vocoder.loss import MultiResolutionSTFTLoss
 from tts_impl.transforms import LogMelSpectrogram
 from tts_impl.utils.config import derive_config
 
@@ -40,7 +41,9 @@ class NsfvitsLightningModule(L.LightningModule):
         generator: NsfvitsGenerator.Config = NsfvitsGenerator.Config(),
         discriminator: HifiganDiscriminator.Config = _vits_discriminator_config,
         mel: LogMelSpectrogram.Config = LogMelSpectrogram.Config(),
-        weight_mel: float = 45.0,
+        mr_stft_loss: MultiResolutionSTFTLoss.Config = MultiResolutionSTFTLoss.Config(),
+        weight_mel: float = 25.0,
+        weight_stft: float = 20.0,
         weight_feat: float = 1.0,
         weight_adv: float = 1.0,
         lr: float = 2e-4,
@@ -53,7 +56,9 @@ class NsfvitsLightningModule(L.LightningModule):
         self.generator = NsfvitsGenerator(**generator)
         self.discriminator = HifiganDiscriminator(**discriminator)
         self.spectrogram = LogMelSpectrogram(**mel)
+        self.mr_stft_loss = MultiResolutionSTFTLoss(**mr_stft_loss)
 
+        self.weight_stft = weight_stft
         self.weight_mel = weight_mel
         self.weight_adv = weight_adv
         self.weight_feat = weight_feat
@@ -168,8 +173,13 @@ class NsfvitsLightningModule(L.LightningModule):
         loss_adv, loss_adv_list = generator_loss(logits)
         loss_feat = feature_loss(fmap_real, fmap_fake)
         loss_mel = F.l1_loss(spec_fake, spec_real)
+        loss_stft_sc, loss_stft_mag = self.mr_stft_loss(
+            fake.sum(dim=1), real.sum(dim=1)
+        )
+        loss_stft = loss_stft_sc + loss_stft_mag
         loss_g = (
-            loss_mel * self.weight_mel
+            loss_stft * self.weight_stft
+            + loss_mel * self.weight_mel
             + loss_feat * self.weight_feat
             + loss_adv * self.weight_adv
         )
@@ -177,6 +187,8 @@ class NsfvitsLightningModule(L.LightningModule):
         # logs
         for i, l in enumerate(loss_adv_list):
             self.log(f"generator adversarial/{i}", l)
+        self.log("train loss/spectral convergence", loss_stft_sc)
+        self.log("train loss/spectral magnitude", loss_stft_mag)
         self.log("train loss/mel spectrogram", loss_mel)
         self.log("train loss/feature matching", loss_feat)
         self.log("train loss/generator adversarial", loss_adv)
