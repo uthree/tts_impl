@@ -416,9 +416,8 @@ class EmaInstanceNorm(StatefulModule):
         # expand state to mean and standard deviation.
         h_mu, h_sigma = torch.chunk(h, 2, dim=2)
 
-        # calculate mean and standard deviation of x
         mu = x
-        sigma = torch.sqrt(x.pow(2).mean(dim=2, keepdim=True))
+        sigma = torch.clamp_min(torch.sqrt(x.pow(2).sum(dim=2, keepdim=True)), 1.0)
 
         h_mu, h_mu_last = self.ema_mu(mu, h_mu)
         h_sigma, h_sigma_last = self.ema_sigma(sigma, h_sigma)
