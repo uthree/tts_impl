@@ -265,8 +265,8 @@ class DiscriminatorR(nn.Module):
 class MultiResolutionStftDiscriminator(CombinedDiscriminator):
     def __init__(
         self,
-        n_fft: List[int] = [240, 600, 1200],
-        hop_size: List[int] = [50, 120, 240],
+        n_fft: List[int] = [1024, 2048, 512],
+        hop_size: List[int] = [120, 240, 50],
         channels: int = 32,
         num_layers: int = 4,
         pre_layernorm: bool = True,
