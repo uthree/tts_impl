@@ -42,8 +42,8 @@ class NsfvitsLightningModule(L.LightningModule):
         discriminator: HifiganDiscriminator.Config = _vits_discriminator_config,
         mel: LogMelSpectrogram.Config = LogMelSpectrogram.Config(),
         mr_stft_loss: MultiResolutionSTFTLoss.Config = MultiResolutionSTFTLoss.Config(),
-        weight_mel: float = 25.0,
-        weight_stft: float = 20.0,
+        weight_mel: float = 40.0,
+        weight_stft: float = 5.0,
         weight_feat: float = 1.0,
         weight_adv: float = 1.0,
         lr: float = 2e-4,
@@ -114,8 +114,6 @@ class NsfvitsLightningModule(L.LightningModule):
         self.clip_gradients(opt_g, 1.0, "norm")
         opt_g.step()
         self.untoggle_optimizer(opt_g)
-        fake = fake.detach()
-        real = real.detach()
         return real, fake
 
     def _generator_forward(

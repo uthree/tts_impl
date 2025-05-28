@@ -97,8 +97,6 @@ class VitsLightningModule(L.LightningModule):
         self.clip_gradients(opt_g, 1.0, "norm")
         opt_g.step()
         self.untoggle_optimizer(opt_g)
-        fake = fake.detach()
-        real = real.detach()
         return real, fake
 
     def _generator_forward(

@@ -121,17 +121,17 @@ class NsfhifiganLightningModule(LightningModule):
         else:
             acoustic_features = self.spectrogram(waveform.sum(1)).detach()
 
-        spec_real = self.spectrogram(waveform).detach()
+        spec_real = self.spectrogram(waveform.sum(1)).detach()
         fake = self.generator(acoustic_features, f0=f0, uv=uv)
-        spec_fake = self.spectrogram(fake)
+        spec_fake = self.spectrogram(fake.sum(1))
         loss_mel = F.l1_loss(spec_fake, spec_real)
-        spec_real_img = normalize(spec_real)
-        spec_fake_img = normalize(spec_fake)
         self.log("validation loss/mel spectrogram", loss_mel)
 
         for i in range(fake.shape[0]):
             f = fake[i].sum(dim=0, keepdim=True).detach().cpu()
             r = waveform[i].sum(dim=0, keepdim=True).detach().cpu()
+            spec_real_img = normalize(spec_real[i])
+            spec_fake_img = normalize(spec_fake[i])
             self.logger.experiment.add_audio(
                 f"synthesized waveform/{bid}_{i}",
                 f,

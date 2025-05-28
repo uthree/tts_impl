@@ -14,7 +14,7 @@ class HarmonicNoiseOscillator(nn.Module):
         sample_rate: int = 22050,
         frame_size: int = 256,
         num_harmonics: int = 8,
-        noise_scale: float = 0.1,
+        noise_scale: float = 0.003,
         gin_channels: int = 0,
         normalize_amps: bool = True,
         post_tanh_activation: bool = True,
@@ -80,7 +80,7 @@ class HarmonicNoiseOscillator(nn.Module):
 
         # switch v/uv.
         voiced_part = harmonics + noise * self.noise_scale
-        unvoiced_part = noise * 0.333
+        unvoiced_part = noise * 0.33333
 
         # synthesize
         source = voiced_part * voiced_mask + unvoiced_part * (1 - voiced_mask)
