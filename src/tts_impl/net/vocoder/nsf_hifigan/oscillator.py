@@ -66,24 +66,22 @@ class HarmonicNoiseOscillator(nn.Module):
             # Numerical integration, generate sinusoidal harmonics
             integrated = torch.cumsum(fs / self.sample_rate, dim=2)
 
+            rad = 2 * math.pi * (integrated % 1.0)
+            noise = torch.randn(
+                rad.shape[0], 1, rad.shape[2], device=rad.device
+            ).expand(rad.shape)
+
+            harmonics = torch.sin(rad) * voiced_mask + noise * self.noise_scale
+
+            # switch v/uv.
+            voiced_part = harmonics + noise * self.noise_scale
+            unvoiced_part = noise * 0.33333
+            source = voiced_part * voiced_mask + unvoiced_part * (1 - voiced_mask)
+
         if self.take_condition and g is not None:
             amps = torch.exp(self.cond_proj(g).float())
         else:
             amps = torch.exp(self.cond.float())
-
-        rad = 2 * math.pi * (integrated % 1.0)
-        noise = torch.randn(rad.shape[0], 1, rad.shape[2], device=rad.device).expand(
-            rad.shape
-        )
-
-        harmonics = torch.sin(rad) * voiced_mask + noise * self.noise_scale
-
-        # switch v/uv.
-        voiced_part = harmonics + noise * self.noise_scale
-        unvoiced_part = noise * 0.33333
-
-        # synthesize
-        source = voiced_part * voiced_mask + unvoiced_part * (1 - voiced_mask)
 
         if self.normalize_amps:
             amps = F.normalize(amps, dim=1)

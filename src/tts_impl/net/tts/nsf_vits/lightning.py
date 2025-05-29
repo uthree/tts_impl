@@ -21,8 +21,8 @@ from .models import NsfvitsGenerator
 _vits_discriminator_config = HifiganDiscriminator.Config()
 _vits_discriminator_config.msd.scales = [1]
 _vits_discriminator_config.mpd.periods = [2, 3, 5, 7, 11]
-_vits_discriminator_config.mrsd.n_fft = [240, 400, 600]
-_vits_discriminator_config.mrsd.hop_size = [50, 100, 200]
+_vits_discriminator_config.mrsd.n_fft = [512, 1024, 2048]
+_vits_discriminator_config.mrsd.hop_size = [50, 120, 240]
 
 
 # normalize tensor for tensorboard's image logging
@@ -42,8 +42,8 @@ class NsfvitsLightningModule(L.LightningModule):
         discriminator: HifiganDiscriminator.Config = _vits_discriminator_config,
         mel: LogMelSpectrogram.Config = LogMelSpectrogram.Config(),
         mr_stft_loss: MultiResolutionSTFTLoss.Config = MultiResolutionSTFTLoss.Config(),
-        weight_mel: float = 40.0,
-        weight_stft: float = 5.0,
+        weight_mel: float = 45.0,
+        weight_stft: float = 2.5,
         weight_feat: float = 1.0,
         weight_adv: float = 1.0,
         lr: float = 2e-4,

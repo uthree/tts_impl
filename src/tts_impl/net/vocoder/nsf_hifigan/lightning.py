@@ -130,8 +130,8 @@ class NsfhifiganLightningModule(LightningModule):
         for i in range(fake.shape[0]):
             f = fake[i].sum(dim=0, keepdim=True).detach().cpu()
             r = waveform[i].sum(dim=0, keepdim=True).detach().cpu()
-            spec_real_img = normalize(spec_real[i])
-            spec_fake_img = normalize(spec_fake[i])
+            spec_real_img = normalize(spec_real[i]).flip(0)
+            spec_fake_img = normalize(spec_fake[i]).flip(0)
             self.logger.experiment.add_audio(
                 f"synthesized waveform/{bid}_{i}",
                 f,
