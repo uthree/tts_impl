@@ -13,8 +13,7 @@ class Encoder(StatefulModule):
         self,
         in_channels: int = 80,
         d_model: int = 128,
-        num_layers: int = 4,
-        kernel_size: int = 4,
+        n_layers: int = 4,
         phoneme_embedding_dim: int = 64,
         fmin: float = 10.0,
         fmax: float = 8000.0,
@@ -27,7 +26,7 @@ class Encoder(StatefulModule):
         self.fmax = fmax
 
         self.pre = nn.Linear(in_channels, d_model)
-        self.grux = Grux(d_model=d_model, num_layers=num_layers)
+        self.grux = Grux(d_model=d_model, num_layers=n_layers)
         self.to_phone = nn.Linear(d_model, phoneme_embedding_dim)
         self.to_f0 = nn.Linear(d_model, num_f0_classes)
 
@@ -65,3 +64,28 @@ class Encoder(StatefulModule):
         ) * delta_log_f0 + log_fmin
         f0 = torch.exp(log_f0) * uv
         return f0
+
+
+@derive_config
+class Decoder(StatefulModule):
+    def __init__(
+        self,
+        in_channels: int = 64,
+        d_model: int = 128,
+        n_layers: int = 4,
+        d_speaker: int = 256,
+        d_periodicity: int = 8,
+        n_mels: int = 80,
+    ):
+        super().__init__()
+        self.pre = nn.Linear(in_channels, d_model)
+        self.grux = Grux(d_model=d_model, num_layers=n_layers, d_condition=d_speaker)
+        self.to_periodicity = nn.Linear(d_model, d_periodicity)
+        self.to_envelope = nn.Linear(d_model, n_mels)
+
+    def forward(self, x, h, c):
+        x = self.pre(x.transpose(1, 2))
+        x, h = self.grux(x, h, c=c)
+        per = self.to_periodicity(x).transpose(1, 2)
+        env = self.to_envelope(x)
+        return per, env, h
