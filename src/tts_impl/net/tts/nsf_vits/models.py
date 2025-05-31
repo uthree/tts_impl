@@ -18,78 +18,13 @@ from tts_impl.net.tts.vits import (
 from tts_impl.net.vocoder.nsf_hifigan import NsfhifiganGenerator
 from tts_impl.utils.config import derive_config
 
-from .losses import log_f0_loss
-
-
-@derive_config
-class PitchPredictor(nn.Module):
-    """
-    Module for post-processing framewise pitch
-    """
-
-    def __init__(
-        self,
-        inter_channels: int = 192,
-        hidden_channels: int = 192,
-        kernel_size: int = 5,
-        dilation_rate: int = 1,
-        n_layers: int = 4,
-        gin_channels: int = 0,
-    ):
-        super().__init__()
-        self.inter_channels = inter_channels
-        self.gin_channels = gin_channels
-        self.pre = nn.Conv1d(inter_channels, hidden_channels, 1)
-        self.wn = modules.WN(
-            hidden_channels,
-            kernel_size,
-            dilation_rate=dilation_rate,
-            n_layers=n_layers,
-            gin_channels=gin_channels,
-        )
-        self.post = nn.Conv1d(hidden_channels, 2, 1)
-        with torch.no_grad():
-            self.pre.weight.zero_()
-            self.pre.bias.zero_()
-            self.post.weight.zero_()
-            self.post.weight.zero_()
-
-    def _net(self, x, x_mask, g=None):
-        """
-        Args:
-            x: phoneme embeddings duplicated by duration, shape=(batch_size, inter_channels, feat_length)
-            x_mask: mask of x.
-            g: speaker embedding, Optional[Tensor], shape=(batch_size, gin_channels, 1)
-
-        Returns:
-            f0: shape=(batch_size, feat_length)
-            uv: shape=(batch_size, feat_length)
-        """
-        x = x.detach()
-        x = self.pre(x) * x_mask
-        x = self.wn(x, x_mask, g=g)
-        x = self.post(x)
-        log_f0, uv_logits = torch.split(x, [1, 1], dim=1)
-        f0 = torch.exp(log_f0).squeeze(1)
-        uv = torch.sigmoid(uv_logits).squeeze(1)
-        return f0, uv
-
-    def infer(self, x, x_mask, g=None):
-        f0, uv = self._net(x, x_mask, g=g)
-        uv = (uv >= 0.5).float()  # quantize to 0 or 1
-        return f0, uv
-
-    def forward(self, x, x_mask, f0, uv=None, g=None):
-        f0_hat, uv_hat = self._net(x, x_mask, g=g)
-        if uv is None:
-            uv = (f0 > 20.0).float()
-        l_f0 = log_f0_loss(f0_hat, f0, x_mask * uv)
-        l_uv = F.mse_loss(uv_hat, uv)
-        return l_f0, l_uv, f0_hat, uv_hat
-
 
 _default_decoder_config = NsfhifiganGenerator.Config()
 _default_decoder_config.filter_module.in_channels = 192
+_default_dp_config = DurationPredictor.Config()
+_default_dp_config.out_channels = 4
+_default_sdp_config = StochasticDurationPredictor.Config()
+_default_sdp_config.out_channels = 4
 
 
 @derive_config
@@ -100,9 +35,8 @@ class NsfvitsGenerator(nn.Module):
         text_encoder: TextEncoder.Config = TextEncoder.Config(),
         decoder: NsfhifiganGenerator.Config = _default_decoder_config,
         flow: ResidualCouplingBlock.Config = ResidualCouplingBlock.Config(),
-        duration_predictor: DurationPredictor.Config = DurationPredictor.Config(),
-        stochastic_duration_predictor: StochasticDurationPredictor.Config = StochasticDurationPredictor.Config(),
-        pitch_predictor: PitchPredictor.Config = PitchPredictor.Config(),
+        duration_predictor: DurationPredictor.Config = default_dp_config,
+        stochastic_duration_predictor: StochasticDurationPredictor.Config = _default_sdp_config,
         n_speakers: int = 0,
         gin_channels: int = 0,
         use_dp: bool = True,
