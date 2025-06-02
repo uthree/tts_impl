@@ -1,10 +1,11 @@
+import math
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from tts_impl.net.base.stateful import StatefulModule
 from tts_impl.net.common.grux import Grux
 from tts_impl.utils.config import derive_config
-import math
 
 
 @derive_config
@@ -89,3 +90,12 @@ class Decoder(StatefulModule):
         per = self.to_periodicity(x).transpose(1, 2)
         env = self.to_envelope(x)
         return per, env, h
+
+
+@derive_config
+class DdspvcGenerator(nn.Module):
+    def __init__(self, n_speaker:int, d_speaker:int, encoder: Encoder.Config = Encoder.Config(), decoder: Decoder.Config = Decoder.Config()):
+        super().__init__()
+        self.encoder = Encoder(**encoder)
+        self.decoder = Decoder(**decoder)
+        self.speaker_embeddings = nn.Embedding(n_speaker, d_speaker)

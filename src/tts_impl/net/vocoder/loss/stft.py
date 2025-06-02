@@ -1,11 +1,10 @@
 # code base from https://github.com/rishikksh20/UnivNet-pytorch/blob/master/stft_loss.py
 
+from typing import List
+
 import torch
 import torch.nn.functional as F
-
 from tts_impl.utils.config import derive_config
-
-from typing import List
 
 
 def stft(x, fft_size, hop_size, win_length, window):
