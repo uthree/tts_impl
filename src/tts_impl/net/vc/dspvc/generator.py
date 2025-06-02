@@ -59,7 +59,7 @@ class Encoder(StatefulModule):
         indices = topk_result.indices.float()
         values = topk_result.values
         probs = torch.softmax(values, dim=1)
-        log_f0 = (values * probs).sum(dim=1) / (
+        log_f0 = (indices * probs).sum(dim=1) / (
             self.num_f0_classes - 1
         ) * delta_log_f0 + log_fmin
         f0 = torch.exp(log_f0) * uv
