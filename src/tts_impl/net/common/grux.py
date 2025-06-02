@@ -77,7 +77,7 @@ class GruxLayer(StatefulModule):
         x = x + res
         return x, h
 
-    def _sequential_forward(self, x, h):
+    def _sequential_forward(self, x, h, c=None):
         h_norm, h_conv, h_gru = torch.split(
             h, [self.d_h_norm, self.d_h_conv, self.d_h_gru], dim=2
         )  # unpack hidden state
@@ -115,13 +115,14 @@ class Grux(StatefulModuleSequential):
         d_ffn: Optional[int] = None,
         p_dropout: float = 0.0,
         norm: Literal["layernorm", "instancenorm"] = "layernorm",
+        d_condition: int = 0
     ):
         mods = []
         for _ in range(num_layers):
             layer_scale = 1.0 / num_layers
             mods.append(
                 GruxLayer(
-                    d_model, d_ffn, kernel_size, p_dropout, layer_scale, norm=norm
+                    d_model, d_ffn, kernel_size, p_dropout, layer_scale, norm=norm, d_condition=d_condition
                 )
             )
         if norm == "instancenorm":

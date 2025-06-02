@@ -46,7 +46,7 @@ class Encoder(StatefulModule):
         log_fmax = math.log(self.fmax)
         delta_log_f0 = log_fmax - log_fmin
         f0_label = (torch.log(f0) - log_fmin) / delta_log_f0 * (self.num_f0_classes - 1)
-        loss_f0 = torch.cross_entropy(f0_logits, f0_label)
+        loss_f0 = F.cross_entropy(f0_logits, f0_label)
         return loss_f0, loss_uv
 
     def decode_f0(self, f0_logits, k: int = 2):
