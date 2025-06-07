@@ -407,23 +407,21 @@ class EmaInstanceNorm(StatefulModule):
         """
         Args:
             x: shape=(batch_size, seq_len, d_model)
-            h: shape=(batch_size, 1, d_model * 2)
+            h: shape=(batch_size, 1, d_model + 1)
 
         Returns:
             x: shape=(batch_size, seq_len, d_model)
-            h: shape(batch_size, 1, d_model * 2)
+            h: shape(batch_size, 1, d_model + 1)
         """
         # expand state to mean and standard deviation.
         h_mu, h_sigma = torch.chunk(h, 2, dim=2)
 
-        mu = x
-        sigma = torch.clamp_min(torch.sqrt(x.pow(2).sum(dim=2, keepdim=True)), 1.0)
-
-        h_mu, h_mu_last = self.ema_mu(mu, h_mu)
-        h_sigma, h_sigma_last = self.ema_sigma(sigma, h_sigma)
-
-        # normalize
-        x = (x - h_mu) / torch.clamp_min(h_sigma, min=self.eps)
+        # normalization and update EMA
+        h_mu, h_mu_last = self.ema_mu(x, h_mu) # updat EMA(mu)
+        x = x - h_mu # remove DC
+        sigma = x.pow(2).mean(dim=2, keepdim=True).sqrt() # calculate RMS in channel dimension
+        h_sigma, h_sigma_last = self.ema_sigma(sigma, h_sigma) # update EMA(sigma)
+        x = x / torch.clamp_min(h_sigma, self.eps) # re-scale by RMS with avoiding divide by zero
 
         # scale, shift
         if self.elementwise_affine:
