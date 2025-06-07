@@ -5,6 +5,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from tts_impl.net.base.stateful import StatefulModule
 from tts_impl.net.common.grux import Grux
+from tts_impl.net.vocoder.ddsp.vocoder import SubtractiveVocoder
 from tts_impl.utils.config import derive_config
 
 
@@ -94,8 +95,25 @@ class Decoder(StatefulModule):
 
 @derive_config
 class DdspvcGenerator(nn.Module):
-    def __init__(self, n_speaker:int, d_speaker:int, encoder: Encoder.Config = Encoder.Config(), decoder: Decoder.Config = Decoder.Config()):
+    def __init__(
+        self,
+        n_speaker: int,
+        d_speaker: int,
+        encoder: Encoder.Config = Encoder.Config(),
+        decoder: Decoder.Config = Decoder.Config(),
+        vocoder: SubtractiveVocoder.Config = SubtractiveVocoder.Config(),
+    ):
         super().__init__()
         self.encoder = Encoder(**encoder)
         self.decoder = Decoder(**decoder)
-        self.speaker_embeddings = nn.Embedding(n_speaker, d_speaker)
+        self.speaker_embedding = nn.Embedding(n_speaker, d_speaker)
+        self.vocoder = SubtractiveVocoder(**vocoder)
+
+    def forward(self, x, f0, sid):
+        z, f0_logits, _ = self.encoder(x)
+        uv = (f0 > 20.0).float()
+        loss_f0, loss_uv = self.encoder.f0_loss(f0_logits, f0, uv)
+        g = self.speaker_embedding(sid).unsqueeze(1)
+        per, env, _ = self.decoder(z, None, g)
+        fake = self.vocoder(f0, per, env)
+        return fake, z, loss_f0, loss_uv

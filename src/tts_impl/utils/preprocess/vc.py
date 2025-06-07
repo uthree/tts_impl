@@ -3,7 +3,7 @@ import logging
 import os
 import shutil
 from pathlib import Path
-from typing import Any, List, Literal, Optional, Union
+from typing import Any, Generator, List, Literal, Mapping, Optional, Union
 
 import torch
 import torchaudio
@@ -50,17 +50,18 @@ class VcDataCollector(DataCollector):
 
     def _process_subdir(self, subdir: Path) -> Generator[Mapping[str, Any], None, None]:
         speaker = subdir.name
+        audio_paths = [
+            p for p in subdir.rglob("*") if p.suffix.lstrip(".") in self.formats
+        ]
         for apath in audio_paths:
             self.logger.debug(f"Processing: {apath}")
-            if apath.stem in transcriptions:
-                wf, sr = self.load_with_resample(apath)
-                data = {
-                    "waveform": wf,
-                    "speaker": speaker,
-                    "sample_rate": sr,
-                    "language": self.language,
-                }
-                yield data
+            wf, sr = self.load_with_resample(apath)
+            data = {
+                "waveform": wf,
+                "speaker": speaker,
+                "sample_rate": sr,
+            }
+            yield data
 
 
 class VcCacheWriter(CacheWriter):

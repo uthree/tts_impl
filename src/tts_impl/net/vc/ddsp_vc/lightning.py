@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Any, List, Literal, Mapping, Optional
+from typing import Any, List, Literal, Mapping, Optional, Tuple
 
 import torch
 import torch.nn as nn
@@ -15,7 +15,9 @@ from tts_impl.net.vocoder.hifigan.loss import (
 )
 from tts_impl.transforms import LogMelSpectrogram
 from tts_impl.utils.config import derive_config
+
 from .generator import DdspvcGenerator
+from .speaker_classifier import SpeakerClassifier
 
 
 # normalize tensor for tensorboard's image logging
@@ -28,11 +30,12 @@ def normalize(x: torch.Tensor):
 
 
 @derive_config
-class NsfhifiganLightningModule(LightningModule):
+class DdspVcLightningModule(LightningModule):
     def __init__(
         self,
         generator: DdspvcGenerator.Config = DdspvcGenerator.Config(),
         discriminator: HifiganDiscriminator.Config = HifiganDiscriminator.Config(),
+        speaker_classifier: SpeakerClassifier.Config = SpeakerClassifier.Config(),
         mel: LogMelSpectrogram.Config = LogMelSpectrogram.Config(),
         use_acoustic_features: bool = False,
         weight_mel: float = 45.0,
@@ -50,6 +53,7 @@ class NsfhifiganLightningModule(LightningModule):
         self.generator = DdspvcGenerator(**generator)
         self.discriminator = HifiganDiscriminator(**discriminator)
         self.spectrogram = LogMelSpectrogram(**mel)
+        self.speaker_classifier = SpeakerClassifier(**speaker_classifier)
         self.weight_mel = weight_mel
         self.weight_adv = weight_adv
         self.weight_feat = weight_feat
@@ -61,17 +65,45 @@ class NsfhifiganLightningModule(LightningModule):
 
     def training_step(self, batch: dict):
         real = batch["waveform"]
-        f0 = batch.get("f0", None)
-        uv = batch.get("uv", None)
+        sid = batch["speaker_id"]
+        f0 = batch["f0"]
+        uv = batch["uv"]
 
         if "acoustic_features" in batch:
             acoustic_features = batch["acoustic_features"]
         else:
             acoustic_features = self.spectrogram(real.sum(1)).detach()
 
-        fake = self.generator(acoustic_features, f0=f0, uv=uv)
+        fake, z = self._generator_training_step(acoustic_features, f0, sid)
         self._adversarial_training_step(real, fake)
         self._discriminator_training_step(real, fake)
+        self._speaker_classifier_training_step(z, sid)
+
+    def _generator_training_step(self, af: torch.Tensor, f0: torch.Tensor, sid: torch.Tensor):
+        opt_g, opt_d, opt_c = self.optimizers()
+        self.toggle_optimizer(opt_g)
+        fake, z, loss_f0, loss_uv = self.generator.forward(af, f0, sid)
+        spk_logits = self.speaker_classifier(z)
+        loss_spk_grl = F.cross_entropy(spk_logits, sid)
+        loss_g = loss_f0 + loss_uv - loss_spk_grl
+        self.manual_backward(loss_g)
+        opt_g.step()
+        self.untoggle_optimizer(opt_g)
+        self.log(f"train loss/generator GRL", loss_spk_grl)
+        self.log(f"train loss/pitch estimation", loss_f0)
+        self.log(f"train loss/UV estimation", loss_uv)
+        return fake, z.detach()
+
+    def _speaker_classifier_training_step(self, z: torch.Tensor, sid: torch.Tensor):
+        opt_g, opt_d, opt_c = self.optimizers() # get optimizer
+        self.toggle_optimizer(opt_c)
+        opt_c.zero_grad()
+        spk_logits = self.speaker_classifier(z.detach())
+        loss_spk = F.cross_entropy(spk_logits, sid)
+        self.manual_backward(loss_spk)
+        self.clip_gradients(opt_c, 1.0, "norm")
+        opt_c.step()
+        self.untoggle_optimizer(opt_c)
 
     def _adversarial_training_step(self, real: torch.Tensor, fake: torch.Tensor):
         # spectrogram
@@ -79,7 +111,7 @@ class NsfhifiganLightningModule(LightningModule):
         spec_fake = self.spectrogram(fake)
 
         # get optimizer
-        opt_g, opt_d = self.optimizers()
+        opt_g, opt_d, opt_c = self.optimizers()
 
         # forward pass
         logits, fmap_fake = self.discriminator(fake)
@@ -112,6 +144,7 @@ class NsfhifiganLightningModule(LightningModule):
 
     def _test_or_validate_batch(self, batch, bid):
         waveform = batch["waveform"]
+        sid = batch["speaker_id"]
         f0 = batch.get("f0", None)
         uv = batch.get("uv", None)
 
@@ -121,7 +154,7 @@ class NsfhifiganLightningModule(LightningModule):
             acoustic_features = self.spectrogram(waveform.sum(1)).detach()
 
         spec_real = self.spectrogram(waveform.sum(1)).detach()
-        fake = self.generator(acoustic_features, f0=f0, uv=uv)
+        fake, _ = self.generator.forward(acoustic_features, f0=f0, sid=sid)
         spec_fake = self.spectrogram(fake.sum(1))
         loss_mel = F.l1_loss(spec_fake, spec_real)
         self.log("validation loss/mel spectrogram", loss_mel)
@@ -132,7 +165,7 @@ class NsfhifiganLightningModule(LightningModule):
             spec_real_img = normalize(spec_real[i])
             spec_fake_img = normalize(spec_fake[i])
             self.logger.experiment.add_audio(
-                f"synthesized waveform/{bid}_{i}",
+                f"reconstructed waveform/{bid}_{i}",
                 f,
                 self.current_epoch,
                 sample_rate=self.generator.sample_rate,
@@ -159,7 +192,7 @@ class NsfhifiganLightningModule(LightningModule):
         return loss_mel
 
     def _discriminator_training_step(self, real: torch.Tensor, fake: torch.Tensor):
-        opt_g, opt_d = self.optimizers()  # get optimizer
+        opt_g, opt_d, opt_c = self.optimizers()  # get optimizer
 
         # forward pass
         fake = fake.detach()  # stop gradient
@@ -186,9 +219,10 @@ class NsfhifiganLightningModule(LightningModule):
         self.log("D", loss_d, prog_bar=True, logger=False)
 
     def on_train_epoch_end(self):
-        sch_g, sch_d = self.lr_schedulers()
+        sch_g, sch_d, sch_c = self.lr_schedulers()
         sch_g.step()
         sch_d.step()
+        sch_c.step()
         self.log("scheduler/learning rate", sch_g.get_last_lr()[0])
 
     @torch.no_grad
@@ -212,4 +246,10 @@ class NsfhifiganLightningModule(LightningModule):
             betas=self.betas,
         )
         sch_d = StepLR(opt_g, 1, self.lr_decay)
-        return [opt_g, opt_d], [sch_g, sch_d]
+        opt_c = optim.AdamW(
+            self.discriminator.parameters(),
+            lr=self.lr,
+            betas=self.betas,
+        )
+        sch_c = StepLR(opt_g, 1, self.lr_decay)
+        return [opt_g, opt_d, opt_c], [sch_g, sch_d, sch_c]
