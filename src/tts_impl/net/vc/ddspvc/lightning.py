@@ -31,7 +31,7 @@ def normalize(x: torch.Tensor):
 class NsfhifiganLightningModule(LightningModule):
     def __init__(
         self,
-        generator: NsfhifiganGenerator.Config = NsfhifiganGenerator.Config(),
+        generator: DdspvcGenerator.Config = DdspvcGenerator.Config(),
         discriminator: HifiganDiscriminator.Config = HifiganDiscriminator.Config(),
         mel: LogMelSpectrogram.Config = LogMelSpectrogram.Config(),
         use_acoustic_features: bool = False,
@@ -47,7 +47,7 @@ class NsfhifiganLightningModule(LightningModule):
 
         # flag for using data[acoustic_features] instead of mel spectrogram
         self.use_acoustic_features = use_acoustic_features
-        self.generator = NsfhifiganGenerator(**generator)
+        self.generator = DdspvcGenerator(**generator)
         self.discriminator = HifiganDiscriminator(**discriminator)
         self.spectrogram = LogMelSpectrogram(**mel)
         self.weight_mel = weight_mel
