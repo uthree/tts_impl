@@ -6,7 +6,7 @@ import torch.nn.functional as F
 from tts_impl.net.base.stateful import StatefulModule, StatefulModuleSequential
 from tts_impl.net.common.causal_conv import CachedCausalConv
 from tts_impl.net.common.mingru import mingru_parallel, mingru_sequential
-from tts_impl.net.common.normalization import EmaInstanceNorm, EmaLayerNorm
+from tts_impl.net.common.normalization import EmaInstanceNorm, EmaLayerNorm, DynamicTanh
 from tts_impl.utils.config import derive_config
 
 
@@ -18,7 +18,7 @@ class GruxLayer(StatefulModule):
         kernel_size: int = 4,
         p_dropout: float = 0.0,
         layer_scale: float = 1.0,
-        norm: Literal["layernorm", "instancenorm"] = "layernorm",
+        norm: Literal["layernorm", "instancenorm", "tanh"] = "tanh",
         d_condition: int = 0,
     ):
         super().__init__()
@@ -50,6 +50,9 @@ class GruxLayer(StatefulModule):
             elif norm == "instancenorm":
                 self.norm = EmaInstanceNorm(d_model, elementwise_affine=False)
                 self.d_h_norm = d_model + 1
+            elif norm == "tanh":
+                self.norm = DynamicTanh(d_model)
+                self.d_h_norm = 0
             else:
                 raise "Invalid normalization."
 
@@ -114,7 +117,7 @@ class Grux(StatefulModuleSequential):
         kernel_size: int = 4,
         d_ffn: Optional[int] = None,
         p_dropout: float = 0.0,
-        norm: Literal["layernorm", "instancenorm"] = "layernorm",
+        norm: Literal["layernorm", "instancenorm", "tanh"] = "tanh",
         d_condition: int = 0,
     ):
         mods = []
@@ -135,4 +138,6 @@ class Grux(StatefulModuleSequential):
             mods.append(EmaInstanceNorm(d_model, elementwise_affine=True))
         elif norm == "layernorm":
             mods.append(EmaLayerNorm(d_model, elementwise_affine=True))
+        elif norm == "tanh":
+            mods.append(DynamicTanh(d_model))
         super().__init__(mods)

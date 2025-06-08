@@ -160,7 +160,7 @@ class LayerNorm(nn.Module):
         return x
 
 
-class DynamicTanh(nn.Module, PointwiseModule):
+class DynamicTanh(StatefulModule):
     """
     dynamic tanh layer for sequential model instead of normalization.
     reference: https://arxiv.org/abs/2503.10622
@@ -172,15 +172,21 @@ class DynamicTanh(nn.Module, PointwiseModule):
         self.beta = nn.Parameter(torch.zeros(1, 1, d_model))
         self.gamma = nn.Parameter(torch.ones(1, 1, d_model))
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
+    def _parallel_forward(self, x: torch.Tensor, h: torch.Tensor) -> torch.Tensor:
         """
         Args:
             x: shape=(batch_size, seq_len, d_model)
+            h: dummy state, shape=(batch_size, 1, 0)
 
         Returns:
             x: shape=(batch_size, seq_len, d_model)
+            h: dummy state, shape=(batch_size, 1, 0)
         """
-        return F.tanh(self.alpha * x) * self.gamma + self.beta
+        x = F.tanh(self.alpha * x) * self.gamma + self.beta
+        return x, h
+    
+    def _initial_state(self, x) -> torch.Tensor:
+        return torch.zeros((x.shape[0], 1, 0), device=x.device)
 
 
 class GlobalResponseNorm(nn.Module):
@@ -418,9 +424,9 @@ class EmaInstanceNorm(StatefulModule):
         # normalize and update EMA.
         h_mu, h_mu_last = self.ema_mu(x, h_mu)
         x = x - h_mu
-        sigma = x.pow(2).mean(dim=2, keepdim=True).sqrt()
+        sigma = torch.clamp_min(x.pow(2).sum(dim=2, keepdim=True).sqrt(), min=1.0)
         h_sigma, h_sigma_last = self.ema_sigma(sigma, h_sigma)
-        x = x / torch.clamp_min(sigma, min=self.eps)
+        x = x / torch.clamp_min(h_sigma, min=1.0)
 
         # scale, shift
         if self.elementwise_affine:
@@ -441,8 +447,6 @@ class EmaInstanceNorm(StatefulModule):
         h_mu = torch.zeros(
             (batch_size, 1, self.d_model), device=x.device, dtype=x.dtype
         )
-        h_sigma = torch.ones(
-            (batch_size, 1, 1), device=x.device, dtype=x.dtype
-        )
+        h_sigma = torch.clamp_min(x[:, :1].pow(2).sum(dim=2, keepdim=True).sqrt(), min=1.0)
         h = torch.cat([h_mu, h_sigma], dim=2)
         return h
