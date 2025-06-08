@@ -407,23 +407,20 @@ class EmaInstanceNorm(StatefulModule):
         """
         Args:
             x: shape=(batch_size, seq_len, d_model)
-            h: shape=(batch_size, 1, d_model * 2)
+            h: shape=(batch_size, 1, d_model + 1)
 
         Returns:
             x: shape=(batch_size, seq_len, d_model)
-            h: shape(batch_size, 1, d_model * 2)
+            h: shape(batch_size, 1, d_model + 1)
         """
-        # expand state to mean and standard deviation.
-        h_mu, h_sigma = torch.chunk(h, 2, dim=2)
+        h_mu, h_sigma = torch.split(h, [self.d_model, 1], dim=2)
 
-        mu = x
-        sigma = torch.clamp_min(torch.sqrt(x.pow(2).sum(dim=2, keepdim=True)), 1.0)
-
-        h_mu, h_mu_last = self.ema_mu(mu, h_mu)
+        # normalize and update EMA.
+        h_mu, h_mu_last = self.ema_mu(x, h_mu)
+        x = x - h_mu
+        sigma = x.pow(2).mean(dim=2, keepdim=True).sqrt()
         h_sigma, h_sigma_last = self.ema_sigma(sigma, h_sigma)
-
-        # normalize
-        x = (x - h_mu) / torch.clamp_min(h_sigma, min=self.eps)
+        x = x / torch.clamp_min(sigma, min=self.eps)
 
         # scale, shift
         if self.elementwise_affine:
@@ -445,7 +442,7 @@ class EmaInstanceNorm(StatefulModule):
             (batch_size, 1, self.d_model), device=x.device, dtype=x.dtype
         )
         h_sigma = torch.ones(
-            (batch_size, 1, self.d_model), device=x.device, dtype=x.dtype
+            (batch_size, 1, 1), device=x.device, dtype=x.dtype
         )
         h = torch.cat([h_mu, h_sigma], dim=2)
         return h
