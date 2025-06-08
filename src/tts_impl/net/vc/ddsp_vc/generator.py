@@ -37,22 +37,23 @@ class Encoder(StatefulModule):
         x = self.pre(x)
         x, h = self.grux(x)
         phone_emb = self.to_phone(x).transpose(1, 2)
-        f0_logits = self.to_f0 = self.to_f0(x).transpose(1, 2)
+        f0_logits = self.to_f0(x).transpose(1, 2)
         return phone_emb, f0_logits, h
 
     def f0_loss(self, f0_logits, f0, uv):
-        f0_logits, uv_logits = torch.split(f0_logits, [self.num_f0_classes - 1, 1])
-        uv_hat = torch.sigmoid(uv_logits)
-        loss_uv = F.binary_cross_entropy(uv_hat, uv)
+        f0 = torch.clamp_min(f0, 1.0)
+        f0_logits, uv_logits = torch.split(f0_logits, [self.num_f0_classes - 1, 1], dim=1)
+        uv_hat = torch.sigmoid(uv_logits.squeeze(1))
+        loss_uv = F.l1_loss(uv_hat, uv)
         log_fmin = math.log(self.fmin)
         log_fmax = math.log(self.fmax)
         delta_log_f0 = log_fmax - log_fmin
-        f0_label = (torch.log(f0) - log_fmin) / delta_log_f0 * (self.num_f0_classes - 1)
-        loss_f0 = F.cross_entropy(f0_logits, f0_label)
+        f0_label = torch.ceil(torch.clamp_min((torch.log(f0) - log_fmin) / delta_log_f0 * (self.num_f0_classes - 1), 0)).long()
+        loss_f0 = F.cross_entropy(f0_logits, f0_label, ignore_index=0)
         return loss_f0, loss_uv
 
     def decode_f0(self, f0_logits, k: int = 2):
-        f0_logits, uv = torch.split(f0_logits, [self.num_f0_classes - 1, 1])
+        f0_logits, uv = torch.split(f0_logits, [self.num_f0_classes - 1, 1], dim=1)
         uv = (torch.sigmoid(uv) > 0.5).float()
         log_fmin = math.log(self.fmin)
         log_fmax = math.log(self.fmax)
@@ -89,7 +90,7 @@ class Decoder(StatefulModule):
         x = self.pre(x.transpose(1, 2))
         x, h = self.grux(x, h, c=c)
         per = self.to_periodicity(x).transpose(1, 2)
-        env = self.to_envelope(x)
+        env = self.to_envelope(x).transpose(1,2)
         return per, env, h
 
 
@@ -97,17 +98,19 @@ class Decoder(StatefulModule):
 class DdspvcGenerator(nn.Module):
     def __init__(
         self,
-        n_speaker: int,
-        d_speaker: int,
+        n_speaker: int = 256,
+        d_speaker: int = 256,
         encoder: Encoder.Config = Encoder.Config(),
         decoder: Decoder.Config = Decoder.Config(),
         vocoder: SubtractiveVocoder.Config = SubtractiveVocoder.Config(),
+        sample_rate : int = 24000
     ):
         super().__init__()
         self.encoder = Encoder(**encoder)
         self.decoder = Decoder(**decoder)
         self.speaker_embedding = nn.Embedding(n_speaker, d_speaker)
         self.vocoder = SubtractiveVocoder(**vocoder)
+        self.sample_rate = sample_rate
 
     def forward(self, x, f0, sid):
         z, f0_logits, _ = self.encoder(x)
@@ -116,4 +119,5 @@ class DdspvcGenerator(nn.Module):
         g = self.speaker_embedding(sid).unsqueeze(1)
         per, env, _ = self.decoder(z, None, g)
         fake = self.vocoder(f0, per, env)
+        fake = fake.unsqueeze(1)
         return fake, z, loss_f0, loss_uv

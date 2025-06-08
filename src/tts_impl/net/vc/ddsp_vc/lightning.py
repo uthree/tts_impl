@@ -20,6 +20,12 @@ from .generator import DdspvcGenerator
 from .speaker_classifier import SpeakerClassifier
 
 
+def crop_center(waveform: torch.Tensor, length: int = 8192):
+    l = (waveform.shape[2] // 2) - length // 2
+    r = (waveform.shape[2] // 2) + length // 2
+    return waveform[:, :, l:r]
+
+
 # normalize tensor for tensorboard's image logging
 def normalize(x: torch.Tensor):
     x = x.to(torch.float)
@@ -27,6 +33,9 @@ def normalize(x: torch.Tensor):
     x = x - mu
     x = x / torch.clamp_min(x.abs().max(), min=1e-8)
     return x
+
+_melspec_default = LogMelSpectrogram.Config()
+_melspec_default.sample_rate = 24000
 
 
 @derive_config
@@ -36,7 +45,7 @@ class DdspVcLightningModule(LightningModule):
         generator: DdspvcGenerator.Config = DdspvcGenerator.Config(),
         discriminator: HifiganDiscriminator.Config = HifiganDiscriminator.Config(),
         speaker_classifier: SpeakerClassifier.Config = SpeakerClassifier.Config(),
-        mel: LogMelSpectrogram.Config = LogMelSpectrogram.Config(),
+        mel: LogMelSpectrogram.Config = _melspec_default,
         use_acoustic_features: bool = False,
         weight_mel: float = 45.0,
         weight_feat: float = 1.0,
@@ -75,8 +84,8 @@ class DdspVcLightningModule(LightningModule):
             acoustic_features = self.spectrogram(real.sum(1)).detach()
 
         fake, z = self._generator_training_step(acoustic_features, f0, sid)
-        self._adversarial_training_step(real, fake)
-        self._discriminator_training_step(real, fake)
+        self._adversarial_training_step(crop_center(real), crop_center(fake))
+        self._discriminator_training_step(crop_center(real), crop_center(fake))
         self._speaker_classifier_training_step(z, sid)
 
     def _generator_training_step(self, af: torch.Tensor, f0: torch.Tensor, sid: torch.Tensor):
@@ -154,7 +163,7 @@ class DdspVcLightningModule(LightningModule):
             acoustic_features = self.spectrogram(waveform.sum(1)).detach()
 
         spec_real = self.spectrogram(waveform.sum(1)).detach()
-        fake, _ = self.generator.forward(acoustic_features, f0=f0, sid=sid)
+        fake, z, loss_f0, loss_uv= self.generator.forward(acoustic_features, f0=f0, sid=sid)
         spec_fake = self.spectrogram(fake.sum(1))
         loss_mel = F.l1_loss(spec_fake, spec_real)
         self.log("validation loss/mel spectrogram", loss_mel)

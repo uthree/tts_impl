@@ -49,6 +49,7 @@ class VcDataCollector(DataCollector):
         return wf, sr
 
     def _process_subdir(self, subdir: Path) -> Generator[Mapping[str, Any], None, None]:
+        self.logger.info(f"processing subdir: {subdir}")
         speaker = subdir.name
         audio_paths = [
             p for p in subdir.rglob("*") if p.suffix.lstrip(".") in self.formats
