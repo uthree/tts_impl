@@ -118,6 +118,8 @@ class DdspvcGenerator(nn.Module):
         loss_f0, loss_uv = self.encoder.f0_loss(f0_logits, f0, uv)
         g = self.speaker_embedding(sid).unsqueeze(1)
         per, env, _ = self.decoder(z, None, g)
+        per = torch.sigmoid(per)
+        env = torch.sigmoid(env)
         fake = self.vocoder(f0, per, env)
         fake = fake.unsqueeze(1)
         return fake, z, loss_f0, loss_uv

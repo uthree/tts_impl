@@ -76,45 +76,47 @@ class DdspVcLightningModule(LightningModule):
         real = batch["waveform"]
         sid = batch["speaker_id"]
         f0 = batch["f0"]
-        uv = batch["uv"]
 
         if "acoustic_features" in batch:
             acoustic_features = batch["acoustic_features"]
         else:
             acoustic_features = self.spectrogram(real.sum(1)).detach()
 
-        fake, z = self._generator_training_step(acoustic_features, f0, sid)
-        self._adversarial_training_step(crop_center(real), crop_center(fake))
+        fake, z = self._generator_training_step(real, acoustic_features, f0, sid)
         self._discriminator_training_step(crop_center(real), crop_center(fake))
         self._speaker_classifier_training_step(z, sid)
 
-    def _generator_training_step(self, af: torch.Tensor, f0: torch.Tensor, sid: torch.Tensor):
+    def _generator_training_step(self, real: torch.Tensor, af: torch.Tensor, f0: torch.Tensor, sid: torch.Tensor):
         opt_g, opt_d, opt_c = self.optimizers()
+        opt_g.zero_grad()
         self.toggle_optimizer(opt_g)
         fake, z, loss_f0, loss_uv = self.generator.forward(af, f0, sid)
         spk_logits = self.speaker_classifier(z)
         loss_spk_grl = F.cross_entropy(spk_logits, sid)
-        loss_g = loss_f0 + loss_uv - loss_spk_grl
+        loss_g_adv = self._adversarial_loss(crop_center(real), crop_center(fake))
+        loss_g = - loss_spk_grl + loss_g_adv + loss_f0 + loss_uv
         self.manual_backward(loss_g)
         opt_g.step()
-        self.untoggle_optimizer(opt_g)
+
         self.log(f"train loss/generator GRL", loss_spk_grl)
         self.log(f"train loss/pitch estimation", loss_f0)
         self.log(f"train loss/UV estimation", loss_uv)
+        self.untoggle_optimizer(opt_g)
         return fake, z.detach()
 
     def _speaker_classifier_training_step(self, z: torch.Tensor, sid: torch.Tensor):
+        z = z.detach()
         opt_g, opt_d, opt_c = self.optimizers() # get optimizer
         self.toggle_optimizer(opt_c)
         opt_c.zero_grad()
-        spk_logits = self.speaker_classifier(z.detach())
+        spk_logits = self.speaker_classifier(z)
         loss_spk = F.cross_entropy(spk_logits, sid)
         self.manual_backward(loss_spk)
         self.clip_gradients(opt_c, 1.0, "norm")
         opt_c.step()
         self.untoggle_optimizer(opt_c)
 
-    def _adversarial_training_step(self, real: torch.Tensor, fake: torch.Tensor):
+    def _adversarial_loss(self, real: torch.Tensor, fake: torch.Tensor) -> torch.Tensor:
         # spectrogram
         spec_real = self.spectrogram(real).detach()
         spec_fake = self.spectrogram(fake)
@@ -128,28 +130,19 @@ class DdspVcLightningModule(LightningModule):
         loss_adv, loss_adv_list = generator_loss(logits)
         loss_feat = feature_loss(fmap_real, fmap_fake)
         loss_mel = F.l1_loss(spec_fake, spec_real)
-        loss_g = (
+        loss_g_adv = (
             loss_mel * self.weight_mel
             + loss_feat * self.weight_feat
             + loss_adv * self.weight_adv
         )
 
-        # update parameters
-        self.toggle_optimizer(opt_g)
-        opt_g.zero_grad(set_to_none=True)
-        self.manual_backward(loss_g)
-        self.clip_gradients(opt_g, 1.0, "norm")
-        opt_g.step()
-        self.untoggle_optimizer(opt_g)
-
         # logs
         for i, l in enumerate(loss_adv_list):
             self.log(f"generator adversarial/{i}", l)
-        self.log("train loss/generator total", loss_g)
         self.log("train loss/mel spectrogram", loss_mel)
         self.log("train loss/feature matching", loss_feat)
         self.log("train loss/generator adversarial", loss_adv)
-        self.log("G", loss_g, prog_bar=True, logger=False)
+        return loss_g_adv
 
     def _test_or_validate_batch(self, batch, bid):
         waveform = batch["waveform"]
@@ -187,13 +180,13 @@ class DdspVcLightningModule(LightningModule):
             )
             self.logger.experiment.add_image(
                 f"synthesized mel spectrogram/{bid}_{i}",
-                spec_fake_img,
+                spec_fake_img.flip(0, ),
                 self.current_epoch,
                 dataformats="HW",
             )
             self.logger.experiment.add_image(
                 f"reference mel spectrogram/{bid}_{i}",
-                spec_real_img,
+                spec_real_img.flip(0,),
                 self.current_epoch,
                 dataformats="HW",
             )

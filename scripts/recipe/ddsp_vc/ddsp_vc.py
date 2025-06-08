@@ -19,7 +19,7 @@ class DdspVc(Recipe):
         self,
         target_dir: str = "your_target_dir",
         sample_rate: int = 24000,
-        max_length: int = 24000*5
+        max_length: int = 65536
     ):
         preprocess = Preprocessor()
         preprocess.with_collector(
@@ -32,10 +32,10 @@ class DdspVc(Recipe):
         preprocess.run()
 
     def prepare_datamodule(
-        self, root_dir: str = "dataset_cache", batch_size: int = 16, max_length: int = 24000*5
+        self, root_dir: str = "dataset_cache", batch_size: int = 16, max_length: int = 65536
     ) -> LightningDataModule:
         datamodule = VcDataModule(
-            root=root_dir, batch_size=batch_size, num_workers=1, sizes={"waveform": max_length}
+            root=root_dir, batch_size=batch_size, num_workers=1, sizes={"waveform": max_length, "f0": max_length // 256}
         )
         return datamodule
 
