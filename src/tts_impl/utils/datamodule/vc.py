@@ -68,7 +68,7 @@ class VcDataModule(lightning.LightningDataModule):
     def val_dataloader(self):
         return DataLoader(
             self.val_dataset,
-            batch_size=1,
+            batch_size=2,
             shuffle=False,
             num_workers=self.num_workers,
             persistent_workers=self.persistent_workers,
@@ -77,7 +77,7 @@ class VcDataModule(lightning.LightningDataModule):
     def test_dataloader(self):
         return DataLoader(
             self.test_dataset,
-            batch_size=1,
+            batch_size=2,
             shuffle=False,
             num_workers=self.num_workers,
             persistent_workers=self.persistent_workers,

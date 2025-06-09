@@ -28,7 +28,7 @@ class Encoder(StatefulModule):
         self.fmax = fmax
 
         self.pre = nn.Linear(in_channels, d_model)
-        self.grux = Grux(d_model=d_model, num_layers=n_layers, norm="instancenorm")
+        self.grux = Grux(d_model=d_model, num_layers=n_layers, norm="tanh")
         self.to_phone = nn.Linear(d_model, phoneme_embedding_dim)
         self.to_f0 = nn.Linear(d_model, num_f0_classes)
 
@@ -82,7 +82,7 @@ class Decoder(StatefulModule):
     ):
         super().__init__()
         self.pre = nn.Linear(in_channels, d_model)
-        self.grux = Grux(d_model=d_model, num_layers=n_layers, d_condition=d_speaker, norm="instancenorm")
+        self.grux = Grux(d_model=d_model, num_layers=n_layers, d_condition=d_speaker, norm="tanh")
         self.to_periodicity = nn.Linear(d_model, d_periodicity)
         self.to_envelope = nn.Linear(d_model, n_mels)
 

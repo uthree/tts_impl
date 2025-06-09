@@ -100,7 +100,7 @@ class DdspVcLightningModule(LightningModule):
 
         self.log(f"train loss/generator GRL", loss_spk_grl)
         self.log(f"train loss/pitch estimation", loss_f0)
-        self.log(f"train loss/UV estimation", loss_uv)
+        self.log(f"train loss/uv estimation", loss_uv)
         self.untoggle_optimizer(opt_g)
         return fake, z.detach()
 
@@ -158,14 +158,18 @@ class DdspVcLightningModule(LightningModule):
         spec_real = self.spectrogram(waveform.sum(1)).detach()
         fake, z, loss_f0, loss_uv= self.generator.forward(acoustic_features, f0=f0, sid=sid)
         spec_fake = self.spectrogram(fake.sum(1))
+        converted, _, _, _= self.generator.forward(acoustic_features, f0=f0, sid=torch.roll(sid, 1, dims=(0,)))
+        spec_converted = self.spectrogram(converted.sum(1))
         loss_mel = F.l1_loss(spec_fake, spec_real)
         self.log("validation loss/mel spectrogram", loss_mel)
 
         for i in range(fake.shape[0]):
             f = fake[i].sum(dim=0, keepdim=True).detach().cpu()
             r = waveform[i].sum(dim=0, keepdim=True).detach().cpu()
+            c = converted[i].sum(dim=0, keepdim=True).detach().cpu()
             spec_real_img = normalize(spec_real[i])
             spec_fake_img = normalize(spec_fake[i])
+            spec_converted_img = normalize(spec_converted[i])
             self.logger.experiment.add_audio(
                 f"reconstructed waveform/{bid}_{i}",
                 f,
@@ -189,6 +193,20 @@ class DdspVcLightningModule(LightningModule):
                 spec_real_img.flip(0,),
                 self.current_epoch,
                 dataformats="HW",
+            )
+            src_sid = sid[i]
+            tgt_sid = torch.roll(sid, 1, dims=(0,))[i]
+            self.logger.experiment.add_image(
+                f"converted mel spectrogram/{bid}_{i}_{src_sid}_to_{tgt_sid}",
+                spec_converted_img.flip(0,),
+                self.current_epoch,
+                dataformats="HW",
+            )
+            self.logger.experiment.add_audio(
+                f"converted waveform/{bid}_{i}_{src_sid}_to_{tgt_sid}",
+                c,
+                self.current_epoch,
+                sample_rate=self.generator.sample_rate,
             )
 
         return loss_mel

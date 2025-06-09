@@ -70,8 +70,8 @@ class GruxLayer(StatefulModule):
         res = x
         x, h_norm = self.norm(x, h_norm)
         if self.d_condition > 0 and c is not None:
-            c_beta, c_gamma = self.cond(c).chunk(2, dim=1)
-            x = x * c_beta + c_gamma
+            c_beta, c_gamma = self.cond(c).chunk(2, dim=2)
+            x = x * c_gamma + c_beta
         x_z = self.linear_z(x)
         x_h, h_conv = self.conv_h(x, h_conv)
         x, h_gru = mingru_parallel(x_z, x_h, h_gru)
@@ -87,8 +87,8 @@ class GruxLayer(StatefulModule):
         res = x
         x, h_norm = self.norm(x, h_norm)
         if self.d_condition > 0 and c is not None:
-            c_beta, c_gamma = self.cond(c).chunk(2, dim=1)
-            x = x * c_beta + c_gamma
+            c_beta, c_gamma = self.cond(c).chunk(2, dim=2)
+            x = x * c_gamma + c_beta
         x_z = self.linear_z(x)
         x_h, h_conv = self.conv_h(x, h_conv)
         h_gru = mingru_sequential(x_z, x_h, h_gru)
