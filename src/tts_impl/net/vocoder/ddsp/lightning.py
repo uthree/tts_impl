@@ -14,6 +14,7 @@ from tts_impl.net.vocoder.hifigan.loss import (
 )
 from tts_impl.transforms import LogMelSpectrogram
 from tts_impl.utils.config import derive_config
+from typing import Optional
 
 from .generator import DdspGenerator
 
@@ -88,6 +89,13 @@ class DdspVocoderLightningModule(LightningModule):
         fake = self.generator(acoustic_features, f0=f0, uv=uv)
         self._adversarial_training_step(real, fake)
         self._discriminator_training_step(real, fake)
+
+    def _generator_forward(self, acoustic_features: torch.Tensor, sid: Optional[torch.Tensor]) -> torch.Tensor:
+        pass # TODO WRITE THIS
+        # 1. get acoustic_features, SID.
+        # 2. if speaker_id is exists, embed speaker, and get embedding "g"
+        # 3. forward generator
+        # 4. return generated fake wavefrom
 
     def _adversarial_training_step(self, real: torch.Tensor, fake: torch.Tensor):
         # spectrogram
