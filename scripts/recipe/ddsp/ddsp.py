@@ -20,13 +20,13 @@ class NsfHifigan(Recipe):
         self,
         target_dir: str = "your_target_dir",
         sample_rate: int = 24000,
-        length: int = 128000,
+        num_frames: int = 500,
         frame_size: int = 256,
         dataset_cache_path: str = "dataset_cache",
     ):
         preprocess = Preprocessor()
         preprocess.with_collector(
-            VcDataCollector(target_dir, sample_rate=sample_rate, max_length=length)
+            VcDataCollector(target_dir, sample_rate=sample_rate, max_length=frame_size * num_frames)
         )
         # mixdown
         preprocess.with_extractor(Mixdown())
