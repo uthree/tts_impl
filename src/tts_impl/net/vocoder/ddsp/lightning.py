@@ -172,6 +172,7 @@ class DdspVocoderLightningModule(LightningModule):
         waveform = batch["waveform"]
         f0 = batch.get("f0", None)
         uv = batch.get("uv", None)
+        sid = batch.get("speaker_id", None)
 
         if self.use_acoustic_features:
             acoustic_features = batch["acoustic_features"]
@@ -179,7 +180,7 @@ class DdspVocoderLightningModule(LightningModule):
             acoustic_features = self.spectrogram(waveform.sum(1)).detach()
 
         spec_real = self.spectrogram(waveform).detach()
-        fake = self.generator(acoustic_features, f0=f0, uv=uv)
+        fake = self._generator_forward(acoustic_features, f0=f0, sid=sid)
         spec_fake = self.spectrogram(fake)
         loss_mel = F.l1_loss(spec_fake, spec_real)
         per, env = self.generator.net(acoustic_features)

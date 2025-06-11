@@ -207,7 +207,7 @@ class DiscriminatorR(nn.Module):
         channels: int = 32,
         num_layers: int = 4,
         use_spectral_norm: bool = False,
-        log_scale: bool = True,
+        log_scale: bool = False,
         pre_layernorm: bool = False,
     ):
         super().__init__()
@@ -270,7 +270,7 @@ class MultiResolutionStftDiscriminator(CombinedDiscriminator):
         channels: int = 32,
         num_layers: int = 4,
         pre_layernorm: bool = False,
-        log_scale: bool = True,
+        log_scale: bool = False,
     ):
         super().__init__()
         for n, h in zip(n_fft, hop_size):

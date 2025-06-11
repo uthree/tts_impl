@@ -18,7 +18,7 @@ class DdspGenerator(nn.Module, GanVocoderGenerator):
         d_model: int = 256,
         num_layers: int = 4,
         vocal_cord_size: int = 256,
-        reverb_size: int = 4096,
+        reverb_size: int = 1024,
         gin_channels: int = 0,
         vocoder: SubtractiveVocoder.Config = SubtractiveVocoder.Config(),
     ):
@@ -82,6 +82,7 @@ class DdspGenerator(nn.Module, GanVocoderGenerator):
             )  # [batch_size, reverb_size]
             reverb = self.reverb_noise * coeff * torch.sigmoid(wet)
             reverb[:, 0] = 1.0
+            reverb = F.normalize(reverb, dim=1)
             return reverb
         elif self.reverb_size > 0:
             return F.normalize(
