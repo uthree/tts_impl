@@ -2,13 +2,14 @@ from lightning import LightningDataModule
 from tts_impl.net.vocoder.ddsp import DdspVocoderLightningModule
 from tts_impl.utils.datamodule import AudioDataModule
 from tts_impl.utils.preprocess import (
-    AudioCacheWriter,
-    AudioDataCollector,
+    VcCacheWriter,
+    VcDataCollector,
     Mixdown,
     PitchEstimation,
     Preprocessor,
 )
 from tts_impl.utils.recipe import Recipe
+import torch
 
 
 class NsfHifigan(Recipe):
@@ -19,19 +20,20 @@ class NsfHifigan(Recipe):
         self,
         target_dir: str = "your_target_dir",
         sample_rate: int = 24000,
-        length: int = 36800,
+        length: int = 24000*5,
         frame_size: int = 256,
+        dataset_cache_path: str = "dataset_cache"
     ):
         preprocess = Preprocessor()
         preprocess.with_collector(
-            AudioDataCollector(target_dir, sample_rate=sample_rate, length=length)
+            VcDataCollector(target_dir, sample_rate=sample_rate, max_length=length)
         )
         # mixdown
         preprocess.with_extractor(Mixdown())
         preprocess.with_extractor(
-            PitchEstimation(frame_size=frame_size, algorithm="fcpe", device="cuda")
+            PitchEstimation(frame_size=frame_size, algorithm="fcpe", device=torch.device("cuda" if torch.cuda.is_available else "cpu"))
         )
-        preprocess.with_writer(AudioCacheWriter("dataset_cache"))
+        preprocess.with_writer(VcCacheWriter(dataset_cache_path))
         preprocess.run()
 
     def prepare_datamodule(

@@ -23,14 +23,27 @@ discriminator_cfg_default.msd.scales = [1]
 discriminator_cfg_default.mpd.periods = [2, 3, 5, 7, 11]
 discriminator_cfg_default.mpd.channels_max = 256
 discriminator_cfg_default.mpd.channels_mul = 2
-discriminator_cfg_default.mrsd.n_fft = [250, 400, 800]
-discriminator_cfg_default.mrsd.hop_size = [60, 120, 240]
+discriminator_cfg_default.mrsd.n_fft = [512, 1024, 2048]
+discriminator_cfg_default.mrsd.hop_size = [50, 120, 240]
 
 
-def crop_center(waveform: torch.Tensor, length: int = 8192):
-    l = (waveform.shape[2] // 2) - length // 2
-    r = (waveform.shape[2] // 2) + length // 2
-    return waveform[:, :, l:r]
+def slice_segments(x, ids_str, segment_size=8192):
+    ret = torch.zeros_like(x[:, :, :segment_size])
+    for i in range(x.size(0)):
+        idx_str = ids_str[i]
+        idx_end = idx_str + segment_size
+        ret[i] = x[i, :, idx_str:idx_end]
+    return ret
+
+
+def rand_slice_segments(x, x_lengths=None, segment_size=8192):
+    b, d, t = x.size()
+    if x_lengths is None:
+        x_lengths = t
+    ids_str_max = x_lengths - segment_size + 1
+    ids_str = (torch.rand([b]).to(device=x.device) * ids_str_max).to(dtype=torch.long)
+    ret = slice_segments(x, ids_str, segment_size)
+    return ret, ids_str
 
 
 # normalize tensor for tensorboard's image logging
@@ -49,6 +62,8 @@ class DdspVocoderLightningModule(LightningModule):
         generator: DdspGenerator.Config = DdspGenerator.Config(),
         discriminator: HifiganDiscriminator.Config = discriminator_cfg_default,
         mel: LogMelSpectrogram.Config = LogMelSpectrogram.Config(),
+        n_speakers: int =0,
+        gin_channels: int=0,
         use_acoustic_features: bool = False,
         weight_mel: float = 45.0,
         weight_feat: float = 1.0,
@@ -66,6 +81,8 @@ class DdspVocoderLightningModule(LightningModule):
         self.generator = DdspGenerator(**generator)
         self.discriminator = HifiganDiscriminator(**discriminator)
         self.spectrogram = LogMelSpectrogram(**mel)
+        self.gin_channels = gin_channels
+        self.n_speakers = n_speakers
         self.weight_mel = weight_mel
         self.weight_adv = weight_adv
         self.weight_feat = weight_feat
@@ -74,30 +91,34 @@ class DdspVocoderLightningModule(LightningModule):
         self.betas = betas
         self.segment_size = segment_size
 
+        if self.n_speakers > 0 and gin_channels > 0:
+            self.speaker_embedding = nn.Embedding(n_speakers, gin_channels)
+
         self.save_hyperparameters()
 
     def training_step(self, batch: dict):
         real = batch["waveform"]
-        f0 = batch.get("f0", None)
-        uv = batch.get("uv", None)
+        f0 = batch["f0"]
+        sid = batch.get("speaker_id", None)
 
         if "acoustic_features" in batch:
             acoustic_features = batch["acoustic_features"]
         else:
             acoustic_features = self.spectrogram(real.sum(1)).detach()
 
-        fake = self.generator(acoustic_features, f0=f0, uv=uv)
+        fake = self._generator_forward(acoustic_features, f0, sid)
         self._adversarial_training_step(real, fake)
         self._discriminator_training_step(real, fake)
 
-    def _generator_forward(self, acoustic_features: torch.Tensor, sid: Optional[torch.Tensor]) -> torch.Tensor:
-        pass # TODO WRITE THIS
-        # 1. get acoustic_features, SID.
-        # 2. if speaker_id is exists, embed speaker, and get embedding "g"
-        # 3. forward generator
-        # 4. return generated fake wavefrom
+    def _generator_forward(self, x: torch.Tensor, f0: torch.Tensor, sid: Optional[torch.Tensor],) -> torch.Tensor:
+        if sid is not None:
+            g = self.speaker_embedding(sid).unsqueeze(2)
+        else:
+            g = None
+        fake = self.generator.forward(x, f0=f0, g=g)
+        return fake
 
-    def _adversarial_training_step(self, real: torch.Tensor, fake: torch.Tensor):
+    def _adversarial_training_step(self, real: torch.Tensor, fake: torch.Tensor) -> torch.Tensor:
         # spectrogram
         spec_real = self.spectrogram(real).detach()
         spec_fake = self.spectrogram(fake)
@@ -105,9 +126,13 @@ class DdspVocoderLightningModule(LightningModule):
         # get optimizer
         opt_g, opt_d = self.optimizers()
 
+        # slice waveforms
+        real_slice, slice_ids = rand_slice_segments(real, segment_size=self.segment_size)
+        fake_slice = slice_segments(fake, slice_ids, segment_size=self.segment_size)
+
         # forward pass
-        logits, fmap_fake = self.discriminator(crop_center(fake, self.segment_size))
-        _, fmap_real = self.discriminator(crop_center(real, self.segment_size))
+        logits, fmap_fake = self.discriminator(fake_slice, self.segment_size)
+        _, fmap_real = self.discriminator(real_slice, self.segment_size)
         loss_adv, loss_adv_list = generator_loss(logits)
         loss_feat = feature_loss(fmap_real, fmap_fake)
         loss_mel = F.l1_loss(spec_fake, spec_real)
@@ -133,6 +158,9 @@ class DdspVocoderLightningModule(LightningModule):
         self.log("train loss/feature matching", loss_feat)
         self.log("train loss/generator adversarial", loss_adv)
         self.log("G", loss_g, prog_bar=True, logger=False)
+
+        # return slice ids
+        return slice_ids
 
     def _test_or_validate_batch(self, batch, bid):
         waveform = batch["waveform"]
@@ -197,13 +225,16 @@ class DdspVocoderLightningModule(LightningModule):
 
         return loss_mel
 
-    def _discriminator_training_step(self, real: torch.Tensor, fake: torch.Tensor):
+    def _discriminator_training_step(self, real: torch.Tensor, fake: torch.Tensor, slice_ids):
         opt_g, opt_d = self.optimizers()  # get optimizer
 
+        # slice waveform
+        real_slice = slice_segments(real.detach(), slice_ids, self.segment_size)
+        fake_slice = slice_segments(fake.detach(), slice_ids, self.segment_size)
+
         # forward pass
-        fake = fake.detach()  # stop gradient
-        logits_fake, _ = self.discriminator(crop_center(fake, self.segment_size))
-        logits_real, _ = self.discriminator(crop_center(real, self.segment_size))
+        logits_fake, _ = self.discriminator(fake_slice, self.segment_size)
+        logits_real, _ = self.discriminator(real_slice, self.segment_size)
         loss_d, loss_d_list_r, loss_d_list_f = discriminator_loss(
             logits_real, logits_fake
         )
