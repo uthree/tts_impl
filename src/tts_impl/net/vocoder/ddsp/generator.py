@@ -36,9 +36,9 @@ class DdspGenerator(nn.Module, GanVocoderGenerator):
         self.grux = Grux(d_model, num_layers, d_condition=gin_channels)
         if vocal_cord_size > 0:
             if gin_channels > 0:
-                self.vocal_cord = nn.Parameter(torch.randn(vocal_cord_size)[None, :])
-            else:
                 self.to_vocal_cord = nn.Conv1d(gin_channels, vocal_cord_size, 1)
+            else:
+                self.vocal_cord = nn.Parameter(torch.randn(vocal_cord_size)[None, :])
         else:
             self.vocal_cord = None
         if reverb_size > 0:
@@ -96,7 +96,7 @@ class DdspGenerator(nn.Module, GanVocoderGenerator):
         # calculate vocal cord parameter
         if g is not None and self.gin_channels > 0:
             v = F.normalize(
-                self.to_vocal_cord(g).squeeze(1), dim=1
+                self.to_vocal_cord(g).squeeze(2), dim=1
             )  # [batch_size, vcord_size]
         elif self.gin_channels <= 0:
             v = F.normalize(

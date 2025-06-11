@@ -26,10 +26,13 @@ class NsfHifigan(Recipe):
     ):
         preprocess = Preprocessor()
         preprocess.with_collector(
-            VcDataCollector(target_dir, sample_rate=sample_rate, max_length=frame_size * num_frames)
+            VcDataCollector(
+                target_dir, sample_rate=sample_rate, max_length=frame_size * num_frames
+            )
         )
         # mixdown
         preprocess.with_extractor(Mixdown())
+        # pitch extraction
         preprocess.with_extractor(
             PitchEstimation(
                 frame_size=frame_size,
@@ -43,7 +46,7 @@ class NsfHifigan(Recipe):
     def prepare_datamodule(
         self,
         root_dir: str = "dataset_cache",
-        batch_size: int = 4,
+        batch_size: int = 16,
         frame_size: int = 256,
         num_frames: int = 500,
     ) -> LightningDataModule:
@@ -51,7 +54,7 @@ class NsfHifigan(Recipe):
             root=root_dir,
             batch_size=batch_size,
             num_workers=1,
-            sizes={"f0": frame_size, "waveform": num_frames * frame_size},
+            sizes={"f0": num_frames, "waveform": num_frames * frame_size},
         )
         return datamodule
 

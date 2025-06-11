@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import Any, List, Optional, Tuple
 
 import torch
 import torch.nn as nn
@@ -106,8 +106,8 @@ class DdspVocoderLightningModule(LightningModule):
             acoustic_features = self.spectrogram(real.sum(1)).detach()
 
         fake = self._generator_forward(acoustic_features, f0, sid)
-        self._adversarial_training_step(real, fake)
-        self._discriminator_training_step(real, fake)
+        slice_ids = self._adversarial_training_step(real, fake)
+        self._discriminator_training_step(real, fake, slice_ids)
 
     def _generator_forward(
         self,
@@ -122,9 +122,7 @@ class DdspVocoderLightningModule(LightningModule):
         fake = self.generator.forward(x, f0=f0, g=g)
         return fake
 
-    def _adversarial_training_step(
-        self, real: torch.Tensor, fake: torch.Tensor
-    ) -> torch.Tensor:
+    def _adversarial_training_step(self, real: torch.Tensor, fake: torch.Tensor) -> Any:
         # spectrogram
         spec_real = self.spectrogram(real).detach()
         spec_fake = self.spectrogram(fake)
@@ -243,8 +241,8 @@ class DdspVocoderLightningModule(LightningModule):
         fake_slice = slice_segments(fake.detach(), slice_ids, self.segment_size)
 
         # forward pass
-        logits_fake, _ = self.discriminator(fake_slice, self.segment_size)
-        logits_real, _ = self.discriminator(real_slice, self.segment_size)
+        logits_fake, _ = self.discriminator(fake_slice)
+        logits_real, _ = self.discriminator(real_slice)
         loss_d, loss_d_list_r, loss_d_list_f = discriminator_loss(
             logits_real, logits_fake
         )
