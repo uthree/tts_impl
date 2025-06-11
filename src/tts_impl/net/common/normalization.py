@@ -188,7 +188,7 @@ class DynamicTanh(StatefulModule):
         if self.elementwise_affine:
             x = x * self.gamma + self.beta
         return x, h
-    
+
     def _initial_state(self, x) -> torch.Tensor:
         return torch.zeros((x.shape[0], 1, 0), device=x.device)
 
@@ -448,6 +448,8 @@ class EmaInstanceNorm(StatefulModule):
 
     def _initial_state(self, x):
         h_mu = x[:, :1]
-        h_sigma = torch.clamp_min(x[:, :1].pow(2).mean(dim=2, keepdim=True).sqrt(), min=1.0)
+        h_sigma = torch.clamp_min(
+            x[:, :1].pow(2).mean(dim=2, keepdim=True).sqrt(), min=1.0
+        )
         h = torch.cat([h_mu, h_sigma], dim=2)
         return h

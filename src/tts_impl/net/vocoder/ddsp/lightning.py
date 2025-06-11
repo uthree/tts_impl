@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 
 import torch
 import torch.nn as nn
@@ -14,7 +14,6 @@ from tts_impl.net.vocoder.hifigan.loss import (
 )
 from tts_impl.transforms import LogMelSpectrogram
 from tts_impl.utils.config import derive_config
-from typing import Optional
 
 from .generator import DdspGenerator
 
@@ -62,8 +61,8 @@ class DdspVocoderLightningModule(LightningModule):
         generator: DdspGenerator.Config = DdspGenerator.Config(),
         discriminator: HifiganDiscriminator.Config = discriminator_cfg_default,
         mel: LogMelSpectrogram.Config = LogMelSpectrogram.Config(),
-        n_speakers: int =0,
-        gin_channels: int=0,
+        n_speakers: int = 0,
+        gin_channels: int = 0,
         use_acoustic_features: bool = False,
         weight_mel: float = 45.0,
         weight_feat: float = 1.0,
@@ -110,7 +109,12 @@ class DdspVocoderLightningModule(LightningModule):
         self._adversarial_training_step(real, fake)
         self._discriminator_training_step(real, fake)
 
-    def _generator_forward(self, x: torch.Tensor, f0: torch.Tensor, sid: Optional[torch.Tensor],) -> torch.Tensor:
+    def _generator_forward(
+        self,
+        x: torch.Tensor,
+        f0: torch.Tensor,
+        sid: Optional[torch.Tensor],
+    ) -> torch.Tensor:
         if sid is not None:
             g = self.speaker_embedding(sid).unsqueeze(2)
         else:
@@ -118,7 +122,9 @@ class DdspVocoderLightningModule(LightningModule):
         fake = self.generator.forward(x, f0=f0, g=g)
         return fake
 
-    def _adversarial_training_step(self, real: torch.Tensor, fake: torch.Tensor) -> torch.Tensor:
+    def _adversarial_training_step(
+        self, real: torch.Tensor, fake: torch.Tensor
+    ) -> torch.Tensor:
         # spectrogram
         spec_real = self.spectrogram(real).detach()
         spec_fake = self.spectrogram(fake)
@@ -127,12 +133,14 @@ class DdspVocoderLightningModule(LightningModule):
         opt_g, opt_d = self.optimizers()
 
         # slice waveforms
-        real_slice, slice_ids = rand_slice_segments(real, segment_size=self.segment_size)
+        real_slice, slice_ids = rand_slice_segments(
+            real, segment_size=self.segment_size
+        )
         fake_slice = slice_segments(fake, slice_ids, segment_size=self.segment_size)
 
         # forward pass
-        logits, fmap_fake = self.discriminator(fake_slice, self.segment_size)
-        _, fmap_real = self.discriminator(real_slice, self.segment_size)
+        logits, fmap_fake = self.discriminator(fake_slice)
+        _, fmap_real = self.discriminator(real_slice)
         loss_adv, loss_adv_list = generator_loss(logits)
         loss_feat = feature_loss(fmap_real, fmap_fake)
         loss_mel = F.l1_loss(spec_fake, spec_real)
@@ -225,7 +233,9 @@ class DdspVocoderLightningModule(LightningModule):
 
         return loss_mel
 
-    def _discriminator_training_step(self, real: torch.Tensor, fake: torch.Tensor, slice_ids):
+    def _discriminator_training_step(
+        self, real: torch.Tensor, fake: torch.Tensor, slice_ids
+    ):
         opt_g, opt_d = self.optimizers()  # get optimizer
 
         # slice waveform

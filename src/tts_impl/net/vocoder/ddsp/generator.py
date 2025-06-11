@@ -1,3 +1,5 @@
+from typing import Optional
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -6,7 +8,6 @@ from tts_impl.net.common.grux import Grux
 from tts_impl.utils.config import derive_config
 
 from .vocoder import SubtractiveVocoder
-from typing import Optional
 
 
 @derive_config
@@ -35,9 +36,7 @@ class DdspGenerator(nn.Module, GanVocoderGenerator):
         self.grux = Grux(d_model, num_layers, d_condition=gin_channels)
         if vocal_cord_size > 0:
             if gin_channels > 0:
-                self.vocal_cord = nn.Parameter(
-                    torch.randn(vocal_cord_size)[None, :]
-                )
+                self.vocal_cord = nn.Parameter(torch.randn(vocal_cord_size)[None, :])
             else:
                 self.to_vocal_cord = nn.Conv1d(gin_channels, vocal_cord_size, 1)
         else:
@@ -47,7 +46,9 @@ class DdspGenerator(nn.Module, GanVocoderGenerator):
                 F.normalize(torch.randn(reverb_size), dim=0)[None, :]
             )
             if gin_channels > 0:
-                self.to_reverb_parameters = nn.Conv1d(gin_channels, 2, 1) # (decay, wet)
+                self.to_reverb_parameters = nn.Conv1d(
+                    gin_channels, 2, 1
+                )  # (decay, wet)
                 t = torch.arange(reverb_size).float() / self.sample_rate
                 self.register_buffer("t", t)
         else:
@@ -66,25 +67,37 @@ class DdspGenerator(nn.Module, GanVocoderGenerator):
         p = torch.sigmoid(p)
         e = torch.sigmoid(e)
         return p, e
-    
-    def _calculate_reverb(self, g: Optional[torch.Tensor], batch_size:int) -> Optional[torch.Tensor]:
+
+    def _calculate_reverb(
+        self, g: Optional[torch.Tensor], batch_size: int
+    ) -> Optional[torch.Tensor]:
         if g is not None and self.gin_channels > 0:
-            decay, wet = self.to_reverb_parameters(g).split([1, 1], dim=1) # [batch_size, 1, 1]
-            decay = decay[:, 0] # [batch_size, 1]
-            wet = wet[:, 0] # [batch_size, 1]
-            coeff = torch.exp(-F.softplus(-decay) * self.t * 500.0) # [batch_size, reverb_size]
+            decay, wet = self.to_reverb_parameters(g).split(
+                [1, 1], dim=1
+            )  # [batch_size, 1, 1]
+            decay = decay[:, 0]  # [batch_size, 1]
+            wet = wet[:, 0]  # [batch_size, 1]
+            coeff = torch.exp(
+                -F.softplus(-decay) * self.t * 500.0
+            )  # [batch_size, reverb_size]
             reverb = self.reverb_noise * coeff * torch.sigmoid(wet)
-            reverb[:, 0] = 1.
+            reverb[:, 0] = 1.0
             return reverb
         elif self.reverb_size > 0:
-            return F.normalize(self.reverb_noise.expand(batch_size, self.reverb_noise.shape[1]), dim=1)
+            return F.normalize(
+                self.reverb_noise.expand(batch_size, self.reverb_noise.shape[1]), dim=1
+            )
         else:
             return None
-    
-    def _calculate_vocal_cord(self, g: Optional[torch.Tensor], batch_size:int) -> Optional[torch.Tensor]:
+
+    def _calculate_vocal_cord(
+        self, g: Optional[torch.Tensor], batch_size: int
+    ) -> Optional[torch.Tensor]:
         # calculate vocal cord parameter
         if g is not None and self.gin_channels > 0:
-            v = F.normalize(self.to_vocal_cord(g).squeeze(1), dim=1) # [batch_size, vcord_size]
+            v = F.normalize(
+                self.to_vocal_cord(g).squeeze(1), dim=1
+            )  # [batch_size, vcord_size]
         elif self.gin_channels <= 0:
             v = F.normalize(
                 self.vocal_cord.expand(batch_size, self.vocal_cord.shape[1]), dim=1
@@ -92,7 +105,7 @@ class DdspGenerator(nn.Module, GanVocoderGenerator):
         else:
             v = None
         return v
-        
+
     def forward(self, x, f0, g=None, uv=None):
         p, e = self.net(x, g=g)
         v = self._calculate_vocal_cord(g=g, batch_size=x.shape[0])

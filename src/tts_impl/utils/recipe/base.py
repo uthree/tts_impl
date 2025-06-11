@@ -84,7 +84,7 @@ class Recipe:
             max_epochs=epochs,
             precision=precision,
             callbacks=[RichProgressBar(), self.checkopint_callback()],
-            log_every_n_steps=50
+            log_every_n_steps=50,
         )
 
         return trainer

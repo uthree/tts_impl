@@ -1,15 +1,15 @@
+import torch
 from lightning import LightningDataModule
 from tts_impl.net.vocoder.ddsp import DdspVocoderLightningModule
-from tts_impl.utils.datamodule import AudioDataModule
+from tts_impl.utils.datamodule import VcDataModule
 from tts_impl.utils.preprocess import (
-    VcCacheWriter,
-    VcDataCollector,
     Mixdown,
     PitchEstimation,
     Preprocessor,
+    VcCacheWriter,
+    VcDataCollector,
 )
 from tts_impl.utils.recipe import Recipe
-import torch
 
 
 class NsfHifigan(Recipe):
@@ -20,9 +20,9 @@ class NsfHifigan(Recipe):
         self,
         target_dir: str = "your_target_dir",
         sample_rate: int = 24000,
-        length: int = 24000*5,
+        length: int = 128000,
         frame_size: int = 256,
-        dataset_cache_path: str = "dataset_cache"
+        dataset_cache_path: str = "dataset_cache",
     ):
         preprocess = Preprocessor()
         preprocess.with_collector(
@@ -31,16 +31,27 @@ class NsfHifigan(Recipe):
         # mixdown
         preprocess.with_extractor(Mixdown())
         preprocess.with_extractor(
-            PitchEstimation(frame_size=frame_size, algorithm="fcpe", device=torch.device("cuda" if torch.cuda.is_available else "cpu"))
+            PitchEstimation(
+                frame_size=frame_size,
+                algorithm="fcpe",
+                device=torch.device("cuda" if torch.cuda.is_available else "cpu"),
+            )
         )
         preprocess.with_writer(VcCacheWriter(dataset_cache_path))
         preprocess.run()
 
     def prepare_datamodule(
-        self, root_dir: str = "dataset_cache", batch_size: int = 4
+        self,
+        root_dir: str = "dataset_cache",
+        batch_size: int = 4,
+        frame_size: int = 256,
+        num_frames: int = 500,
     ) -> LightningDataModule:
-        datamodule = AudioDataModule(
-            root=root_dir, batch_size=batch_size, num_workers=1
+        datamodule = VcDataModule(
+            root=root_dir,
+            batch_size=batch_size,
+            num_workers=1,
+            sizes={"f0": frame_size, "waveform": num_frames * frame_size},
         )
         return datamodule
 

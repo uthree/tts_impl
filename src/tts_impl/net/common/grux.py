@@ -6,7 +6,7 @@ import torch.nn.functional as F
 from tts_impl.net.base.stateful import StatefulModule, StatefulModuleSequential
 from tts_impl.net.common.causal_conv import CachedCausalConv
 from tts_impl.net.common.mingru import mingru_parallel, mingru_sequential
-from tts_impl.net.common.normalization import EmaInstanceNorm, EmaLayerNorm, DynamicTanh
+from tts_impl.net.common.normalization import DynamicTanh, EmaInstanceNorm, EmaLayerNorm
 from tts_impl.utils.config import derive_config
 
 
