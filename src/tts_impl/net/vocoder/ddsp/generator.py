@@ -10,6 +10,21 @@ from tts_impl.utils.config import derive_config
 from .vocoder import SubtractiveVocoder
 
 
+class SpectralSmoothing(nn.Module):
+    def __init__(self, window_size: int = 9):
+        super().__init__()
+        self.window_size = window_size
+        self.register_buffer("window", torch.hann_window(window_size))
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        x = x.transpose(1, 2)
+        w = self.window[None, None, :].expand(x.shape[2], 1, self.window_size)
+        x = F.pad(x, self.window_size // 2, mode='replicate')
+        x = F.conv1d(x, w)
+        x = x.transpose(1, 2)
+        return x
+
+
 @derive_config
 class DdspGenerator(nn.Module, GanVocoderGenerator):
     def __init__(
@@ -30,6 +45,7 @@ class DdspGenerator(nn.Module, GanVocoderGenerator):
         self.vocoder = SubtractiveVocoder(**vocoder)
         self.conv_pre = nn.Conv1d(in_channels, d_model, 1)
         self.conv_post = nn.Conv1d(d_model, out_channels, 1)
+        self.smooth = SpectralSmoothing(window_size=9)
         self.gin_channels = gin_channels
         self.sample_rate = vocoder.sample_rate
 
@@ -66,6 +82,7 @@ class DdspGenerator(nn.Module, GanVocoderGenerator):
         )
         p = torch.sigmoid(p)
         e = torch.sigmoid(e)
+        e = self.smooth(e)
         return p, e
 
     def _calculate_reverb(
