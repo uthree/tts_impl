@@ -14,12 +14,11 @@ from tts_impl.utils.config import derive_config
 @derive_config
 class SubtractiveVocoder(nn.Module):
     """
-    Subtractive DDSP Vocoder that likely purposed at Meta's [paper](https://arxiv.org/abs/2401.10460)
+    Subtractive DDSP Vocoder
     """
 
     def __init__(
         self,
-        dim_periodicity: int = 8,
         n_mels: int = 80,
         sample_rate: int = 24000,
         hop_length: int = 256,
@@ -28,7 +27,6 @@ class SubtractiveVocoder(nn.Module):
     ):
         """
         Args:
-            dim_periodicity: dimension of periodicity, int
             n_mels: mel-bandwidth of vocal tract filter, int
             sample_rate: int
             hop_length: hop length of STFT, int
@@ -36,7 +34,6 @@ class SubtractiveVocoder(nn.Module):
             min_phase: flag to use minimum phase, bool, default=True
         """
         super().__init__()
-        self.dim_periodicity = dim_periodicity
         self.n_mels = n_mels
         self.sample_rate = sample_rate
         self.n_fft = n_fft
@@ -44,23 +41,22 @@ class SubtractiveVocoder(nn.Module):
         self.hop_length = hop_length
         self.min_phase = min_phase
 
-        self.per2spec = InverseMelScale(self.fft_bin, dim_periodicity, sample_rate)
         self.env2spec = InverseMelScale(self.fft_bin, n_mels, sample_rate)
         self.hann_window = nn.Parameter(torch.hann_window(n_fft))
 
     def forward(
         self,
         f0: Tensor,
-        periodicity: Tensor,
-        vocal_tract: Tensor,
+        envelope_imp: Tensor,
+        envelope_noi: Tensor,
         vocal_cord: Optional[Tensor] = None,
         reverb: Optional[Tensor] = None,
     ) -> Tensor:
         """
         Args:
             f0: shape=(batch_size, n_frames)
-            periodicity: shape=(batch_size, dim_periodicity, n_frames), periodicity
-            vocal_tract: shape=(batch_size, fft_bin, n_frames), spectral envelope of vocal tract
+            envelope_imp: shape=(batch_size, n_mels, n_frames), spectral envelope for impulse
+            envelope_noi: shape=(batch_size, n_mels, n_frames), spectral envelope for noise
             vocal_cord: shape=(batch_size, kernel_size), Optional, vocal cord impulse response
             reverb: shape=(batch_size, filter_size), Optional, room reverb impulse response
 
@@ -69,9 +65,9 @@ class SubtractiveVocoder(nn.Module):
         """
 
         # cast to 32-bit float for stability.
-        dtype = periodicity.dtype
-        periodicity = periodicity.to(torch.float)
-        vocal_tract = vocal_tract.to(torch.float)
+        dtype = f0.dtype
+        envelope_noi = envelope_noi.to(torch.float)
+        envelope_imp = envelope_imp.to(torch.float)
 
         # oscillate and calculate complex spectra.
         with torch.no_grad():
@@ -114,16 +110,12 @@ class SubtractiveVocoder(nn.Module):
         imp_stft += noi_stft * (F.pad(f0[:, None, :], (1, 0)) < 20.0).to(torch.float)
 
         # Convert mel-spectral envelope to linear-spectral envelope.
-        vocal_tract_linear = self.env2spec(vocal_tract)
-
-        # Merge periodicity / apeoridicity.
-        kernel_imp = self.per2spec(periodicity) * vocal_tract_linear
-        kernel_noi = self.per2spec(1 - periodicity) * vocal_tract_linear
+        kernel_imp = self.env2spec(envelope_imp)
+        kernel_noi = self.env2spec(envelope_noi)
 
         # estimate minimum(causal) phase. (optional)
         if self.min_phase:
             kernel_imp = estimate_minimum_phase(kernel_imp)
-            kernel_noi = estimate_minimum_phase(kernel_noi)
 
         # pad
         kernel_imp = F.pad(kernel_imp, (1, 0))

@@ -10,20 +10,6 @@ from tts_impl.utils.config import derive_config
 from .vocoder import SubtractiveVocoder
 
 
-class SpectralSmoothing(nn.Module):
-    def __init__(self, window_size: int = 9):
-        super().__init__()
-        self.window_size = window_size
-        self.register_buffer("window", torch.hann_window(window_size))
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        x = x.transpose(1, 2)
-        w = self.window[None, None, :].expand(x.shape[2], 1, self.window_size)
-        x = F.pad(x, self.window_size // 2, mode='replicate')
-        x = F.conv1d(x, w)
-        x = x.transpose(1, 2)
-        return x
-
 
 @derive_config
 class DdspGenerator(nn.Module, GanVocoderGenerator):
@@ -38,14 +24,13 @@ class DdspGenerator(nn.Module, GanVocoderGenerator):
         vocoder: SubtractiveVocoder.Config = SubtractiveVocoder.Config(),
     ):
         super().__init__()
-        out_channels = vocoder.n_mels + vocoder.dim_periodicity
+        out_channels = vocoder.n_mels * 2
         self.reverb_size = reverb_size
         self.vocal_cord_size = vocal_cord_size
         self.sample_rate = vocoder.sample_rate
         self.vocoder = SubtractiveVocoder(**vocoder)
         self.conv_pre = nn.Conv1d(in_channels, d_model, 1)
         self.conv_post = nn.Conv1d(d_model, out_channels, 1)
-        self.smooth = SpectralSmoothing(window_size=9)
         self.gin_channels = gin_channels
         self.sample_rate = vocoder.sample_rate
 
@@ -77,13 +62,12 @@ class DdspGenerator(nn.Module, GanVocoderGenerator):
         x = x.transpose(1, 2)
         x = self.conv_post(x)
         x = x.float()
-        p, e = torch.split(
-            x, [self.vocoder.dim_periodicity, self.vocoder.n_mels], dim=1
+        env_imp, env_noi = torch.split(
+            x, [self.vocoder.n_mels, self.vocoder.n_mels], dim=1
         )
-        p = torch.sigmoid(p)
-        e = torch.sigmoid(e)
-        e = self.smooth(e)
-        return p, e
+        env_imp = torch.sigmoid(env_imp)
+        env_noi = torch.sigmoid(env_noi)
+        return env_imp, env_noi
 
     def _calculate_reverb(
         self, g: Optional[torch.Tensor], batch_size: int
@@ -98,7 +82,6 @@ class DdspGenerator(nn.Module, GanVocoderGenerator):
                 -F.softplus(-decay) * self.t * 500.0
             )  # [batch_size, reverb_size]
             reverb = self.reverb_noise * coeff * torch.sigmoid(wet)
-            reverb[:, 0] = 1.0
             reverb = F.normalize(reverb, dim=1)
             return reverb
         elif self.reverb_size > 0:

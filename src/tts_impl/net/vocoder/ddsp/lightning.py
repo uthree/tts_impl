@@ -183,14 +183,14 @@ class DdspVocoderLightningModule(LightningModule):
         fake = self._generator_forward(acoustic_features, f0=f0, sid=sid)
         spec_fake = self.spectrogram(fake)
         loss_mel = F.l1_loss(spec_fake, spec_real)
-        per, env = self.generator.net(acoustic_features)
+        env_imp, env_noi = self.generator.net(acoustic_features)
         self.log("validation loss/mel spectrogram", loss_mel)
 
         for i in range(fake.shape[0]):
             f = fake[i].sum(dim=0, keepdim=True).detach().cpu()
             r = waveform[i].sum(dim=0, keepdim=True).detach().cpu()
-            env_img = normalize(env[i].detach().cpu().flip(0))
-            per_img = normalize(per[i].detach().cpu().flip(0))
+            env_imp_img = normalize(env_imp[i].detach().cpu().flip(0))
+            env_noi_img = normalize(env_noi[i].detach().cpu().flip(0))
             spec_fake_img = normalize(spec_fake[i, 0].detach().cpu().flip(0))
             spec_real_img = normalize(spec_real[i, 0].detach().cpu().flip(0))
             self.logger.experiment.add_audio(
@@ -206,14 +206,14 @@ class DdspVocoderLightningModule(LightningModule):
                 sample_rate=self.generator.sample_rate,
             )
             self.logger.experiment.add_image(
-                f"synthesized spectral envelope/{bid}_{i}",
-                env_img,
+                f"synthesized periodic spectral envelope/{bid}_{i}",
+                env_imp_img,
                 self.current_epoch,
                 dataformats="HW",
             )
             self.logger.experiment.add_image(
-                f"synthesized periodicity/{bid}_{i}",
-                per_img,
+                f"synthesized noise spectral envelop/{bid}_{i}",
+                env_noi_img,
                 self.current_epoch,
                 dataformats="HW",
             )
