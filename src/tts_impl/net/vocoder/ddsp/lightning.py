@@ -212,7 +212,7 @@ class DdspVocoderLightningModule(LightningModule):
                 dataformats="HW",
             )
             self.logger.experiment.add_image(
-                f"synthesized noise spectral envelop/{bid}_{i}",
+                f"synthesized noise spectral envelope/{bid}_{i}",
                 env_noi_img,
                 self.current_epoch,
                 dataformats="HW",

@@ -81,7 +81,7 @@ class SubtractiveVocoder(nn.Module):
                 )
             ) * math.sqrt(self.sample_rate)
             imp = impulse_train(f0, self.hop_length, self.sample_rate) * imp_scale
-            noi = torch.randn_like(imp)
+            noi = torch.randn_like(imp) * 0.33333
 
         # vocal cord filter
         if vocal_cord is not None:
@@ -125,7 +125,7 @@ class SubtractiveVocoder(nn.Module):
         voi_stft = imp_stft * kernel_imp + noi_stft * kernel_noi
 
         # scaling for STFT
-        voi_stft /= self.n_fft * (self.hann_window.sum() / self.n_fft)
+        #voi_stft /= self.n_fft * (self.hann_window.sum() / self.n_fft)
 
         # inverse STFT
         voi = torch.istft(
