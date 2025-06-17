@@ -38,15 +38,13 @@ class DdspGenerator(nn.Module, GanVocoderGenerator):
         if vocal_cord_size > 0:
             if gin_channels > 0:
                 self.to_vocal_cord = nn.Conv1d(gin_channels, vocal_cord_size, 1, bias=False)
-                with torch.no_grad():
-                    self.to_vocal_cord.weight.normal_(0, 0.001)
             else:
-                self.vocal_cord = nn.Parameter(torch.randn(vocal_cord_size)[None, :] * 0.001)
+                self.vocal_cord = nn.Parameter(torch.randn(vocal_cord_size)[None, :])
         else:
             self.vocal_cord = None
         if reverb_size > 0:
             self.reverb_noise = nn.Parameter(
-                F.normalize(torch.randn(reverb_size) * 0.001, dim=0)[None, :]
+                F.normalize(torch.randn(reverb_size), dim=0)[None, :]
             )
             if gin_channels > 0:
                 self.to_reverb_parameters = nn.Conv1d(
@@ -88,9 +86,11 @@ class DdspGenerator(nn.Module, GanVocoderGenerator):
             reverb = F.normalize(reverb, dim=1)
             return reverb
         elif self.reverb_size > 0:
-            return F.normalize(
+            reverb = F.normalize(
                 self.reverb_noise.expand(batch_size, self.reverb_noise.shape[1]), dim=1
             )
+            reverb[:, 0] = 1.0
+            return reverb
         else:
             return None
 
