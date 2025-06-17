@@ -114,7 +114,7 @@ def fft_convolve(signal: torch.Tensor, kernel: torch.Tensor) -> torch.Tensor:
     signal = signal.to(torch.float)
     kernel = kernel.to(torch.float)
 
-    kernel = F.pad(kernel, (signal.shape[-1] - kernel.shape[-1], 0))
+    kernel = F.pad(kernel, (0, signal.shape[-1] - kernel.shape[-1]))
 
     signal = F.pad(signal, (0, signal.shape[-1]))
     kernel = F.pad(kernel, (kernel.shape[-1], 0))
