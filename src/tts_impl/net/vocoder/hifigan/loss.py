@@ -5,10 +5,9 @@ import torch
 
 def feature_loss(fmap_r, fmap_g):
     loss = 0
-    for dr, dg in zip(fmap_r, fmap_g):
-        for rl, gl in zip(dr, dg):
-            l = torch.mean(torch.abs(rl - gl))
-            loss += l
+    for r, g in zip(fmap_r, fmap_g):
+        l = torch.mean(torch.abs(r - g))
+        loss += l
     return loss * 2
 
 

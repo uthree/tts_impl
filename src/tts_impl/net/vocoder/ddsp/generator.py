@@ -74,7 +74,7 @@ class DdspGenerator(nn.Module, GanVocoderGenerator):
     def _calculate_reverb(
         self, g: Optional[torch.Tensor], batch_size: int
     ) -> Optional[torch.Tensor]:
-        if g is not None and self.gin_channels > 0:
+        if g is not None and self.reverb_size > 0:
             decay, wet = self.to_reverb_parameters(g).split(
                 [1, 1], dim=1
             )  # [batch_size, 1, 1]
@@ -98,7 +98,7 @@ class DdspGenerator(nn.Module, GanVocoderGenerator):
         self, g: Optional[torch.Tensor], batch_size: int
     ) -> Optional[torch.Tensor]:
         # calculate vocal cord parameter
-        if g is not None and self.gin_channels > 0:
+        if g is not None and self.vocal_cord_size > 0:
             v = self.to_vocal_cord(g).squeeze(2) # [batch_size, vcord_size]
             v[:, 0] = 1.0
             v = F.normalize(v, dim=1)
