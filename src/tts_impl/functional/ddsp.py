@@ -114,13 +114,13 @@ def fft_convolve(signal: torch.Tensor, kernel: torch.Tensor) -> torch.Tensor:
     signal = signal.to(torch.float)
     kernel = kernel.to(torch.float)
 
-    kernel = F.pad(kernel, (0, signal.shape[-1] - kernel.shape[-1]))
+    kernel = F.pad(kernel, (signal.shape[-1] - kernel.shape[-1], 0))
 
     signal = F.pad(signal, (0, signal.shape[-1]))
     kernel = F.pad(kernel, (kernel.shape[-1], 0))
 
     output = torch.fft.irfft(torch.fft.rfft(signal) * torch.fft.rfft(kernel))
-    output = output[..., output.shape[-1] // 2 :]
+    output = output[..., output.shape[-1] // 2:]
 
     output = output.to(dtype)
     return output
@@ -210,7 +210,7 @@ def estimate_minimum_phase(amplitude_spec: torch.Tensor) -> torch.Tensor:
         half = n_fft // 2
         cepst[:, :half] *= 2.0
         cepst[:, half:] *= 0.0
-        envelope_min_phase = torch.exp(torch.fft.rfft(cepst, dim=1))
+        envelope_min_phase = torch.fft.rfft(cepst, dim=1)
 
         # extract only phase
         envelope_min_phase = (
