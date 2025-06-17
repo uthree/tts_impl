@@ -82,14 +82,12 @@ class DdspGenerator(nn.Module, GanVocoderGenerator):
                 -F.softplus(-decay) * self.t * 500.0
             )  # [batch_size, reverb_size]
             reverb = self.reverb_noise * coeff * torch.sigmoid(wet)
-            reverb[:, 0] = 1.0
             reverb = F.normalize(reverb, dim=1)
             return reverb
         elif self.reverb_size > 0:
             reverb = F.normalize(
                 self.reverb_noise.expand(batch_size, self.reverb_noise.shape[1]), dim=1
             )
-            reverb[:, 0] = 1.0
             return reverb
         else:
             return None
@@ -100,11 +98,9 @@ class DdspGenerator(nn.Module, GanVocoderGenerator):
         # calculate vocal cord parameter
         if g is not None and self.vocal_cord_size > 0:
             v = self.to_vocal_cord(g).squeeze(2) # [batch_size, vcord_size]
-            v[:, 0] = 1.0
             v = F.normalize(v, dim=1)
         elif self.gin_channels <= 0 and self.vocal_cord is not None:
             v = self.vocal_cord.expand(batch_size, self.vocal_cord.shape[1])
-            v[:, 0] = 1.0
             v = F.normalize(v, dim=1)
         else:
             v = None
