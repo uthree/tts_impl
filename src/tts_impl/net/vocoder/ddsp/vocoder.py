@@ -85,10 +85,7 @@ class SubtractiveVocoder(nn.Module):
 
         # vocal cord filter
         if vocal_cord is not None:
-            imp = F.pad(imp[None, :, :], (vocal_cord.shape[1] - 1, 0))
-            imp = F.conv1d(
-                imp, vocal_cord[:, None, :], groups=vocal_cord.shape[0]
-            ).squeeze(0)
+            imp = fft_convolve(imp, vocal_cord)
 
         # short-time fourier transform
         imp_stft = torch.stft(
@@ -123,9 +120,6 @@ class SubtractiveVocoder(nn.Module):
 
         # apply the filter to impulse / noise, and add them.
         voi_stft = imp_stft * kernel_imp + noi_stft * kernel_noi
-
-        # scaling for STFT
-        #voi_stft /= self.n_fft * (self.hann_window.sum() / self.n_fft)
 
         # inverse STFT
         voi = torch.istft(
