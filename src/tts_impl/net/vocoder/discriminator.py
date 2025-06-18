@@ -232,6 +232,7 @@ class DiscriminatorR(nn.Module):
 
     def spectrogram(self, x):
         # spectrogram
+        dtype = x.dtype
         x = x.sum(dim=1)
         w = torch.hann_window(self.n_fft).to(x.device)
         x = torch.stft(
@@ -241,17 +242,18 @@ class DiscriminatorR(nn.Module):
             x = self.safe_log(x)
         if self.pre_layernorm:
             x = (x - x.mean(dim=(1, 2), keepdim=True)) / (
-                x.std(dim=(1, 2), keepdim=True) + 1e-8
+                x.std(dim=(1, 2), keepdim=True) + 1e-12
             )
+        x = x.to(dtype)
         return x
 
     def safe_log(self, x):
-        return torch.log(F.relu(x, inplace=True) + 1e-6)
+        return torch.log(F.relu(x.float(), inplace=True) + 1e-12)
 
     def forward(self, x):
         x = self.spectrogram(x)
         x = x.unsqueeze(1)
-        feats = []
+        feats = [x]
         for l in self.convs:
             x = l(x)
             F.leaky_relu(x, 0.1, inplace=True)
@@ -270,7 +272,7 @@ class MultiResolutionStftDiscriminator(CombinedDiscriminator):
         channels: int = 32,
         num_layers: int = 4,
         pre_layernorm: bool = False,
-        log_scale: bool = False,
+        log_scale: bool = True,
     ):
         super().__init__()
         for n, h in zip(n_fft, hop_size):
