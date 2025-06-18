@@ -41,7 +41,7 @@ class SubtractiveVocoder(nn.Module):
         self.min_phase = min_phase
 
         self.env2spec = InverseMelScale(self.fft_bin, n_mels, sample_rate)
-        self.hann_window = nn.Parameter(torch.hann_window(n_fft))
+        self.register_buffer("hann_window", torch.hann_window(n_fft))
 
     def forward(
         self,
