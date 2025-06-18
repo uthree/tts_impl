@@ -18,7 +18,6 @@ from tts_impl.net.vocoder.ddsp import SubtractiveVocoder
 @pytest.mark.parametrize("min_phase", [True, False])
 @pytest.mark.parametrize("n_mels", [80, 40])
 @pytest.mark.parametrize("post_filter_length", [0, 2048, 1024])
-@pytest.mark.parametrize("vocal_cord_filter_length", [0, 256, 128])
 @pytest.mark.parametrize("n_fft", [1024])
 @pytest.mark.parametrize("hop_length", [256])
 def test_subtractive_vocoder(
@@ -27,7 +26,6 @@ def test_subtractive_vocoder(
     min_phase: bool,
     n_mels: int,
     post_filter_length: int,
-    vocal_cord_filter_length,
     n_fft: int,
     hop_length: int,
 ):
@@ -43,12 +41,7 @@ def test_subtractive_vocoder(
     pf = (
         torch.randn(batch_size, post_filter_length) if post_filter_length != 0 else None
     )
-    vc = (
-        torch.randn(batch_size, vocal_cord_filter_length)
-        if vocal_cord_filter_length != 0
-        else None
-    )
-    o = vocoder.forward(f0, env_imp, env_noi, pf, vc)
+    o = vocoder.forward(f0, env_imp, env_noi, pf)
     assert o.shape[0] == batch_size
     assert o.shape[1] == num_frames * hop_length
 
