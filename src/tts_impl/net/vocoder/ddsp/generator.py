@@ -17,12 +17,13 @@ class DdspGenerator(nn.Module, GanVocoderGenerator):
         in_channels: int = 80,
         d_model: int = 256,
         num_layers: int = 4,
-        reverb_size: int = 4096,
+        reverb_size: int = 0,
         gin_channels: int = 0,
         vocoder: SubtractiveVocoder.Config = SubtractiveVocoder.Config(),
     ):
         super().__init__()
-        out_channels = vocoder.n_mels * 2
+        out_channels = vocoder.n_fft + 2
+        self.fft_bin = vocoder.n_fft // 2 + 1
         self.reverb_size = reverb_size
         self.sample_rate = vocoder.sample_rate
         self.vocoder = SubtractiveVocoder(**vocoder)
@@ -53,7 +54,7 @@ class DdspGenerator(nn.Module, GanVocoderGenerator):
         x = self.conv_post(x)
         x = x.float()
         env_imp, env_noi = torch.split(
-            x, [self.vocoder.n_mels, self.vocoder.n_mels], dim=1
+            x, [self.vocoder.fft_bin, self.vocoder.fft_bin], dim=1
         )
         env_imp = torch.sigmoid(env_imp)
         env_noi = torch.sigmoid(env_noi)
