@@ -205,16 +205,18 @@ def estimate_minimum_phase(amplitude_spec: torch.Tensor) -> torch.Tensor:
     """
     with torch.no_grad():
         # cepstram method
-        cepst = torch.fft.irfft(torch.clamp_min(amplitude_spec.abs(), 1e-8), dim=1)
+        cepst = torch.fft.irfft(
+            torch.clamp_min(amplitude_spec.abs(), 1e-12).log(), dim=1
+        )
         n_fft = cepst.shape[1]
         half = n_fft // 2
         cepst[:, :half] *= 2.0
         cepst[:, half:] *= 0.0
-        envelope_min_phase = torch.fft.rfft(cepst, dim=1)
+        envelope_min_phase = torch.fft.rfft(cepst, dim=1).exp()
 
         # extract only phase
         envelope_min_phase = (
-            envelope_min_phase / torch.clamp_min(envelope_min_phase.abs(), 1e-8)
+            envelope_min_phase / torch.clamp_min(envelope_min_phase.abs(), 1e-12)
         ).detach()
 
     # rotate elementwise
