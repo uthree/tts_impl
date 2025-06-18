@@ -10,7 +10,6 @@ from tts_impl.functional.ddsp import estimate_minimum_phase, fft_convolve, impul
 from tts_impl.utils.config import derive_config
 
 
-
 @derive_config
 class SubtractiveVocoder(nn.Module):
     """

@@ -10,7 +10,6 @@ from tts_impl.utils.config import derive_config
 from .vocoder import SubtractiveVocoder
 
 
-
 @derive_config
 class DdspGenerator(nn.Module, GanVocoderGenerator):
     def __init__(
@@ -82,7 +81,6 @@ class DdspGenerator(nn.Module, GanVocoderGenerator):
             return reverb
         else:
             return None
-
 
     def forward(self, x, f0, g=None, uv=None):
         p, e = self.net(x, g=g)
