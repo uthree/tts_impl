@@ -49,7 +49,6 @@ class SubtractiveVocoder(nn.Module):
         f0: Tensor,
         envelope_imp: Tensor,
         envelope_noi: Tensor,
-        vocal_cord: Optional[Tensor] = None,
         reverb: Optional[Tensor] = None,
     ) -> Tensor:
         """
@@ -82,10 +81,6 @@ class SubtractiveVocoder(nn.Module):
             ) * math.sqrt(self.sample_rate)
             imp = impulse_train(f0, self.hop_length, self.sample_rate) * imp_scale
             noi = torch.randn_like(imp) * 0.33333
-
-        # vocal cord filter
-        if vocal_cord is not None:
-            imp = fft_convolve(imp, vocal_cord)
 
         # short-time fourier transform
         imp_stft = torch.stft(

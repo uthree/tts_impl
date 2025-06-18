@@ -18,15 +18,13 @@ class DdspGenerator(nn.Module, GanVocoderGenerator):
         in_channels: int = 80,
         d_model: int = 256,
         num_layers: int = 4,
-        vocal_cord_size: int = 256,
-        reverb_size: int = 1024,
+        reverb_size: int = 4096,
         gin_channels: int = 0,
         vocoder: SubtractiveVocoder.Config = SubtractiveVocoder.Config(),
     ):
         super().__init__()
         out_channels = vocoder.n_mels * 2
         self.reverb_size = reverb_size
-        self.vocal_cord_size = vocal_cord_size
         self.sample_rate = vocoder.sample_rate
         self.vocoder = SubtractiveVocoder(**vocoder)
         self.conv_pre = nn.Conv1d(in_channels, d_model, 1)
@@ -35,13 +33,6 @@ class DdspGenerator(nn.Module, GanVocoderGenerator):
         self.sample_rate = vocoder.sample_rate
 
         self.grux = Grux(d_model, num_layers, d_condition=gin_channels)
-        if vocal_cord_size > 0:
-            if gin_channels > 0:
-                self.to_vocal_cord = nn.Conv1d(gin_channels, vocal_cord_size, 1, bias=False)
-            else:
-                self.vocal_cord = nn.Parameter(torch.randn(vocal_cord_size)[None, :])
-        else:
-            self.vocal_cord = None
         if reverb_size > 0:
             self.reverb_noise = nn.Parameter(
                 F.normalize(torch.randn(reverb_size), dim=0)[None, :]
@@ -92,24 +83,10 @@ class DdspGenerator(nn.Module, GanVocoderGenerator):
         else:
             return None
 
-    def _calculate_vocal_cord(
-        self, g: Optional[torch.Tensor], batch_size: int
-    ) -> Optional[torch.Tensor]:
-        # calculate vocal cord parameter
-        if g is not None and self.vocal_cord_size > 0:
-            v = self.to_vocal_cord(g).squeeze(2) # [batch_size, vcord_size]
-            v = F.normalize(v, dim=1)
-        elif self.gin_channels <= 0 and self.vocal_cord is not None:
-            v = self.vocal_cord.expand(batch_size, self.vocal_cord.shape[1])
-            v = F.normalize(v, dim=1)
-        else:
-            v = None
-        return v
 
     def forward(self, x, f0, g=None, uv=None):
         p, e = self.net(x, g=g)
-        v = self._calculate_vocal_cord(g=g, batch_size=x.shape[0])
         r = self._calculate_reverb(g=g, batch_size=x.shape[0])
-        x = self.vocoder.forward(f0, p, e, vocal_cord=v, reverb=r)
+        x = self.vocoder.forward(f0, p, e, reverb=r)
         x = x.unsqueeze(dim=1)
         return x
