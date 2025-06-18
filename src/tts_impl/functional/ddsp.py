@@ -120,7 +120,7 @@ def fft_convolve(signal: torch.Tensor, kernel: torch.Tensor) -> torch.Tensor:
     kernel = F.pad(kernel, (kernel.shape[-1], 0))
 
     output = torch.fft.irfft(torch.fft.rfft(signal) * torch.fft.rfft(kernel))
-    output = output[..., output.shape[-1] // 2:]
+    output = output[..., output.shape[-1] // 2 :]
 
     output = output.to(dtype)
     return output
