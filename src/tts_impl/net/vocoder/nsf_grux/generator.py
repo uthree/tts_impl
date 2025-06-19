@@ -57,7 +57,7 @@ class NsfgruxSourceModule(nn.Module):
     def __init__(
         self,
         sample_rate: int = 24000,
-        num_harmonics: int = 1,
+        num_harmonics: int = 8,
         frame_size: int = 256,
         noise_scale: float = 0.01,
         gin_channels: int = 0,
@@ -120,6 +120,7 @@ class NsfgruxGenerator(nn.Module, GanVocoderGenerator):
         self.source_module = NsfgruxSourceModule(**source_module)
         self.filter_module = NsfgruxFilterModule(**filter_module)
         self.register_buffer("window", torch.hann_window(n_fft))
+        self.sample_rate = source_module.sample_rate
 
     def forward(
         self,
@@ -130,13 +131,16 @@ class NsfgruxGenerator(nn.Module, GanVocoderGenerator):
     ) -> torch.Tensor:
         # oscillate source signal
         src = self.source_module.forward(f0=f0, uv=uv, g=g)
+        return src
+
         src_feat = self.analyze(src)  # STFT
 
         # concatenate input features and STFT features
         x = torch.cat([x, src_feat], dim=1)
 
         # filter forward pass
-        x, _h_out = self.filter_module.forward(x=x)
+        x, _h_out = self.filter_module.forward(x=x.transpose(1, 2))
+        x = x.transpose(1, 2)
 
         # synthesize waveform
         x = self.synthesize(x)
@@ -144,6 +148,8 @@ class NsfgruxGenerator(nn.Module, GanVocoderGenerator):
         return x
 
     def analyze(self, waveform: torch.Tensor) -> torch.Tensor:
+        dtype = waveform.dtype
+        waveform = waveform.float()
         assert waveform.shape[1] == 1
         waveform = waveform.squeeze(1)
         h = self.frame_size // 2
@@ -155,15 +161,17 @@ class NsfgruxGenerator(nn.Module, GanVocoderGenerator):
             window=self.window,
             return_complex=True,
         )
-        feats = torch.cat([wf_stft.real, wf_stft.imag], dim=1)
+        feats = torch.cat([wf_stft.real, wf_stft.imag], dim=1).to(dtype)
         return feats
 
     def synthesize(self, feats: torch.Tensor) -> torch.Tensor:
+        dtype = feats.dtype
+        feats = feats.float()
         real, imag = feats.chunk(2, dim=1)
         wf_stft = torch.complex(real, imag)
         waveform = torch.istft(
             wf_stft, n_fft=self.n_fft, hop_length=self.frame_size, window=self.window
         )
         h = self.frame_size // 2
-        waveform = F.pad(waveform.unsqueeze(1), (h, h))
+        waveform = F.pad(waveform.unsqueeze(1), (h, h)).to(dtype)
         return waveform
