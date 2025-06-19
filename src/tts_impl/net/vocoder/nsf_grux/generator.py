@@ -98,7 +98,7 @@ class NsfgruxSourceModule(nn.Module):
         uv: torch.Tensor = F.interpolate(
             uv[:, None, :], scale_factor=self.frame_size, mode="linear"
         )
-        harmonics_part = torch.sum(harmonics * amps, dim=1)
+        harmonics_part = torch.sum(harmonics * amps, dim=1, keepdim=True)
         noise_part = torch.randn_like(harmonics_part) * 0.333333
         harmonics_part += noise_part * self.noise_scale
         signal = noise_part * (1 - uv) + harmonics_part * uv
