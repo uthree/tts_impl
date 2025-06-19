@@ -131,7 +131,6 @@ class NsfgruxGenerator(nn.Module, GanVocoderGenerator):
     ) -> torch.Tensor:
         # oscillate source signal
         src = self.source_module.forward(f0=f0, uv=uv, g=g)
-        return src
 
         src_feat = self.analyze(src)  # STFT
 
