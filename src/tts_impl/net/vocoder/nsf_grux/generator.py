@@ -1,11 +1,12 @@
+from typing import Optional, Tuple
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from tts_impl.net.base.stateful import StatefulModule
-from tts_impl.net.common.grux import Grux
-from typing import Optional, Tuple
 from tts_impl.functional.ddsp import sinusoidal_harmonics
 from tts_impl.net.base import GanVocoderGenerator
+from tts_impl.net.base.stateful import StatefulModule
+from tts_impl.net.common.grux import Grux
 from tts_impl.utils.config import derive_config
 
 
@@ -13,7 +14,7 @@ from tts_impl.utils.config import derive_config
 class NsfgruxFilterModule(StatefulModule):
     def __init__(
         self,
-        in_channels: int,
+        in_channels: int = 80,
         n_fft: int = 1024,
         frame_size: int = 256,
         d_model: int = 256,
@@ -67,7 +68,6 @@ class NsfgruxSourceModule(nn.Module):
         self.frame_size = frame_size
         self.noise_scale = noise_scale
         self.gin_channels = gin_channels
-        self.register_buffer("hann_window", torch.hann_window(n_fft))
         if gin_channels > 0:
             self.amps = nn.Parameter(torch.zeros(1, num_harmonics, 1))
         else:
@@ -105,6 +105,7 @@ class NsfgruxSourceModule(nn.Module):
         return signal
 
 
+@derive_config
 class NsfgruxGenerator(nn.Module, GanVocoderGenerator):
     def __init__(
         self,

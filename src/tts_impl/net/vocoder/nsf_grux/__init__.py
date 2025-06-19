@@ -1,2 +1,2 @@
-from .lightning import NsfgruxLightningModule
 from .generator import NsfgruxGenerator
+from .lightning import NsfgruxLightningModule
