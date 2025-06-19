@@ -59,7 +59,7 @@ class NsfgruxSourceModule(nn.Module):
         sample_rate: int = 24000,
         num_harmonics: int = 8,
         frame_size: int = 256,
-        noise_scale: float = 0.01,
+        noise_scale: float = 0.1,
         gin_channels: int = 0,
     ):
         super().__init__()
