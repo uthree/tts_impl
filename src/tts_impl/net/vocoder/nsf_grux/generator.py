@@ -6,8 +6,10 @@ from tts_impl.net.common.grux import Grux
 from typing import Optional, Tuple
 from tts_impl.functional.ddsp import sinusoidal_harmonics
 from tts_impl.net.base import GanVocoderGenerator
+from tts_impl.utils.config import derive_config
 
 
+@derive_config
 class NsfgruxFilterModule(StatefulModule):
     def __init__(
         self,
@@ -49,6 +51,7 @@ class NsfgruxFilterModule(StatefulModule):
         return self.grux._initial_state(x)
 
 
+@derive_config
 class NsfgruxSourceModule(nn.Module):
     def __init__(
         self,
