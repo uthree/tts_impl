@@ -19,6 +19,8 @@ from tts_impl.net.vocoder.ddsp import SubtractiveVocoder
 @pytest.mark.parametrize("post_filter_length", [0, 2048, 1024])
 @pytest.mark.parametrize("n_fft", [1024])
 @pytest.mark.parametrize("hop_length", [256])
+@pytest.mark.parametrize("dim_periodicity", [16])
+@pytest.mark.parametrize("dim_envelope", [64])
 def test_subtractive_vocoder(
     batch_size: int,
     num_frames: int,
@@ -26,6 +28,8 @@ def test_subtractive_vocoder(
     post_filter_length: int,
     n_fft: int,
     hop_length: int,
+    dim_periodicity: int,
+    dim_envelope: int,
 ):
     vocoder = SubtractiveVocoder(
         n_fft=n_fft,
@@ -34,12 +38,12 @@ def test_subtractive_vocoder(
     )
     fft_bin = n_fft // 2 + 1
     f0 = torch.ones(batch_size, num_frames) * 440.0
-    env_imp = torch.rand(batch_size, fft_bin, num_frames)
-    env_noi = torch.rand(batch_size, fft_bin, num_frames)
+    per = torch.rand(batch_size, dim_periodicity, num_frames)
+    env = torch.rand(batch_size, dim_envelope, num_frames)
     pf = (
         torch.randn(batch_size, post_filter_length) if post_filter_length != 0 else None
     )
-    o = vocoder.synthesize(f0, env_imp, env_noi, pf)
+    o = vocoder.synthesize(f0, per, env, reverb=pf)
     assert o.shape[0] == batch_size
     assert o.shape[1] == num_frames * hop_length
 

@@ -24,6 +24,8 @@ discriminator_cfg_default.mpd.channels_max = 256
 discriminator_cfg_default.mpd.channels_mul = 2
 discriminator_cfg_default.mrsd.n_fft = [512, 1024, 2048]
 discriminator_cfg_default.mrsd.hop_size = [50, 120, 240]
+discriminator_cfg_default.mrxd.n_fft = [512, 1024, 2048]
+discriminator_cfg_default.mrxd.hop_size = [50, 120, 240]
 
 
 def slice_segments(x, ids_str, segment_size=8192):
