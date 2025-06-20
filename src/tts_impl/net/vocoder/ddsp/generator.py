@@ -17,7 +17,7 @@ class DdspGenerator(nn.Module, GanVocoderGenerator):
         in_channels: int = 80,
         d_model: int = 256,
         num_layers: int = 4,
-        reverb_size: int = 1024,
+        reverb_size: int = 8192,
         gin_channels: int = 0,
         vocoder: SubtractiveVocoder.Config = SubtractiveVocoder.Config(),
     ):
@@ -37,6 +37,10 @@ class DdspGenerator(nn.Module, GanVocoderGenerator):
             self.reverb_noise = nn.Parameter(
                 F.normalize(torch.randn(reverb_size), dim=0)[None, :]
             )
+            if gin_channels > 0:
+                self.to_reverb_params = nn.Conv1d(gin_channels, 2, 1)
+                t = torch.arange(self.reverb_size)[None, :] / self.sample_rate
+                self.register_buffer("t", t)
 
     def net(self, x, g=None):
         x = self.conv_pre(x)
@@ -52,12 +56,26 @@ class DdspGenerator(nn.Module, GanVocoderGenerator):
         env = torch.exp(env)
         return per, env
 
-    def forward(self, x, f0, g=None, uv=None):
+    def build_reverb(self, g=None):
         if self.reverb_size > 0:
-            r = F.normalize(self.reverb_noise, dim=1, p=2.0)
+            ir = F.normalize(self.reverb_noise, dim=1, p=2.0)
+            if self.gin_channels > 0:
+                wet, decay = self.to_reverb_params(g).split([1, 1], dim=1)
+                wet = wet[:, 0]
+                decay = decay[:, 0]
+                coeff = torch.exp(-F.softplus(-decay) * self.t * 500.0) * torch.sigmoid(
+                    wet
+                )
+                ir = ir * coeff
+                ir[:, 0] = 1.0
+                ir = F.normalize(ir, dim=1)
+            return ir
         else:
-            r = None
+            return None
+
+    def forward(self, x, f0, g=None, uv=None):
+        ir = self.build_reverb(g)
         p, e = self.net(x, g=g)
-        x = self.vocoder.synthesize(f0, p, e, reverb=r)
+        x = self.vocoder.synthesize(f0, p, e, reverb=ir)
         x = x.unsqueeze(dim=1)
         return x
