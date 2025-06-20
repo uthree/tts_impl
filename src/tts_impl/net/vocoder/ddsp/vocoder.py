@@ -5,9 +5,9 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
+from torchaudio.transforms import InverseMelScale
 from tts_impl.functional.ddsp import estimate_minimum_phase, fft_convolve, impulse_train
 from tts_impl.utils.config import derive_config
-from torchaudio.transforms import InverseMelScale
 
 
 @derive_config

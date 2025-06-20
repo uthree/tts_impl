@@ -5,8 +5,8 @@ from tts_impl.net.vocoder.discriminator import (
     CombinedDiscriminator,
     MultiPeriodDiscriminator,
     MultiResolutionStftDiscriminator,
-    MultiScaleDiscriminator,
     MultiResolutionXcorrDiscriminator,
+    MultiScaleDiscriminator,
 )
 from tts_impl.utils.config import derive_config
 
