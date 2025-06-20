@@ -96,9 +96,9 @@ class SubtractiveVocoder(nn.Module):
                     min=20.0,
                 )
             )
-            noi_scale = 1.0 / math.sqrt(self.sample_rate)
+            noi_scale = 2.0 / math.sqrt(self.sample_rate)
             imp = impulse_train(f0, self.hop_length, self.sample_rate) * imp_scale
-            noi = (torch.rand_like(imp) * 2 - 1) * noi_scale
+            noi = torch.rand_like(imp) * noi_scale
 
         # short-time fourier transform
         imp_stft = torch.stft(

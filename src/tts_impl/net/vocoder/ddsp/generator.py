@@ -37,14 +37,6 @@ class DdspGenerator(nn.Module, GanVocoderGenerator):
             self.reverb_noise = nn.Parameter(
                 F.normalize(torch.randn(reverb_size), dim=0)[None, :]
             )
-            if gin_channels > 0:
-                self.to_reverb_parameters = nn.Conv1d(
-                    gin_channels, 2, 1
-                )  # (decay, wet)
-                t = torch.arange(reverb_size).float() / self.sample_rate
-                self.register_buffer("t", t)
-        else:
-            self.reverb_noise = None
 
     def net(self, x, g=None):
         x = self.conv_pre(x)
@@ -57,11 +49,15 @@ class DdspGenerator(nn.Module, GanVocoderGenerator):
             x, [self.vocoder.dim_periodicity, self.vocoder.dim_envelope], dim=1
         )
         per = torch.sigmoid(per)
-        env = torch.exp(env.float())
+        env = torch.exp(env)
         return per, env
 
     def forward(self, x, f0, g=None, uv=None):
+        if self.reverb_size > 0:
+            r = F.normalize(self.reverb_noise, dim=1, p=2.0)
+        else:
+            r = None
         p, e = self.net(x, g=g)
-        x = self.vocoder.synthesize(f0, p, e)
+        x = self.vocoder.synthesize(f0, p, e, reverb=r)
         x = x.unsqueeze(dim=1)
         return x

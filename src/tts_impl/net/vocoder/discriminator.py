@@ -324,9 +324,6 @@ class DiscriminatorX(nn.Module):
         x = x.to(dtype)
         return x
 
-    def safe_log(self, x):
-        return torch.log(F.relu(x.float(), inplace=True) + 1e-12)
-
     def forward(self, x):
         x = self.xcorr(x)
         x = x.unsqueeze(1)
