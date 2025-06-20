@@ -297,11 +297,8 @@ class DiscriminatorX(nn.Module):
         channels: int = 32,
         num_layers: int = 4,
         use_spectral_norm: bool = False,
-        pre_layernorm: bool = False,
     ):
         super().__init__()
-        self.log_scale = log_scale
-        self.pre_layernorm = pre_layernorm
 
         norm_f = (
             nn.utils.parametrizations.spectral_norm
@@ -324,10 +321,6 @@ class DiscriminatorX(nn.Module):
         dtype = x.dtype
         x = x.sum(dim=1)
         x = cross_correlation(x, self.n_fft, self.hop_size)
-        if self.pre_layernorm:
-            x = (x - x.mean(dim=(1, 2), keepdim=True)) / (
-                x.std(dim=(1, 2), keepdim=True) + 1e-12
-            )
         x = x.to(dtype)
         return x
 
