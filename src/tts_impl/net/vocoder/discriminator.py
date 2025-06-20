@@ -9,6 +9,7 @@ from torch.nn.utils import spectral_norm
 from torch.nn.utils.parametrizations import weight_norm
 from tts_impl.net.base.vocoder import GanVocoderDiscriminator
 from tts_impl.utils.config import derive_config
+from tts_impl.functional.ddsp import cross_correlation
 
 
 def get_padding(kernel_size, dilation=1):
@@ -288,12 +289,95 @@ class MultiResolutionStftDiscriminator(CombinedDiscriminator):
             )
 
 
+class DiscriminatorX(nn.Module):
+    def __init__(
+        self,
+        n_fft=1024,
+        hop_size: int = 128,
+        channels: int = 32,
+        num_layers: int = 4,
+        use_spectral_norm: bool = False,
+        pre_layernorm: bool = False,
+    ):
+        super().__init__()
+        self.log_scale = log_scale
+        self.pre_layernorm = pre_layernorm
+
+        norm_f = (
+            nn.utils.parametrizations.spectral_norm
+            if use_spectral_norm
+            else nn.utils.parametrizations.weight_norm
+        )
+        self.convs = nn.ModuleList(
+            [norm_f(nn.Conv2d(1, channels, (9, 3), (1, 1), (3, 1)))]
+        )
+        self.hop_size = n_fft
+        self.n_fft = hop_size * 4
+        for _ in range(num_layers):
+            self.convs.append(
+                norm_f(nn.Conv2d(channels, channels, (9, 3), (2, 1), (2, 1)))
+            )
+        self.post = nn.Conv2d(channels, 1, 1)
+
+    def xcorr(self, x):
+        # spectrogram
+        dtype = x.dtype
+        x = x.sum(dim=1)
+        x = cross_correlation(x, self.n_fft, self.hop_size)
+        if self.pre_layernorm:
+            x = (x - x.mean(dim=(1, 2), keepdim=True)) / (
+                x.std(dim=(1, 2), keepdim=True) + 1e-12
+            )
+        x = x.to(dtype)
+        return x
+
+    def safe_log(self, x):
+        return torch.log(F.relu(x.float(), inplace=True) + 1e-12)
+
+    def forward(self, x):
+        x = self.xcorr(x)
+        x = x.unsqueeze(1)
+        feats = [x]
+        for l in self.convs:
+            x = l(x)
+            F.leaky_relu(x, 0.1, inplace=True)
+            feats.append(x)
+        logit = self.post(x)
+        # feats.append(x)
+        return logit, feats
+
+
+@derive_config
+class MultiResolutionXcorrDiscriminator(CombinedDiscriminator):
+    def __init__(
+        self,
+        n_fft: List[int] = [1024, 2048, 512],
+        hop_size: List[int] = [120, 240, 50],
+        channels: int = 32,
+        num_layers: int = 4,
+        pre_layernorm: bool = False,
+    ):
+        super().__init__()
+        for n, h in zip(n_fft, hop_size):
+            self.discriminators.append(
+                DiscriminatorX(
+                    n,
+                    h,
+                    channels,
+                    num_layers,
+                    pre_layernorm=pre_layernorm,
+                )
+            )
+
+
 __all__ = [
     "MultiScaleDiscriminator",
     "MultiPeriodDiscriminator",
     "MultiResolutionStftDiscriminator",
+    "MultiResolutionXcorrDiscriminator",
     "DiscriminatorR",
     "DiscriminatorP",
     "DiscriminatorS",
+    "DiscriminatorX",
     "CombinedDiscriminator",
 ]
