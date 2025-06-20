@@ -348,7 +348,6 @@ class MultiResolutionXcorrDiscriminator(CombinedDiscriminator):
         hop_size: List[int] = [120, 240, 50],
         channels: int = 32,
         num_layers: int = 4,
-        pre_layernorm: bool = False,
     ):
         super().__init__()
         for n, h in zip(n_fft, hop_size):
@@ -358,7 +357,6 @@ class MultiResolutionXcorrDiscriminator(CombinedDiscriminator):
                     h,
                     channels,
                     num_layers,
-                    pre_layernorm=pre_layernorm,
                 )
             )
 
