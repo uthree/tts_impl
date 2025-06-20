@@ -23,7 +23,7 @@ class SubtractiveVocoder(nn.Module):
         n_fft: int = 1024,
         min_phase: bool = True,
         dim_periodicity: int = 16,
-        dim_envelope: int = 64,
+        dim_envelope: int = 80,
     ):
         """
         Args:
