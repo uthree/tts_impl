@@ -54,7 +54,11 @@ class AudioDataModule(lightning.LightningDataModule):
         g = torch.Generator().manual_seed(self.seed)
 
         N = len(self.dataset)
-        lengths = [N - (self.num_test_data + self.num_validation_data), self.num_validation_data, self.num_test_data]
+        lengths = [
+            N - (self.num_test_data + self.num_validation_data),
+            self.num_validation_data,
+            self.num_test_data,
+        ]
 
         train_dataset, val_dataset, test_dataset = random_split(
             self.dataset, lengths, g
