@@ -21,7 +21,6 @@ class SubtractiveVocoder(nn.Module):
         sample_rate: int = 24000,
         hop_length: int = 256,
         n_fft: int = 1024,
-        min_phase: bool = True,
         dim_periodicity: int = 16,
         dim_envelope: int = 80,
     ):
@@ -37,7 +36,6 @@ class SubtractiveVocoder(nn.Module):
         self.n_fft = n_fft
         self.fft_bin = n_fft // 2 + 1
         self.hop_length = hop_length
-        self.min_phase = min_phase
         self.dim_periodicity = dim_periodicity
         self.dim_envelope = dim_envelope
 
@@ -81,10 +79,6 @@ class SubtractiveVocoder(nn.Module):
         kernel_imp = self.env2spec(envelope) * self.per2spec(periodicity)
         kernel_noi = self.env2spec(envelope) * self.per2spec(1 - periodicity)
 
-        # estimate minimum(causal) phase. (optional)
-        if self.min_phase:
-            kernel_imp = estimate_minimum_phase(kernel_imp)
-
         # oscillate impulse and noise
         with torch.no_grad():
             imp_scale = torch.rsqrt(
@@ -95,7 +89,7 @@ class SubtractiveVocoder(nn.Module):
                     min=20.0,
                 )
             ) * math.sqrt(self.sample_rate)
-            noi_scale = 2.0
+            noi_scale = 1.0
             imp = impulse_train(f0, self.hop_length, self.sample_rate) * imp_scale
             noi = torch.rand_like(imp) * noi_scale
 

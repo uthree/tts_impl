@@ -1,3 +1,4 @@
+import math
 from typing import Literal, Optional
 
 import torch
@@ -8,7 +9,6 @@ from tts_impl.net.common.causal_conv import CachedCausalConv
 from tts_impl.net.common.mingru import mingru_parallel, mingru_sequential
 from tts_impl.net.common.normalization import DynamicTanh, EmaInstanceNorm, EmaLayerNorm
 from tts_impl.utils.config import derive_config
-import math
 
 
 class GruxLayer(StatefulModule):
@@ -21,7 +21,7 @@ class GruxLayer(StatefulModule):
         layer_scale: float = 1.0,
         norm: Literal["layernorm", "instancenorm", "tanh"] = "tanh",
         d_condition: int = 0,
-        groups: Optional[int] = None
+        groups: Optional[int] = None,
     ):
         super().__init__()
         self.d_condition = d_condition
