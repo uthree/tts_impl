@@ -14,10 +14,11 @@ from tts_impl.utils.dataset.tts import TTSDataset
 class TTSDataModule(lightning.LightningDataModule):
     def __init__(
         self,
-        root: Union[str | os.PathLike],
+        root: Union[str, os.PathLike],
         seed: int = 42,
         batch_size: int = 1,
-        lengths: Union[List[float], list[int]] = [0.98, 0.01, 0.01],
+        num_validation_data: int = 20,
+        num_test_data: int = 200,
         format: Literal["flac", "mp3", "wav", "ogg"] = "flac",
         sizes: Optional[Mapping[str, Any]] = {},
         sample_rate: Optional[int] = None,
@@ -28,11 +29,13 @@ class TTSDataModule(lightning.LightningDataModule):
         self.root = Path(root)
         self.seed = seed
         self.batch_size = batch_size
-        self.lengths = lengths
         self.sizes = sizes
         self.sample_rate = sample_rate
         self.format = format
         self.kwargs = kwargs
+
+        self.num_validation_data = num_validation_data
+        self.num_test_data = num_test_data
 
         if num_workers is None:
             self.num_workers = multiprocessing.cpu_count() - 1
@@ -49,8 +52,12 @@ class TTSDataModule(lightning.LightningDataModule):
             **self.kwargs,
         )
         g = torch.Generator().manual_seed(self.seed)
+
+        N = len(self.dataset)
+        lengths = [N - (self.num_test_data + self.num_validation_data), self.num_validation_data, self.num_test_data]
+
         train_dataset, val_dataset, test_dataset = random_split(
-            self.dataset, self.lengths, g
+            self.dataset, lengths, g
         )
         self.train_dataset = train_dataset
         self.val_dataset = val_dataset

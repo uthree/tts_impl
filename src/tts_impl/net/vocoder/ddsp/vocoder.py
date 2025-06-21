@@ -84,8 +84,6 @@ class SubtractiveVocoder(nn.Module):
         # estimate minimum(causal) phase. (optional)
         if self.min_phase:
             kernel_imp = estimate_minimum_phase(kernel_imp)
-            
-        kernel_noi = estimate_minimum_phase(kernel_noi)
 
         # oscillate impulse and noise
         with torch.no_grad():
