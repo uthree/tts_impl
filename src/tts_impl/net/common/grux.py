@@ -8,6 +8,7 @@ from tts_impl.net.common.causal_conv import CachedCausalConv
 from tts_impl.net.common.mingru import mingru_parallel, mingru_sequential
 from tts_impl.net.common.normalization import DynamicTanh, EmaInstanceNorm, EmaLayerNorm
 from tts_impl.utils.config import derive_config
+import math
 
 
 class GruxLayer(StatefulModule):
@@ -20,6 +21,7 @@ class GruxLayer(StatefulModule):
         layer_scale: float = 1.0,
         norm: Literal["layernorm", "instancenorm", "tanh"] = "tanh",
         d_condition: int = 0,
+        groups: Optional[int] = None
     ):
         super().__init__()
         self.d_condition = d_condition
@@ -27,22 +29,25 @@ class GruxLayer(StatefulModule):
             d_ffn = d_model * 3
         if self.d_condition > 0:
             self.cond = nn.Linear(d_condition, d_model * 2)
+        if groups is None:
+            groups = d_model
 
         self.d_model = d_model
         self.kernel_size = kernel_size
         self.d_h_conv = d_model * (kernel_size - 1)
         self.d_h_gru = d_model
+        self.groups = groups
 
         self.linear_z = nn.Linear(d_model, d_model)
-        self.conv_h = CachedCausalConv(d_model, kernel_size=kernel_size, groups=d_model)
+        self.conv_h = CachedCausalConv(d_model, kernel_size=kernel_size, groups=groups)
         self.ffn_in = nn.Linear(d_model, d_ffn)
         self.ffn_gate = nn.Linear(d_model, d_ffn)
         self.ffn_out = nn.Linear(d_ffn, d_model)
 
         self.dropout = nn.Dropout(p=p_dropout)
         with torch.no_grad():
-            self.ffn_out.weight.normal_(0.0, layer_scale)
-            self.ffn_out.bias.zero_()
+            self.ffn_out.weight.normal_(0.0, layer_scale / math.sqrt(d_model))
+            self.ffn_out.bias.normal_(0.0, 1e-3)
 
             if norm == "layernorm":
                 self.norm = EmaLayerNorm(d_model, elementwise_affine=False)
