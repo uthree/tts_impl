@@ -40,25 +40,19 @@ class SubtractiveVocoder(nn.Module):
         self.dim_envelope = dim_envelope
 
         self.register_buffer("hann_window", torch.hann_window(n_fft))
-        self.per2spec = InverseMelScale(
-            n_stft=self.fft_bin, n_mels=dim_periodicity, sample_rate=sample_rate
-        )
-        self.env2spec = InverseMelScale(
-            n_stft=self.fft_bin, n_mels=dim_envelope, sample_rate=sample_rate
-        )
 
     def synthesize(
         self,
         f0: Tensor,
-        periodicity: Tensor,
-        envelope: Tensor,
+        ir: Tensor,
+        ap: Tensor,
         reverb: Optional[Tensor] = None,
     ) -> Tensor:
         """
         Args:
             f0: shape=(batch_size, n_frames)
-            periodicity: shape=(batch_size, fft_bin, n_frames)
-            envelope: shape=(batch_size, fft_bin, n_frames)
+            ir: shape=(batch_size, fft_bin, n_frames)
+            ap: shape=(batch_size, fft_bin, n_frames)
             reverb: shape=(batch_size, filter_size), Optional, post-filter
 
         Returns:
@@ -68,16 +62,12 @@ class SubtractiveVocoder(nn.Module):
         # cast to 32-bit float for stability.
         dtype = f0.dtype
         f0 = f0.to(torch.float)
-        periodicity = periodicity.to(torch.float)
-        envelope = envelope.to(torch.float)
+        ir = ir.float()
+        ap = ap.float()
 
         # pad
-        envelope = F.pad(envelope, (1, 0))
-        periodicity = F.pad(periodicity, (1, 0))
-
-        # to linear scale
-        kernel_imp = self.env2spec(envelope) * self.per2spec(periodicity)
-        kernel_noi = self.env2spec(envelope) * self.per2spec(1 - periodicity)
+        ap = F.pad(ap, (1, 0))
+        ir = F.pad(ir, (1, 0))
 
         # oscillate impulse and noise
         with torch.no_grad():
@@ -113,7 +103,7 @@ class SubtractiveVocoder(nn.Module):
         imp_stft += noi_stft * (F.pad(f0[:, None, :], (1, 0)) < 20.0).to(torch.float)
 
         # apply the filter to impulse / noise, and add them.
-        voi_stft = noi_stft * kernel_noi + imp_stft * kernel_imp
+        voi_stft = noi_stft * ap + imp_stft * ir
 
         # inverse STFT
         voi = torch.istft(
