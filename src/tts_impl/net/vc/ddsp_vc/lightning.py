@@ -133,10 +133,9 @@ class DdspVoiceConversionLightningModule(LightningModule):
         # real spec.
         spec_real = self.spectrogram(real).detach()
 
-        # generator forward
+        # encoder forward
         g = self.speaker_embedding(sid).unsqueeze(2)
         z, f0_logits, _h_last = self.encoder(af)
-        z = z.detach()
         loss_f0, loss_uv = self.encoder.f0_loss(f0_logits, f0)
 
         # SSL
@@ -153,9 +152,10 @@ class DdspVoiceConversionLightningModule(LightningModule):
             # instance normalization
             ssl_feats = (ssl_feats - ssl_feats.mean(dim=1, keepdim=True)) / torch.clamp_min(ssl_feats.std(dim=1, keepdim=True), 1e-5)
 
+        # decoder forward
         z_proj = self.emb2ssl(z.transpose(1, 2))
         loss_ssl = F.huber_loss(z_proj, ssl_feats)
-        se, ap, _h_last = self.decoder(z, h_0=None, g=g)
+        se, ap, _h_last = self.decoder(z.detach(), h_0=None, g=g)
         fake = self.vocoder.synthesize(f0, se, ap).unsqueeze(1)
 
         # spectrogram
@@ -225,7 +225,6 @@ class DdspVoiceConversionLightningModule(LightningModule):
         f0_hat = self.encoder.decode_f0(f0_logits)
         se, ap, _ = self.decoder(z, g=g)
         recon = self.vocoder.synthesize(f0_hat, se, ap).unsqueeze(1)
-
         spec_recon = self.spectrogram(recon)
         loss_mel = F.l1_loss(spec_recon, spec_real)
         self.log("validation loss/mel spectrogram", loss_mel)
