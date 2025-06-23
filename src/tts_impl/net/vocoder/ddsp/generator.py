@@ -54,12 +54,12 @@ class DdspGenerator(nn.Module, GanVocoderGenerator):
         x = x.transpose(1, 2)
         x = self.conv_post(x)
         x = x.float()
-        ir, ap = torch.split(
+        se, ap = torch.split(
             x, [self.fft_bin, self.fft_bin], dim=1
         )
-        ir = F.softplus(ir)
-        ap = F.softplus(ap)
-        return ir, ap
+        se = torch.exp(se)
+        ap = torch.exp(ap)
+        return se, ap
 
     def build_reverb(self, g=None):
         if self.reverb_size > 0:
@@ -90,7 +90,7 @@ class DdspGenerator(nn.Module, GanVocoderGenerator):
 
     def forward(self, x, f0, g=None, uv=None):
         rev = self.build_reverb(g)
-        ir, ap = self.net(x, g=g)
-        x = self.vocoder.synthesize(f0, ir, ap, reverb=rev)
+        se, ap = self.net(x, g=g)
+        x = self.vocoder.synthesize(f0, se, ap, reverb=rev)
         x = x.unsqueeze(dim=1)
         return x
