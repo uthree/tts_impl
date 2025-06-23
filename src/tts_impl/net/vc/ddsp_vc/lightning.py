@@ -150,6 +150,9 @@ class DdspVoiceConversionLightningModule(LightningModule):
             ssl_feats = F.interpolate(
                 ssl_feats.transpose(1, 2), size=z.shape[2], mode="linear"
             ).transpose(1, 2)
+            # instance normalization
+            ssl_feats = (ssl_feats - ssl_feats.mean(dim=1, keepdim=True)) / torch.clamp_min(ssl_feats.std(dim=1, keepdim=True, 1e-5))
+
         z_proj = self.emb2ssl(z.transpose(1, 2))
         loss_ssl = F.huber_loss(z_proj, ssl_feats)
         se, ap, _h_last = self.decoder(z, h_0=None, g=g)
