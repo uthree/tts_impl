@@ -20,8 +20,6 @@ class SubtractiveVocoder(nn.Module):
         sample_rate: int = 24000,
         hop_length: int = 256,
         n_fft: int = 1024,
-        dim_periodicity: int = 16,
-        dim_envelope: int = 80,
     ):
         """
         Args:
@@ -35,9 +33,6 @@ class SubtractiveVocoder(nn.Module):
         self.n_fft = n_fft
         self.fft_bin = n_fft // 2 + 1
         self.hop_length = hop_length
-        self.dim_periodicity = dim_periodicity
-        self.dim_envelope = dim_envelope
-
         self.register_buffer("hann_window", torch.hann_window(n_fft))
 
     def synthesize(
@@ -80,7 +75,7 @@ class SubtractiveVocoder(nn.Module):
             )
             noi_scale = 2.0 / math.sqrt(self.sample_rate)
             imp = impulse_train(f0, self.hop_length, self.sample_rate) * imp_scale
-            noi = (torch.rand_like(imp) - 1.0)  * noi_scale
+            noi = (torch.rand_like(imp) - 1.0) * noi_scale
 
         # short-time fourier transform
         imp_stft = torch.stft(

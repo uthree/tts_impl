@@ -15,31 +15,27 @@ from tts_impl.net.vocoder.ddsp import SubtractiveVocoder
 
 @pytest.mark.parametrize("batch_size", [1, 4])
 @pytest.mark.parametrize("num_frames", [100, 200])
-@pytest.mark.parametrize("min_phase", [True, False])
 @pytest.mark.parametrize("post_filter_length", [0, 2048, 1024])
 @pytest.mark.parametrize("n_fft", [1024])
 @pytest.mark.parametrize("hop_length", [256])
-@pytest.mark.parametrize("dim_periodicity", [16])
-@pytest.mark.parametrize("dim_envelope", [64])
 def test_subtractive_vocoder(
     batch_size: int,
     num_frames: int,
-    min_phase: bool,
     post_filter_length: int,
     n_fft: int,
     hop_length: int,
-    dim_periodicity: int,
-    dim_envelope: int,
 ):
+    sample_rate = 24000
+    fft_bin = n_fft // 2 + 1
     vocoder = SubtractiveVocoder(
+        sample_rate=sample_rate,
         n_fft=n_fft,
         hop_length=hop_length,
-        min_phase=min_phase,
     )
     fft_bin = n_fft // 2 + 1
     f0 = torch.ones(batch_size, num_frames) * 440.0
-    per = torch.rand(batch_size, dim_periodicity, num_frames)
-    env = torch.rand(batch_size, dim_envelope, num_frames)
+    per = torch.rand(batch_size, fft_bin, num_frames)
+    env = torch.rand(batch_size, fft_bin, num_frames)
     pf = (
         torch.randn(batch_size, post_filter_length) if post_filter_length != 0 else None
     )
