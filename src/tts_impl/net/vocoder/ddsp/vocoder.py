@@ -5,7 +5,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
-from torchaudio.transforms import InverseMelScale
 from tts_impl.functional.ddsp import estimate_minimum_phase, fft_convolve, impulse_train
 from tts_impl.utils.config import derive_config
 
@@ -40,25 +39,19 @@ class SubtractiveVocoder(nn.Module):
         self.dim_envelope = dim_envelope
 
         self.register_buffer("hann_window", torch.hann_window(n_fft))
-        self.per2spec = InverseMelScale(
-            n_stft=self.fft_bin, n_mels=dim_periodicity, sample_rate=sample_rate
-        )
-        self.env2spec = InverseMelScale(
-            n_stft=self.fft_bin, n_mels=dim_envelope, sample_rate=sample_rate
-        )
 
     def synthesize(
         self,
         f0: Tensor,
-        periodicity: Tensor,
-        envelope: Tensor,
+        se: Tensor,
+        ap: Tensor,
         reverb: Optional[Tensor] = None,
     ) -> Tensor:
         """
         Args:
             f0: shape=(batch_size, n_frames)
-            periodicity: shape=(batch_size, fft_bin, n_frames)
-            envelope: shape=(batch_size, fft_bin, n_frames)
+            se: shape=(batch_size, fft_bin, n_frames)
+            ap: shape=(batch_size, fft_bin, n_frames)
             reverb: shape=(batch_size, filter_size), Optional, post-filter
 
         Returns:
@@ -68,16 +61,12 @@ class SubtractiveVocoder(nn.Module):
         # cast to 32-bit float for stability.
         dtype = f0.dtype
         f0 = f0.to(torch.float)
-        periodicity = periodicity.to(torch.float)
-        envelope = envelope.to(torch.float)
+        se = se.float()
+        ap = ap.float()
 
         # pad
-        envelope = F.pad(envelope, (1, 0))
-        periodicity = F.pad(periodicity, (1, 0))
-
-        # to linear scale
-        kernel_imp = self.env2spec(envelope) * self.per2spec(periodicity)
-        kernel_noi = self.env2spec(envelope) * self.per2spec(1 - periodicity)
+        ap = F.pad(ap, (1, 0))
+        se = F.pad(se, (1, 0))
 
         # oscillate impulse and noise
         with torch.no_grad():
@@ -88,10 +77,10 @@ class SubtractiveVocoder(nn.Module):
                     ).squeeze(1),
                     min=20.0,
                 )
-            ) * math.sqrt(self.sample_rate)
-            noi_scale = 1.0
+            )
+            noi_scale = 2.0 / math.sqrt(self.sample_rate)
             imp = impulse_train(f0, self.hop_length, self.sample_rate) * imp_scale
-            noi = torch.rand_like(imp) * noi_scale
+            noi = (torch.rand_like(imp) - 1.0)  * noi_scale
 
         # short-time fourier transform
         imp_stft = torch.stft(
@@ -110,10 +99,10 @@ class SubtractiveVocoder(nn.Module):
         )
 
         # replace impulse to noise if unvoiced.
-        imp_stft += noi_stft * (F.pad(f0[:, None, :], (1, 0)) < 20.0).to(torch.float)
+        ap += se * (F.pad(f0[:, None, :], (1, 0)) < 20.0).to(torch.float)
 
         # apply the filter to impulse / noise, and add them.
-        voi_stft = noi_stft * kernel_noi + imp_stft * kernel_imp
+        voi_stft = noi_stft * ap + imp_stft * estimate_minimum_phase(se)
 
         # inverse STFT
         voi = torch.istft(
