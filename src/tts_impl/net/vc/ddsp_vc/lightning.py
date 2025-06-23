@@ -3,9 +3,11 @@ from typing import List, Optional, Tuple
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import torch.optim as optim
 import torchaudio
 from lightning import LightningModule
 from torch import Tensor
+from torch.optim.lr_scheduler import StepLR
 from transformers import HubertModel
 
 from tts_impl.net.vocoder.ddsp import SubtractiveVocoder
@@ -66,7 +68,7 @@ class DdspVoiceConversionLightningModule(LightningModule):
         discriminator: HifiganDiscriminator.Config = discriminator_cfg_default,
         mel: LogMelSpectrogram.Config = LogMelSpectrogram.Config(),
         n_speakers: int = 1024,
-        gin_channels: int = 0,
+        gin_channels: int = 256,
         use_acoustic_features: bool = False,
         weight_mel: float = 45.0,
         weight_feat: float = 1.0,
@@ -122,16 +124,19 @@ class DdspVoiceConversionLightningModule(LightningModule):
         else:
             acoustic_features = self.spectrogram(real.sum(1)).detach()
 
-        slice_ids, fake = self._adversarial_training_step(real, f0, sid)
+        fake, slice_ids = self._adversarial_training_step(
+            acoustic_features, real, f0, sid
+        )
         self._discriminator_training_step(real, fake, slice_ids)
 
-    def _adversarial_training_step(self, real, f0, sid):
+    def _adversarial_training_step(self, af, real, f0, sid):
         # real spec.
         spec_real = self.spectrogram(real).detach()
 
         # generator forward
         g = self.speaker_embedding(sid).unsqueeze(2)
-        z, f0_logits, _h_last = self.encoder(spec_real)
+        z, f0_logits, _h_last = self.encoder(af)
+        z = z.detach()
         loss_f0, loss_uv = self.encoder.f0_loss(f0_logits, f0)
 
         # SSL
@@ -144,10 +149,11 @@ class DdspVoiceConversionLightningModule(LightningModule):
             ).hidden_states[9]
             ssl_feats = F.interpolate(
                 ssl_feats.transpose(1, 2), size=z.shape[2], mode="linear"
-            )
-        loss_ssl = F.huber_loss(z, ssl_feats)
+            ).transpose(1, 2)
+        z_proj = self.emb2ssl(z.transpose(1, 2))
+        loss_ssl = F.huber_loss(z_proj, ssl_feats)
         se, ap, _h_last = self.decoder(z, h_0=None, g=g)
-        fake = self.vocoder(f0, se, ap)
+        fake = self.vocoder.synthesize(f0, se, ap).unsqueeze(1)
 
         # spectrogram
         spec_fake = self.spectrogram(fake)
@@ -196,8 +202,8 @@ class DdspVoiceConversionLightningModule(LightningModule):
         self.log("train loss/vuv", loss_uv)
         self.log("G", loss_g, prog_bar=True, logger=False)
 
-        # return slice ids
-        return slice_ids
+        # return fake, slice ids
+        return fake, slice_ids
 
     def _test_or_validate_batch(self, batch, bid):
         waveform = batch["waveform"]
@@ -212,10 +218,10 @@ class DdspVoiceConversionLightningModule(LightningModule):
 
         spec_real = self.spectrogram(waveform).detach()
         g = self.speaker_embedding(sid).unsqueeze(2)
-        z, f0_logits, _ = self.encoder(spec_real)
+        z, f0_logits, _ = self.encoder(acoustic_features)
         f0_hat = self.encoder.decode_f0(f0_logits)
-        se, ap, _ = self.decoder(g=g)
-        recon = self.vocoder(f0_hat, se, ap)
+        se, ap, _ = self.decoder(z, g=g)
+        recon = self.vocoder.synthesize(f0_hat, se, ap).unsqueeze(1)
 
         spec_recon = self.spectrogram(recon)
         loss_mel = F.l1_loss(spec_recon, spec_real)

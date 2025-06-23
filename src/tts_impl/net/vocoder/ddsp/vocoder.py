@@ -52,7 +52,7 @@ class SubtractiveVocoder(nn.Module):
             reverb: shape=(batch_size, filter_size), Optional, post-filter
 
         Returns:
-            output: synthesized wave
+            output: synthesized wave shape=(batch_size, n_frames * hop_length)
         """
 
         # cast to 32-bit float for stability.

@@ -45,7 +45,7 @@ class DdspVc(Recipe):
     def prepare_datamodule(
         self,
         root_dir: str = "dataset_cache",
-        batch_size: int = 4,
+        batch_size: int = 16,
         max_length: int = 65536,
     ) -> LightningDataModule:
         datamodule = VcDataModule(

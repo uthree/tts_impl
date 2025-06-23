@@ -39,12 +39,13 @@ class Encoder(nn.Module):
         x = x.transpose(1, 2)
         x = self.post(x)
         z, f0_logits = torch.split(
-            [self.phoneme_embedding_dim, self.num_f0_classes], dim=1
+            x, [self.phoneme_embedding_dim, self.num_f0_classes], dim=1
         )
         return z, f0_logits, h_last
 
     def decode_f0(self, f0_logits: Tensor, k: int = 2) -> Tensor:
         uv, f0_logits = torch.split(f0_logits, [1, self.num_f0_classes - 1], 1)
+        uv = uv.squeeze(1)
         uv = (torch.sigmoid(uv) > 0.5).float()
         topk_result = torch.topk(f0_logits, k=k, dim=1)
         indices = topk_result.indices.float()
@@ -60,6 +61,7 @@ class Encoder(nn.Module):
     def f0_loss(self, f0_logits: Tensor, f0: Tensor) -> Tuple[Tensor, Tensor]:
         uv = (f0 > self.fmin).float() * (f0 < self.fmax).float()
         uv_hat, f0_logits = torch.split(f0_logits, [1, self.num_f0_classes - 1], 1)
+        uv_hat = uv_hat.squeeze(1)
         uv_hat = torch.sigmoid(uv_hat)
         log_delta_f0 = math.log(self.fmax) - math.log(self.fmin)
         log_fmin = math.log(self.fmin)
@@ -96,6 +98,7 @@ class Decoder(nn.Module):
             g = g.transpose(1, 2)
         x, h_last = self.grux(x, h_0, c=g)
         x = x.transpose(1, 2)
+        x = self.post(x)
         x = torch.exp(x)
         se, ap = torch.chunk(x, 2, dim=1)
         return se, ap, h_last
