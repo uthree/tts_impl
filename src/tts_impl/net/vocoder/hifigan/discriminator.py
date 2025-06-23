@@ -2,12 +2,9 @@ from dataclasses import dataclass, field
 from typing import List, Self
 
 from tts_impl.net.vocoder.discriminator import (
-    CombinedDiscriminator,
-    MultiPeriodDiscriminator,
-    MultiResolutionStftDiscriminator,
-    MultiResolutionXcorrDiscriminator,
-    MultiScaleDiscriminator,
-)
+    CombinedDiscriminator, MultiPeriodDiscriminator,
+    MultiResolutionStftDiscriminator, MultiResolutionXcorrDiscriminator,
+    MultiScaleDiscriminator)
 from tts_impl.utils.config import derive_config
 
 _mrsd_default = MultiResolutionStftDiscriminator.Config()

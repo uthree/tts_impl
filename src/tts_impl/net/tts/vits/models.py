@@ -4,12 +4,11 @@ from typing import Literal, Optional
 import torch
 from torch import nn
 from torch.nn import functional as F
+
 from tts_impl.functional import monotonic_align
-from tts_impl.net.base.tts import (
-    Invertible,
-    VariationalAcousticFeatureEncoder,
-    VariationalTextEncoder,
-)
+from tts_impl.net.base.tts import (Invertible,
+                                   VariationalAcousticFeatureEncoder,
+                                   VariationalTextEncoder)
 from tts_impl.net.tts.length_regurator import DuplicateByDuration
 from tts_impl.net.vocoder.hifigan import HifiganGenerator
 from tts_impl.utils.config import derive_config

@@ -4,13 +4,10 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 from torch.optim.lr_scheduler import StepLR
+
 from tts_impl.net.tts.vits.commons import slice_segments
-from tts_impl.net.tts.vits.losses import (
-    discriminator_loss,
-    feature_loss,
-    generator_loss,
-    kl_loss,
-)
+from tts_impl.net.tts.vits.losses import (discriminator_loss, feature_loss,
+                                          generator_loss, kl_loss)
 from tts_impl.net.vocoder.hifigan import HifiganDiscriminator
 from tts_impl.transforms import LogMelSpectrogram
 from tts_impl.utils.config import derive_config

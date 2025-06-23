@@ -1,6 +1,6 @@
 import torch
 from lightning import LightningDataModule
-from tts_impl.net.vc.ddsp_vc.lightning import DdspVcLightningModule
+from tts_impl.net.vc.ddsp_vc.lightning import DdspVoiceConversionLightningModule
 from tts_impl.utils.datamodule import VcDataModule
 from tts_impl.utils.preprocess import (
     Mixdown,
@@ -14,7 +14,7 @@ from tts_impl.utils.recipe import Recipe
 
 class DdspVc(Recipe):
     def __init__(self):
-        super().__init__(DdspVcLightningModule, "ddsp_vc")
+        super().__init__(DdspVoiceConversionLightningModule, "ddsp_vc")
 
     def preprocess(
         self,
@@ -45,7 +45,7 @@ class DdspVc(Recipe):
     def prepare_datamodule(
         self,
         root_dir: str = "dataset_cache",
-        batch_size: int = 16,
+        batch_size: int = 4,
         max_length: int = 65536,
     ) -> LightningDataModule:
         datamodule = VcDataModule(

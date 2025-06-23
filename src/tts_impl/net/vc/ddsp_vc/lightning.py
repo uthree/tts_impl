@@ -1,29 +1,31 @@
-from dataclasses import dataclass, field
-from typing import Any, List, Literal, Mapping, Optional
+from typing import List, Optional, Tuple
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import torch.optim as optim
+import torchaudio
 from lightning import LightningModule
-from torch.optim.lr_scheduler import StepLR
+from torch import Tensor
+from transformers import HubertModel
 
+from tts_impl.net.vocoder.ddsp import SubtractiveVocoder
 from tts_impl.net.vocoder.hifigan import HifiganDiscriminator
 from tts_impl.net.vocoder.hifigan.loss import (discriminator_loss,
                                                feature_loss, generator_loss)
 from tts_impl.transforms import LogMelSpectrogram
 from tts_impl.utils.config import derive_config
 
-from .generator import NsfgruxGenerator
+from .generator import Decoder, Encoder
 
-
-# normalize tensor for tensorboard's image logging
-def normalize(x: torch.Tensor):
-    x = x.to(torch.float)
-    mu = x.mean()
-    x = x - mu
-    x = x / torch.clamp_min(x.abs().max(), min=1e-8)
-    return x
+discriminator_cfg_default = HifiganDiscriminator.Config()
+discriminator_cfg_default.msd.scales = [1]
+discriminator_cfg_default.mpd.periods = [2, 3, 5, 7, 11]
+discriminator_cfg_default.mpd.channels_max = 256
+discriminator_cfg_default.mpd.channels_mul = 2
+discriminator_cfg_default.mrsd.n_fft = [512, 1024, 2048]
+discriminator_cfg_default.mrsd.hop_size = [50, 120, 240]
+discriminator_cfg_default.mrxd.n_fft = [512, 1024, 2048]
+discriminator_cfg_default.mrxd.hop_size = [50, 120, 240]
 
 
 def slice_segments(x, ids_str, segment_size=8192):
@@ -45,23 +47,25 @@ def rand_slice_segments(x, x_lengths=None, segment_size=8192):
     return ret, ids_str
 
 
-discriminator_cfg_default = HifiganDiscriminator.Config()
-discriminator_cfg_default.msd.scales = [1]
-discriminator_cfg_default.mpd.periods = [2, 3, 5, 7, 11]
-discriminator_cfg_default.mpd.channels_max = 256
-discriminator_cfg_default.mpd.channels_mul = 2
-discriminator_cfg_default.mrsd.n_fft = [512, 1024, 2048]
-discriminator_cfg_default.mrsd.hop_size = [50, 120, 240]
+# normalize tensor for tensorboard's image logging
+def normalize(x: torch.Tensor):
+    x = x.to(torch.float)
+    mu = x.mean()
+    x = x - mu
+    x = x / torch.clamp_min(x.abs().max(), min=1e-8)
+    return x
 
 
 @derive_config
-class NsfgruxLightningModule(LightningModule):
+class DdspVoiceConversionLightningModule(LightningModule):
     def __init__(
         self,
-        generator: NsfgruxGenerator.Config = NsfgruxGenerator.Config(),
+        encoder: Encoder.Config = Encoder.Config(),
+        decoder: Decoder.Config = Decoder.Config(),
+        vocoder: SubtractiveVocoder.Config = SubtractiveVocoder.Config(),
         discriminator: HifiganDiscriminator.Config = discriminator_cfg_default,
         mel: LogMelSpectrogram.Config = LogMelSpectrogram.Config(),
-        n_speakers: int = 0,
+        n_speakers: int = 1024,
         gin_channels: int = 0,
         use_acoustic_features: bool = False,
         weight_mel: float = 45.0,
@@ -71,13 +75,17 @@ class NsfgruxLightningModule(LightningModule):
         betas: List[float] = [0.8, 0.99],
         segment_size: int = 8192,
         lr: float = 2e-4,
+        ssl_model_name: str = "rinna/japanese-hubert-base",
+        ssl_model_sample_rate: int = 16000,
     ):
         super().__init__()
         self.automatic_optimization = False
 
         # flag for using data[acoustic_features] instead of mel spectrogram
         self.use_acoustic_features = use_acoustic_features
-        self.generator = NsfgruxGenerator(**generator)
+        self.encoder = Encoder(**encoder)
+        self.decoder = Decoder(**decoder)
+        self.vocoder = SubtractiveVocoder(**vocoder)
         self.discriminator = HifiganDiscriminator(**discriminator)
         self.spectrogram = LogMelSpectrogram(**mel)
         self.gin_channels = gin_channels
@@ -89,9 +97,18 @@ class NsfgruxLightningModule(LightningModule):
         self.lr = lr
         self.betas = betas
         self.segment_size = segment_size
+        self.ssl_model_name = ssl_model_name
+        self.ssl_model_sample_rate = ssl_model_sample_rate
+        self.speaker_embedding = nn.Embedding(n_speakers, gin_channels)
 
-        if self.n_speakers > 0 and gin_channels > 0:
-            self.speaker_embedding = nn.Embedding(n_speakers, gin_channels)
+        # initialize SSL model
+        ssl_model = HubertModel.from_pretrained(ssl_model_name)
+        ssl_model.eval()
+        self.ssl_model = ssl_model
+        self.ssl_d_model = self.ssl_model.config.hidden_size
+        self.emb2ssl = nn.Linear(
+            self.encoder.phoneme_embedding_dim, self.ssl_d_model, False
+        )
 
         self.save_hyperparameters()
 
@@ -105,30 +122,38 @@ class NsfgruxLightningModule(LightningModule):
         else:
             acoustic_features = self.spectrogram(real.sum(1)).detach()
 
-        fake = self._generator_forward(acoustic_features, f0, sid)
-        slice_ids = self._adversarial_training_step(real, fake)
+        slice_ids, fake = self._adversarial_training_step(real, f0, sid)
         self._discriminator_training_step(real, fake, slice_ids)
 
-    def _generator_forward(
-        self,
-        x: torch.Tensor,
-        f0: torch.Tensor,
-        sid: Optional[torch.Tensor],
-    ) -> torch.Tensor:
-        if sid is not None:
-            g = self.speaker_embedding(sid).unsqueeze(2)
-        else:
-            g = None
-        fake = self.generator.forward(x, f0=f0, g=g)
-        return fake
-
-    def _adversarial_training_step(self, real: torch.Tensor, fake: torch.Tensor) -> Any:
-        # spectrogram
+    def _adversarial_training_step(self, real, f0, sid):
+        # real spec.
         spec_real = self.spectrogram(real).detach()
+
+        # generator forward
+        g = self.speaker_embedding(sid).unsqueeze(2)
+        z, f0_logits, _h_last = self.encoder(spec_real)
+        loss_f0, loss_uv = self.encoder.f0_loss(f0_logits, f0)
+
+        # SSL
+        with torch.no_grad():
+            wf_resampled = torchaudio.functional.resample(
+                real, self.vocoder.sample_rate, self.ssl_model_sample_rate
+            )
+            ssl_feats = self.ssl_model.forward(
+                wf_resampled.sum(dim=1), output_hidden_states=True
+            ).hidden_states[9]
+            ssl_feats = F.interpolate(
+                ssl_feats.transpose(1, 2), size=z.shape[2], mode="linear"
+            )
+        loss_ssl = F.huber_loss(z, ssl_feats)
+        se, ap, _h_last = self.decoder(z, h_0=None, g=g)
+        fake = self.vocoder(f0, se, ap)
+
+        # spectrogram
         spec_fake = self.spectrogram(fake)
 
         # get optimizer
-        opt_g, opt_d = self.optimizers()
+        opt_g, _opt_d = self.optimizers()
 
         # slice waveforms
         real_slice, slice_ids = rand_slice_segments(
@@ -146,6 +171,9 @@ class NsfgruxLightningModule(LightningModule):
             loss_mel * self.weight_mel
             + loss_feat * self.weight_feat
             + loss_adv * self.weight_adv
+            + loss_uv
+            + loss_f0
+            + loss_ssl
         )
 
         # update parameters
@@ -163,6 +191,9 @@ class NsfgruxLightningModule(LightningModule):
         self.log("train loss/mel spectrogram", loss_mel)
         self.log("train loss/feature matching", loss_feat)
         self.log("train loss/generator adversarial", loss_adv)
+        self.log("train loss/ssl distillation", loss_ssl)
+        self.log("train loss/pitch estimation", loss_f0)
+        self.log("train loss/vuv", loss_uv)
         self.log("G", loss_g, prog_bar=True, logger=False)
 
         # return slice ids
@@ -180,31 +211,36 @@ class NsfgruxLightningModule(LightningModule):
             acoustic_features = self.spectrogram(waveform.sum(1)).detach()
 
         spec_real = self.spectrogram(waveform).detach()
-        fake = self._generator_forward(acoustic_features, f0=f0, sid=sid)
-        spec_fake = self.spectrogram(fake)
-        loss_mel = F.l1_loss(spec_fake, spec_real)
+        g = self.speaker_embedding(sid).unsqueeze(2)
+        z, f0_logits, _ = self.encoder(spec_real)
+        f0_hat = self.encoder.decode_f0(f0_logits)
+        se, ap, _ = self.decoder(g=g)
+        recon = self.vocoder(f0_hat, se, ap)
+
+        spec_recon = self.spectrogram(recon)
+        loss_mel = F.l1_loss(spec_recon, spec_real)
         self.log("validation loss/mel spectrogram", loss_mel)
 
-        for i in range(fake.shape[0]):
-            f = fake[i].sum(dim=0, keepdim=True).detach().cpu()
+        for i in range(recon.shape[0]):
+            f = recon[i].sum(dim=0, keepdim=True).detach().cpu()
             r = waveform[i].sum(dim=0, keepdim=True).detach().cpu()
-            spec_fake_img = normalize(spec_fake[i, 0].detach().cpu().flip(0))
+            spec_recon_img = normalize(spec_recon[i, 0].detach().cpu().flip(0))
             spec_real_img = normalize(spec_real[i, 0].detach().cpu().flip(0))
             self.logger.experiment.add_audio(
-                f"synthesized waveform/{bid}_{i}",
+                f"reconstructed waveform/{bid}_{i}",
                 f,
                 self.current_epoch,
-                sample_rate=self.generator.sample_rate,
+                sample_rate=self.vocoder.sample_rate,
             )
             self.logger.experiment.add_audio(
                 f"reference waveform/{bid}_{i}",
                 r,
                 self.current_epoch,
-                sample_rate=self.generator.sample_rate,
+                sample_rate=self.vocoder.sample_rate,
             )
             self.logger.experiment.add_image(
-                f"synthesized mel spectrogram/{bid}_{i}",
-                spec_fake_img,
+                f"reconstructed mel spectrogram/{bid}_{i}",
+                spec_recon_img,
                 self.current_epoch,
                 dataformats="HW",
             )
@@ -263,7 +299,7 @@ class NsfgruxLightningModule(LightningModule):
 
     def configure_optimizers(self):
         opt_g = optim.AdamW(
-            self.generator.parameters(),
+            nn.ModuleList([self.encoder, self.decoder]).parameters(),
             lr=self.lr,
             betas=self.betas,
         )
