@@ -54,9 +54,7 @@ class DdspGenerator(nn.Module, GanVocoderGenerator):
         x = x.transpose(1, 2)
         x = self.conv_post(x)
         x = x.float()
-        se, ap = torch.split(
-            x, [self.fft_bin, self.fft_bin], dim=1
-        )
+        se, ap = torch.split(x, [self.fft_bin, self.fft_bin], dim=1)
         se = torch.exp(se)
         ap = torch.exp(ap)
         return se, ap
