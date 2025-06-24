@@ -73,6 +73,9 @@ class DdspVoiceConversionLightningModule(LightningModule):
         weight_mel: float = 45.0,
         weight_feat: float = 1.0,
         weight_adv: float = 1.0,
+        weight_uv: float=1.0,
+        weight_f0: float=1.0,
+        weight_ssl:float=10.0,
         lr_decay: float = 0.999,
         betas: List[float] = [0.8, 0.99],
         segment_size: int = 8192,
@@ -95,6 +98,9 @@ class DdspVoiceConversionLightningModule(LightningModule):
         self.weight_mel = weight_mel
         self.weight_adv = weight_adv
         self.weight_feat = weight_feat
+        self.weight_uv = weight_uv
+        self.weight_f0 = weight_f0
+        self.weight_ssl = weight_ssl
         self.lr_decay = lr_decay
         self.lr = lr
         self.betas = betas
@@ -180,9 +186,9 @@ class DdspVoiceConversionLightningModule(LightningModule):
             loss_mel * self.weight_mel
             + loss_feat * self.weight_feat
             + loss_adv * self.weight_adv
-            + loss_uv
-            + loss_f0
-            + loss_ssl
+            + loss_uv * self.weight_uv
+            + loss_f0 * self.weight_f0
+            + loss_ssl * self.weight_ssl
         )
 
         # update parameters
