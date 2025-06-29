@@ -12,7 +12,7 @@ from tts_impl.utils.preprocess import (
 from tts_impl.utils.recipe import Recipe
 
 
-class NsfHifigan(Recipe):
+class DdspVocoder(Recipe):
     def __init__(self):
         super().__init__(DdspVocoderLightningModule, "ddsp")
 
@@ -60,4 +60,4 @@ class NsfHifigan(Recipe):
 
 
 if __name__ == "__main__":
-    NsfHifigan().cli()
+    DdspVocoder().cli()

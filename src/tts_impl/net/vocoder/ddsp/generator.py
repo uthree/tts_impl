@@ -63,10 +63,10 @@ class DdspGenerator(nn.Module, GanVocoderGenerator):
         if self.reverb_size > 0:
             # get impulse response
             if self.gin_channels > 0:
-                ir = F.normalize(self.to_reverb_noise(g).squeeze(2), dim=1, p=2.0)
+                ir = self.to_reverb_noise(g).squeeze(2)
             else:
-                ir = F.normalize(self.reverb_noise, dim=1, p=2.0)
-
+                ir = self.reverb_noise
+                
             # get params
             if self.gin_channels > 0:
                 wet, decay = self.to_reverb_params(g).split([1, 1], dim=1)
