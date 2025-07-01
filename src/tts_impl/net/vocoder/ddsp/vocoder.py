@@ -20,6 +20,7 @@ class SubtractiveVocoder(nn.Module):
         sample_rate: int = 24000,
         hop_length: int = 256,
         n_fft: int = 1024,
+        min_phase: bool = False
     ):
         """
         Args:
@@ -33,6 +34,7 @@ class SubtractiveVocoder(nn.Module):
         self.n_fft = n_fft
         self.fft_bin = n_fft // 2 + 1
         self.hop_length = hop_length
+        self.min_phase = min_phase
         self.register_buffer("hann_window", torch.hann_window(n_fft))
 
     def synthesize(
@@ -97,7 +99,9 @@ class SubtractiveVocoder(nn.Module):
         ap += se * (F.pad(f0[:, None, :], (1, 0)) < 20.0).to(torch.float)
 
         # apply the filter to impulse / noise, and add them.
-        voi_stft = noi_stft * ap + imp_stft * estimate_minimum_phase(se)
+        if self.min_phase:
+            se = estimate_minimum_phase(se)
+        voi_stft = noi_stft * ap + imp_stft * se
 
         # inverse STFT
         voi = torch.istft(
