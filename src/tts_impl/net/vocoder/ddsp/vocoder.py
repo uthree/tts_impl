@@ -79,7 +79,7 @@ class SubtractiveVocoder(nn.Module):
                 )
             )
             imp = impulse_train(f0, self.hop_length, self.sample_rate) * imp_scale
-            noi = (torch.rand_like(imp) - 0.5) * 2.0 / math.sqrt(self.sample_rate)
+            noi = torch.rand_like(imp) / math.sqrt(self.sample_rate)
 
         # short-time fourier transform
         imp_stft = torch.stft(
@@ -97,14 +97,11 @@ class SubtractiveVocoder(nn.Module):
             return_complex=True,
         )
 
-        # excitation
+        # excitation and filter
         per *= (F.pad(f0[:, None, :], (1, 0)) > 20.0).to(torch.float) # set periodicity=0 if unvoiced.
         periodicity = self.per2bins(per)
         aperiodicity = self.per2bins(1-per)
-        excitation = noi_stft * aperiodicity + imp_stft * periodicity
-
-        # filter
-        voi_stft = excitation * estimate_minimum_phase(env)
+        voi_stft = noi_stft * aperiodicity * env + imp_stft * estimate_minimum_phase(periodicity * env)
 
         # inverse STFT
         voi = torch.istft(
