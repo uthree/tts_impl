@@ -35,7 +35,7 @@ class DdspGenerator(nn.Module, GanVocoderGenerator):
         self.post = nn.Conv1d(d_model, self.dim_periodicity + self.dim_spectral_envelope , 1)
 
         if self.reverb_size > 0:
-            self.reverb = nn.Parameter(torch.randn(reverb_size) * 0.333 / math.sqrt(reverb_size))
+            self.reverb = nn.Parameter(torch.randn(reverb_size))
 
             t = torch.arange(self.reverb_size) / self.vocoder.sample_rate
             self.register_buffer("t", t)
@@ -66,14 +66,14 @@ class DdspGenerator(nn.Module, GanVocoderGenerator):
             reverb_params = self.to_reverb_params(g)
             wet, decay = reverb_params[:, 0, :], reverb_params[:, 1, :]
             reverb = self.reverb.expand(g.shape[0], self.reverb_size) * torch.exp(-F.softplus(-decay) * self.t.unsqueeze(0) * 500.0) * torch.sigmoid(wet)
-            reverb[:, 0] = 1.0
             reverb = F.normalize(reverb, dim=1)
+            reverb[:, 0] = 1.0
             return reverb
         else:
             wet, decay = self.reverb_params[0], self.reverb_params[1]
             reverb = self.reverb * torch.exp(-F.softplus(-decay) * self.t * 500.0) * torch.sigmoid(wet)
-            reverb[0] = 1.0
             reverb = F.normalize(reverb, dim=0)
+            reverb[0] = 1.0
             reverb = reverb.expand(batch_size, self.reverb_size)
             return reverb
 
