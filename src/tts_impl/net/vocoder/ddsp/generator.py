@@ -1,5 +1,5 @@
 from typing import Optional
-
+import math
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -27,11 +27,23 @@ class DdspGenerator(nn.Module, GanVocoderGenerator):
         self.sample_rate = vocoder.sample_rate
         self.vocoder = SubtractiveVocoder(**vocoder)
         self.dim_periodicity = self.vocoder.dim_periodicity
+        self.dim_spectral_envelope = self.vocoder.dim_spectral_envelope
         self.gin_channels = gin_channels
         self.sample_rate = vocoder.sample_rate
         self.pre = nn.Conv1d(in_channels, d_model, 1)
         self.wn = WN(d_model, 5, 1, num_layers, gin_channels)
-        self.post = nn.Conv1d(d_model, self.dim_periodicity + self.fft_bin, 1)
+        self.post = nn.Conv1d(d_model, self.dim_periodicity + self.dim_spectral_envelope , 1)
+
+        if self.reverb_size > 0:
+            self.reverb = nn.Parameter(torch.randn(reverb_size) * 0.333 / math.sqrt(reverb_size))
+
+            t = torch.arange(self.reverb_size) / self.vocoder.sample_rate
+            self.register_buffer("t", t)
+
+            if gin_channels > 0:
+                self.to_reverb_params = nn.Conv1d(gin_channels, 2, 1)
+            else:
+                self.reverb_params = nn.Parameter(torch.zeros(2))
 
     def net(self, x, g=None):
         x = self.pre(x)
@@ -39,14 +51,35 @@ class DdspGenerator(nn.Module, GanVocoderGenerator):
         x = self.wn(x, x_mask, g=g)
         x = self.post(x)
         x = x.float()
-        per, env = torch.split(x, [self.dim_periodicity, self.fft_bin], dim=1)
+        per, env = torch.split(x, [self.dim_periodicity, self.dim_spectral_envelope], dim=1)
         per = torch.sigmoid(per)
         env = torch.exp(env)
         return per, env
-
+    
+    def build_reverb(self, g=None, batch_size: int=1) -> torch.Tensor | None:
+        if g is None:
+            return None
+        if self.reverb_size < 1:
+            return None
+        
+        if self.gin_channels > 0:
+            reverb_params = self.to_reverb_params(g)
+            wet, decay = reverb_params[:, 0, :], reverb_params[:, 1, :]
+            reverb = self.reverb.expand(g.shape[0], self.reverb_size) * torch.exp(-F.softplus(-decay) * self.t.unsqueeze(0) * 500.0) * torch.sigmoid(wet)
+            reverb[:, 0] = 1.0
+            reverb = F.normalize(reverb, dim=1)
+            return reverb
+        else:
+            wet, decay = self.reverb_params[0], self.reverb_params[1]
+            reverb = self.reverb * torch.exp(-F.softplus(-decay) * self.t * 500.0) * torch.sigmoid(wet)
+            reverb[0] = 1.0
+            reverb = F.normalize(reverb, dim=0)
+            reverb = reverb.expand(batch_size, self.reverb_size)
+            return reverb
 
     def forward(self, x, f0, g=None, uv=None):
         per, env = self.net(x, g=g)
-        x = self.vocoder.synthesize(f0, per, env)
+        reverb = self.build_reverb(g, x.shape[0])
+        x = self.vocoder.synthesize(f0, per, env, reverb)
         x = x.unsqueeze(dim=1)
         return x

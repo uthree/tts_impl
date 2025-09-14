@@ -21,6 +21,7 @@ class SubtractiveVocoder(nn.Module):
         sample_rate: int = 24000,
         hop_length: int = 256,
         dim_periodicity: int = 16,
+        dim_spectral_envelope: int = 80,
         n_fft: int = 1024,
     ):
         """
@@ -37,7 +38,9 @@ class SubtractiveVocoder(nn.Module):
         self.fft_bin = n_fft // 2 + 1
         self.hop_length = hop_length
         self.dim_periodicity = dim_periodicity
+        self.dim_spectral_envelope = dim_spectral_envelope
         self.register_buffer("hann_window", torch.hann_window(n_fft))
+        self.mel2bins = torchaudio.transforms.InverseMelScale(self.fft_bin, dim_spectral_envelope, sample_rate)
         self.per2bins = torchaudio.transforms.InverseMelScale(self.fft_bin, dim_periodicity, sample_rate)
 
     def synthesize(
@@ -101,7 +104,8 @@ class SubtractiveVocoder(nn.Module):
         per *= (F.pad(f0[:, None, :], (1, 0)) > 20.0).to(torch.float) # set periodicity=0 if unvoiced.
         periodicity = self.per2bins(per)
         aperiodicity = self.per2bins(1-per)
-        voi_stft = noi_stft * aperiodicity * env + imp_stft * estimate_minimum_phase(periodicity * env)
+        env_lin = self.mel2bins(env)
+        voi_stft = noi_stft * aperiodicity * env_lin + imp_stft * estimate_minimum_phase(periodicity * env_lin)
 
         # inverse STFT
         voi = torch.istft(
