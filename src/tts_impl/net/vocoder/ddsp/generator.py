@@ -65,14 +65,12 @@ class DdspGenerator(nn.Module, GanVocoderGenerator):
         if self.gin_channels > 0:
             reverb_params = self.to_reverb_params(g)
             wet, decay = reverb_params[:, 0, :], reverb_params[:, 1, :]
-            reverb = self.reverb.expand(g.shape[0], self.reverb_size) * torch.exp(-F.softplus(-decay) * self.t.unsqueeze(0) * 500.0) * torch.sigmoid(wet)
-            reverb = F.normalize(reverb, dim=1)
+            reverb = self.reverb.expand(batch_size, self.reverb_size) * torch.exp(-F.softplus(-decay) * self.t.unsqueeze(0) * 500.0) * torch.sigmoid(wet)
             reverb[:, 0] = 1.0
             return reverb
         else:
             wet, decay = self.reverb_params[0], self.reverb_params[1]
             reverb = self.reverb * torch.exp(-F.softplus(-decay) * self.t * 500.0) * torch.sigmoid(wet)
-            reverb = F.normalize(reverb, dim=0)
             reverb[0] = 1.0
             reverb = reverb.expand(batch_size, self.reverb_size)
             return reverb
