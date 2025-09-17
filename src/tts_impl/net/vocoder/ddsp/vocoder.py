@@ -105,7 +105,8 @@ class SubtractiveVocoder(nn.Module):
         periodicity = self.per2bins(per)
         aperiodicity = self.per2bins(1-per)
         env_lin = self.mel2bins(env)
-        voi_stft = noi_stft * aperiodicity * env_lin + imp_stft * estimate_minimum_phase(periodicity * env_lin)
+        excitation = aperiodicity * noi_stft + periodicity * imp_stft
+        voi_stft = excitation * estimate_minimum_phase(env_lin)
 
         # inverse STFT
         voi = torch.istft(
