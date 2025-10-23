@@ -16,7 +16,7 @@ class NhvcLayer(StatefulModule):
         self.mingru = MinGRU(d_model)
         self.gin_channels = gin_channels
         if gin_channels > 0:
-            self.modulator = nn.Linear(gin_channels, d_model)
+            self.modulator = nn.Linear(gin_channels, d_model * 2)
         self.mid = nn.Linear(d_model, d_model * 2)
         self.post = nn.Linear(d_model, d_model)
 
@@ -36,7 +36,8 @@ class NhvcLayer(StatefulModule):
         x_0, x_1 = self.mid(x).chunk(2, dim=2)
         x = self.post(F.silu(x_0) * x_1)
         if g is not None and self.gin_channels > 0:
-            x = x * self.modulator(g)
+            gamma, beta = self.modulator(g).chunk(2, dim=2)
+            x = x * torch.exp(gamma) + beta
         x = x + res
         return x, h_last
 
@@ -86,7 +87,7 @@ class NhvcEncoder(StatefulModule):
         log_fmax = math.log(self.fmax)
         log_delta_f = log_fmax - log_fmin
 
-        log_freq = torch.log(torch.clamp(freq, min=self.fmin, max=self.fmax))
+        log_freq = torch.log(torch.clamp(freq.float(), min=self.fmin, max=self.fmax))
         idx = torch.ceil((log_freq - log_fmin) / log_delta_f * (self.n_f0_classes-1)).long()
         return idx
     
@@ -125,7 +126,7 @@ class NhvcEncoder(StatefulModule):
             loss: shape=[]
         """
         uv = (f0 > self.fmin).float()
-        uv_hat_logits, f0_logits = torch.split(probs, [1, self.n_f0_classes-1], dim=1)
+        uv_hat_logits, f0_logits = torch.split(probs.float(), [1, self.n_f0_classes-1], dim=1)
         uv_hat = torch.sigmoid(uv_hat_logits.squeeze(1))
         loss_uv = (uv - uv_hat).abs().mean()
         f0_label = self.freq2idx(f0)
@@ -162,10 +163,10 @@ class NhvcDecoder(StatefulModule):
         return self.stack._initial_state(x, *args, **kwargs)
 
     def _parallel_forward(
-        self, x: Tensor, h: Tensor, g: Tensor | None = None, *args, **kwargs
+        self, x: Tensor, h: Tensor, g: Tensor | None = None,**kwargs
     ) -> Tuple[Tensor, Tensor]:
         x = self.pre(x)
-        x, h_last = self.stack._parallel_forward(x, h, *args, g=g, **kwargs)
+        x, h_last = self.stack._parallel_forward(x, h, g=g, **kwargs)
         x = self.post(x)
         return x, h_last
 
@@ -214,7 +215,7 @@ class NhvcGenerator(nn.Module):
         z, f0_logits, noise_filter = torch.split(enc_output, [self.encoder.dim_phonemes, self.encoder.n_f0_classes, self.encoder.fft_bin], dim=2)
         z = normalize(z, dim=1)
         loss_f0 = self.encoder.f0_loss(f0_logits.transpose(1, 2), f0)
-        dec_output, _ = self.decoder.forward(z, g=g.unsqueeze(2))
+        dec_output, _ = self.decoder.forward(z, g=g.unsqueeze(1))
         per, env = torch.split(dec_output, [self.decoder.dim_periodicity, self.decoder.fft_bin], dim=2)
         per = per.transpose(1, 2)
         env = env.transpose(1, 2)

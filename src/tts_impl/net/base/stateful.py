@@ -32,9 +32,9 @@ class StatefulModule(nn.Module):
 
         # if sequence length is 1, use sequential forward implementation. otherwise, use parallel implementation.
         if x.shape[1] == 1:
-            x, h = self._sequential_forward(x, h)
+            x, h = self._sequential_forward(x, h, *args, **kwargs)
         else:
-            x, h = self._parallel_forward(x, h)
+            x, h = self._parallel_forward(x, h, *args, **kwargs)
 
         return x, h
 
@@ -52,7 +52,7 @@ class StatefulModule(nn.Module):
             x: [batch_size, 1, d_model]
             h: [batch_size, 1, d_state]
         """
-        return self._parallel_forward(x, h)
+        return self._parallel_forward(x, h, *args, **kwargs)
 
     def _parallel_forward(
         self, x: torch.Tensor, h: torch.Tensor, *args, **kwargs
