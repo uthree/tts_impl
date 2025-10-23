@@ -17,7 +17,7 @@ from tts_impl.net.tts.vits import (
 )
 from tts_impl.net.vocoder.ddsp import SubtractiveVocoder
 from tts_impl.utils.config import derive_config
-
+from .losses import log_f0_loss
 
 @derive_config
 class Decoder(nn.Module):
@@ -28,10 +28,21 @@ class Decoder(nn.Module):
                  hidden_channels: int = 192,
                 kernel_size: int = 5,
                 dilation_rate: int = 1,
-                n_layers: int = 16, gin_channels: int=0,):
+                n_layers: int = 16, gin_channels: int=0):
+        self.fft_bin = n_fft // 2 + 1
+        self.dim_periodicity = dim_periodicity
+        out_channels = self.fft_bin + dim_periodicity + 1
         self.pre = nn.Conv1d(in_channels, hidden_channels, 1)
         self.wn = modules.WN(hidden_channels, kernel_size, dilation_rate, n_layers, gin_channels=gin_channels)
         self.post = nn.Conv1d(hidden_channels, out_channels, 1)
+
+    def forward(self, x, x_mask, g=None):
+        x = self.pre(x) * x_mask
+        x = self.wn(x, x_mask, g=g)
+        x = self.post(x) * x_mask
+        log_f0, periodicity, spectral_envelope = torch.split(x, [1, self.dim_periodicity, self.fft_bin], dim=1)
+        return torch.exp(log_f0), torch.sigmoid(periodicity), torch.exp(spectral_envelope)
+    
 
 @derive_config
 class NhvitsGenerator(nn.Module):
@@ -42,7 +53,6 @@ class NhvitsGenerator(nn.Module):
         flow: ResidualCouplingBlock.Config = ResidualCouplingBlock.Config(),
         duration_predictor: DurationPredictor.Config = DurationPredictor.Config(),
         stochastic_duration_predictor: StochasticDurationPredictor.Config = StochasticDurationPredictor.Config(),
-        pitch_predictor: PitchPredictor.Config = PitchPredictor.Config(),
         decoder: Decoder.Config = Decoder.Config(),
         vocoder: SubtractiveVocoder.Config = SubtractiveVocoder.Config(),
         n_speakers: int = 0,
@@ -65,13 +75,13 @@ class NhvitsGenerator(nn.Module):
         self.sample_rate = sample_rate
 
         self.enc_p = TextEncoder(**text_encoder)
-        self.dec = NsfhifiganGenerator(**decoder)
+        self.dec = Decoder(**decoder)
         self.enc_q = PosteriorEncoder(**posterior_encoder)
         self.flow = ResidualCouplingBlock(**flow)
-        self.pp = PitchPredictor(**pitch_predictor)
+        self.vocoder = SubtractiveVocoder(**vocoder)
         self.lr = DuplicateByDuration()
 
-        self.dec.source_module.sample_rate = self.sample_rate
+        self.vocoder.sample_rate = self.sample_rate
 
         if use_sdp:
             self.sdp = StochasticDurationPredictor(**stochastic_duration_predictor)
@@ -156,9 +166,9 @@ class NhvitsGenerator(nn.Module):
         m_p = self.lr(m_p, w, x_mask, y_mask)
         logs_p = self.lr(logs_p, w, x_mask, y_mask)
 
-        # pitch estimation loss
+
+        # calculate uv
         uv = (f0 > 20.0).float()
-        loss_f0, loss_uv, f0_hat, uv_hat = self.pp.forward(z_p, y_mask, f0, g=g)
 
         # slice
         z_slice, ids_slice = commons.rand_slice_segments(
@@ -170,7 +180,15 @@ class NhvitsGenerator(nn.Module):
         uv_slice = commons.slice_segments(
             f0.unsqueeze(1), ids_slice, self.segment_size
         ).squeeze(1)
-        o = self.dec.forward(z_slice, f0=f0_slice, uv=uv_slice, g=g)
+
+        # decode
+        f0_hat, periodicity, spectral_envelope = self.dec.forward(z_slice, x_mask, g=g)
+
+        # pitch estimation loss
+        loss_f0 = log_f0_loss(f0_hat, f0_slice, uv_slice)
+
+        # synthesize
+        o = self.vocoder.synthesize(f0_slice, periodicity, spectral_envelope)
 
         outputs = {
             "fake": o,
@@ -189,9 +207,7 @@ class NhvitsGenerator(nn.Module):
             "logw_hat": logw_hat,
             "f0": f0,
             "f0_hat": f0_hat,
-            "loss_uv": loss_uv,
             "uv": uv,
-            "uv_hat": uv_hat,
         }
 
         return outputs
@@ -234,15 +250,17 @@ class NhvitsGenerator(nn.Module):
         # sample from gaussian dist.
         z_p = m_p + torch.randn_like(m_p) * torch.exp(logs_p) * noise_scale
 
-        # estimate pitch
-        f0, uv = self.pp.infer(z_p, y_mask, g=g)
 
         # flow
         z = self.flow(z_p, y_mask, g=g, reverse=True)
 
-        o = self.dec.forward(
-            (z * y_mask)[:, :, :max_len], f0=f0[:, :max_len], uv=uv[:, :max_len], g=g
+        # decoder
+        f0, periodicity, spectral_envelope = self.dec.forward(
+            (z * y_mask)[:, :, :max_len], y_mask, g=g
         )
+
+        # vocoder
+        o = self.vocoder.synthesize(f0, periodicity, spectral_envelope)
         return o
 
     def voice_conversion(self, y, y_lengths, sid_src, sid_tgt):
