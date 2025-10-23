@@ -3,7 +3,7 @@ import torch
 from torch import nn as nn
 from torch import optim as optim
 from torch.nn import functional as F
-from torch.optim.lr_scheduler import StepLR
+from torch.optim.lr_scheduler import CosineAnnealingLR
 from tts_impl.net.tts.vits.commons import slice_segments
 from tts_impl.net.tts.vits.losses import (
     discriminator_loss,
@@ -44,8 +44,6 @@ class NsfvitsLightningModule(L.LightningModule):
         weight_feat: float = 1.0,
         weight_adv: float = 1.0,
         lr: float = 2e-4,
-        lr_decay: float = 0.9998749453,
-        betas: list[float] = [0.8, 0.99],
     ):
         super().__init__()
         self.automatic_optimization = False
@@ -58,10 +56,7 @@ class NsfvitsLightningModule(L.LightningModule):
         self.weight_adv = weight_adv
         self.weight_feat = weight_feat
 
-        self.lr_decay = lr_decay
         self.lr = lr
-        self.betas = betas
-
         self.save_hyperparameters()
 
     def training_step(self, batch):
@@ -86,6 +81,12 @@ class NsfvitsLightningModule(L.LightningModule):
         # discriminator step
         self._discriminator_training_step(real, fake)
 
+        # update schedulers
+        sch_g, sch_d = self.lr_schedulers()
+        sch_g.step()
+        sch_d.step()
+        self.log("scheduler/learning rate", sch_g.get_last_lr()[0])
+
     def _generator_training_step(
         self, x, x_lengths, y, y_lengths, waveform, f0, sid=None, w=None
     ):
@@ -106,7 +107,7 @@ class NsfvitsLightningModule(L.LightningModule):
         self.toggle_optimizer(opt_g)
         opt_g.zero_grad(set_to_none=True)
         self.manual_backward(loss_g)
-        self.clip_gradients(opt_g, 1.0, "norm")
+        self.clip_gradients(opt_g)
         opt_g.step()
         self.untoggle_optimizer(opt_g)
         return real, fake
@@ -196,7 +197,7 @@ class NsfvitsLightningModule(L.LightningModule):
         self.toggle_optimizer(opt_d)
         opt_d.zero_grad(set_to_none=True)
         self.manual_backward(loss_d)
-        self.clip_gradients(opt_d, 1.0, "norm")
+        self.clip_gradients(opt_d)
         opt_d.step()
         self.untoggle_optimizer(opt_d)
 
@@ -209,25 +210,18 @@ class NsfvitsLightningModule(L.LightningModule):
         self.log("D", loss_d, prog_bar=True, logger=False)
 
     def configure_optimizers(self):
-        opt_g = optim.AdamW(
+        opt_g = optim.Adafactor(
             self.generator.parameters(),
             lr=self.lr,
-            betas=self.betas,
         )
-        sch_g = StepLR(opt_g, 1, self.lr_decay)
-        opt_d = optim.AdamW(
+        sch_g =  CosineAnnealingLR(opt_g, 1000)
+        opt_d = optim.Adafactor(
             self.discriminator.parameters(),
             lr=self.lr,
-            betas=self.betas,
         )
-        sch_d = StepLR(opt_g, 1, self.lr_decay)
+        sch_d =  CosineAnnealingLR(opt_g, 1000)
         return [opt_g, opt_d], [sch_g, sch_d]
 
-    def on_train_epoch_end(self):
-        sch_g, sch_d = self.lr_schedulers()
-        sch_g.step()
-        sch_d.step()
-        self.log("scheduler/learning rate", sch_g.get_last_lr()[0])
 
     @torch.no_grad
     def validation_step(self, batch, bid):
