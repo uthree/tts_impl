@@ -81,7 +81,7 @@ class NhvcDecoder(StatefulModule):
         dim_phonemes: int = 64,
         n_fft: int = 1024,
         dim_periodicity: int = 16,
-        gin_channels: int = 0,
+        gin_channels: int = 128,
     ):
         super().__init__()
         self.fft_bin = n_fft // 2 + 1
@@ -101,3 +101,33 @@ class NhvcDecoder(StatefulModule):
         x, h_last = self.stack._parallel_forward(x, h, *args, g=g, **kwargs)
         x = self.post(x)
         return x, h_last
+
+
+@derive_config
+class ReverbFilterBank(nn.Module):
+    def __init__(self, n_speakers: int = 100, size: int = 4096):
+        super().__init__()
+        self.emb = nn.Embedding(n_speakers, size)
+
+    def forward(self, sid):
+        return self.emb(sid)
+
+
+@derive_config
+class Generator(nn.Module):
+    def __init__(
+        self,
+        encoder: NhvcEncoder.Config,
+        decoder: NhvcDecoder.Config,
+        num_phonemes: int = 64,
+        n_speakers: int = 100,
+        gin_channels: int = 128,
+    ):
+        super().__init__()
+        self.encoder = NhvcEncoder(**encoder)
+        self.decoder = NhvcDecoder(**decoder)
+        self.to_phoneme_probs = nn.Linear(encoder.dim_phonemes, num_phonemes)
+        self.speaker_embeddings = nn.Embedding(n_speakers, gin_channels)
+
+    def forward(self, spec, spec_lengths, f0, text, text_lengths, sid):
+        pass
