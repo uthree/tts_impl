@@ -21,7 +21,6 @@ class SubtractiveVocoder(nn.Module):
         sample_rate: int = 24000,
         hop_length: int = 256,
         dim_periodicity: int = 16,
-        dim_spectral_envelope: int = 80,
         n_fft: int = 1024,
     ):
         """
@@ -38,9 +37,7 @@ class SubtractiveVocoder(nn.Module):
         self.fft_bin = n_fft // 2 + 1
         self.hop_length = hop_length
         self.dim_periodicity = dim_periodicity
-        self.dim_spectral_envelope = dim_spectral_envelope
         self.register_buffer("hann_window", torch.hann_window(n_fft))
-        self.mel2bins = torchaudio.transforms.InverseMelScale(self.fft_bin, dim_spectral_envelope, sample_rate)
         self.per2bins = torchaudio.transforms.InverseMelScale(self.fft_bin, dim_periodicity, sample_rate)
 
     def synthesize(
@@ -53,7 +50,7 @@ class SubtractiveVocoder(nn.Module):
         """
         Args:
             f0: shape=(batch_size, n_frames)
-            per: shape=(batch_size, dim_periodicity, n_frames)
+            per: shape=(batch_size, fft_bin, n_frames)
             env: shape=(batch_size, fft_bin, n_frames)
             reverb: shape=(batch_size, filter_size), Optional, post-filter
 
@@ -80,9 +77,9 @@ class SubtractiveVocoder(nn.Module):
                     ).squeeze(1),
                     min=20.0,
                 )
-            )
+            ) * math.sqrt(self.sample_rate)
             imp = impulse_train(f0, self.hop_length, self.sample_rate) * imp_scale
-            noi = torch.rand_like(imp) / math.sqrt(self.sample_rate)
+            noi = torch.rand_like(imp) 
 
         # short-time fourier transform
         imp_stft = torch.stft(
@@ -104,9 +101,8 @@ class SubtractiveVocoder(nn.Module):
         per *= (F.pad(f0[:, None, :], (1, 0)) > 20.0).to(torch.float) # set periodicity=0 if unvoiced.
         periodicity = self.per2bins(per)
         aperiodicity = self.per2bins(1-per)
-        env_lin = self.mel2bins(torch.exp(env))
         excitation = aperiodicity * noi_stft + periodicity * imp_stft
-        voi_stft = excitation * estimate_minimum_phase(env_lin)
+        voi_stft = excitation * estimate_minimum_phase(env)
 
         # inverse STFT
         voi = torch.istft(
