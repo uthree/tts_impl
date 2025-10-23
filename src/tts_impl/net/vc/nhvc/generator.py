@@ -200,6 +200,7 @@ class NhvcGenerator(nn.Module):
         reverb_filter_bank: ReverbFilterBank.Config = ReverbFilterBank.Config(),
         n_speakers: int = 100,
         gin_channels: int = 128,
+        dim_ssl: int = 256,
     ):
         super().__init__()
         self.encoder = NhvcEncoder(**encoder)
@@ -207,12 +208,15 @@ class NhvcGenerator(nn.Module):
         self.vocoder = SubtractiveVocoder(**vocoder)
         self.reverb_filter_bank = ReverbFilterBank(**reverb_filter_bank)
         self.speaker_embeddings = nn.Embedding(n_speakers, gin_channels)
+        self.to_ssl = nn.Linear(self.decoder.dim_phonemes, dim_ssl)
 
-    def forward(self, spec, f0, sid):
+    def forward(self, spec, f0, ssl, sid):
         spec = spec.transpose(1,2)
         g = self.speaker_embeddings(sid)
         enc_output, _ = self.encoder.forward(spec)
         z, f0_logits, noise_filter = torch.split(enc_output, [self.encoder.dim_phonemes, self.encoder.n_f0_classes, self.encoder.fft_bin], dim=2)
+        loss_distill = self.distillation_loss(z, ssl)
+        z = z.detach()
         z = normalize(z, dim=1)
         loss_f0 = self.encoder.f0_loss(f0_logits.transpose(1, 2), f0)
         dec_output, _ = self.decoder.forward(z, g=g.unsqueeze(1))
@@ -221,4 +225,13 @@ class NhvcGenerator(nn.Module):
         env = env.transpose(1, 2)
         rev = self.reverb_filter_bank.forward(sid)
         wf = self.vocoder.synthesize(f0, per, env, rev).unsqueeze(1)
-        return wf, loss_f0
+        return wf, loss_f0, loss_distill
+
+    def distillation_loss(self, z, ssl):
+        z = self.to_ssl(z)
+        z = z.mT # [N, C, L]
+        ssl = ssl.mT # [N, C', L']
+        print(z.shape, ssl.shape)
+        ssl = F.interpolate(ssl, z.shape[2])
+        return F.l1_loss(z, ssl)
+        
