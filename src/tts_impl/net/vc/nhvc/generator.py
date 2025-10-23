@@ -231,7 +231,6 @@ class NhvcGenerator(nn.Module):
         z = self.to_ssl(z)
         z = z.mT # [N, C, L]
         ssl = ssl.mT # [N, C', L']
-        print(z.shape, ssl.shape)
         ssl = F.interpolate(ssl, z.shape[2])
         return F.l1_loss(z, ssl)
         
