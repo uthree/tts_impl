@@ -104,7 +104,7 @@ class SubtractiveVocoder(nn.Module):
         per *= (F.pad(f0[:, None, :], (1, 0)) > 20.0).to(torch.float) # set periodicity=0 if unvoiced.
         periodicity = self.per2bins(per)
         aperiodicity = self.per2bins(1-per)
-        env_lin = self.mel2bins(env)
+        env_lin = self.mel2bins(torch.exp(env))
         excitation = aperiodicity * noi_stft + periodicity * imp_stft
         voi_stft = excitation * estimate_minimum_phase(env_lin)
 

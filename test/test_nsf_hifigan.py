@@ -15,7 +15,7 @@ def test_nsf_hifigan_generator(
 ):
     frame_size = 256
     G = NsfhifiganGenerator(
-        filter={
+        filter_module={
             "activation": activation,
             "alias_free": alias_free,
             "in_channels": in_channels,
