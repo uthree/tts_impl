@@ -1,8 +1,8 @@
 from typing import List, Tuple, Union
 
 import torch
-import torch.nn as nn
-import torch.nn.functional as F
+from torch import nn as nn
+from torch.nn import functional as F
 
 
 def adjust_size_1d(

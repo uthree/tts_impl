@@ -2,8 +2,8 @@ import math
 from typing import Literal, Optional
 
 import torch
-import torch.nn as nn
-import torch.nn.functional as F
+from torch import nn as nn
+from torch.nn import functional as F
 from tts_impl.net.base.stateful import StatefulModule, StatefulModuleSequential
 from tts_impl.net.common.causal_conv import CachedCausalConv
 from tts_impl.net.common.mingru import mingru_parallel, mingru_sequential

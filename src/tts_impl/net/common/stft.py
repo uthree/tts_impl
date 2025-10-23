@@ -1,9 +1,9 @@
 from typing import Literal, Tuple
 
 import torch
-import torch.nn as nn
-import torch.nn.functional as F
 from torch import Tensor
+from torch import nn as nn
+from torch.nn import functional as F
 
 
 class STFT(nn.Module):

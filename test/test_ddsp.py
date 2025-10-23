@@ -1,7 +1,7 @@
 import pytest
 import torch
-import torch.nn as nn
-import torch.nn.functional as F
+from torch import nn as nn
+from torch.nn import functional as F
 from tts_impl.functional import (
     cross_correlation,
     fft_convolve,
@@ -25,7 +25,7 @@ def test_subtractive_vocoder(
     post_filter_length: int,
     n_fft: int,
     hop_length: int,
-    dim_periodicity: int
+    dim_periodicity: int,
 ):
     sample_rate = 24000
     vocoder = SubtractiveVocoder(

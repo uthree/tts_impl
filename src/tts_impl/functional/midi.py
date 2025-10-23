@@ -2,7 +2,7 @@ import math
 from typing import Union
 
 import torch
-import torch.nn.functional as F
+from torch.nn import functional as F
 
 
 def freq2note(f0: Union[torch.Tensor, float], eps=1e-4) -> Union[torch.Tensor, float]:

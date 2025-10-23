@@ -3,8 +3,8 @@
 from typing import List, Tuple
 
 import torch
-import torch.nn as nn
-import torch.nn.functional as F
+from torch import nn as nn
+from torch.nn import functional as F
 from torch.nn.utils import spectral_norm
 from torch.nn.utils.parametrizations import weight_norm
 from tts_impl.functional.ddsp import cross_correlation

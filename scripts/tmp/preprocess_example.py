@@ -1,4 +1,4 @@
-import torch.nn as nn
+from torch import nn as nn
 from tts_impl.transforms import LogMelSpectrogram
 from tts_impl.utils.preprocess import (
     AudioCacheWriter,

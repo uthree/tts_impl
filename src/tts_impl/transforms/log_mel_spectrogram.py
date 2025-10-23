@@ -1,9 +1,9 @@
 from typing import Optional
 
 import torch
-import torch.nn as nn
-import torch.nn.functional as F
 import torchaudio
+from torch import nn as nn
+from torch.nn import functional as F
 from tts_impl.utils.config import derive_config
 
 

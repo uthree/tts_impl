@@ -3,8 +3,8 @@ from typing import Literal, Optional
 
 import numpy as np
 import torch
-import torch.nn as nn
-import torch.nn.functional as F
+from torch import nn as nn
+from torch.nn import functional as F
 from torchyin import estimate as _estim_torchyin
 
 try:

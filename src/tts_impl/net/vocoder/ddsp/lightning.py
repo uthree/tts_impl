@@ -1,10 +1,10 @@
 from typing import Any, List, Optional, Tuple
 
 import torch
-import torch.nn as nn
-import torch.nn.functional as F
-import torch.optim as optim
 from lightning import LightningModule
+from torch import nn as nn
+from torch import optim as optim
+from torch.nn import functional as F
 from torch.optim.lr_scheduler import StepLR
 from tts_impl.net.vocoder.hifigan import HifiganDiscriminator
 from tts_impl.net.vocoder.hifigan.loss import (

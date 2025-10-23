@@ -2,12 +2,12 @@ import math
 from typing import Optional
 
 import torch
-import torch.nn as nn
-import torch.nn.functional as F
+import torchaudio
 from torch import Tensor
+from torch import nn as nn
+from torch.nn import functional as F
 from tts_impl.functional.ddsp import estimate_minimum_phase, fft_convolve, impulse_train
 from tts_impl.utils.config import derive_config
-import torchaudio
 
 
 @derive_config
@@ -38,7 +38,9 @@ class SubtractiveVocoder(nn.Module):
         self.hop_length = hop_length
         self.dim_periodicity = dim_periodicity
         self.register_buffer("hann_window", torch.hann_window(n_fft))
-        self.per2bins = torchaudio.transforms.InverseMelScale(self.fft_bin, dim_periodicity, sample_rate)
+        self.per2bins = torchaudio.transforms.InverseMelScale(
+            self.fft_bin, dim_periodicity, sample_rate
+        )
 
     def synthesize(
         self,
@@ -79,7 +81,7 @@ class SubtractiveVocoder(nn.Module):
                 )
             ) * math.sqrt(self.sample_rate)
             imp = impulse_train(f0, self.hop_length, self.sample_rate) * imp_scale
-            noi = torch.rand_like(imp) 
+            noi = torch.rand_like(imp)
 
         # short-time fourier transform
         imp_stft = torch.stft(
@@ -98,9 +100,11 @@ class SubtractiveVocoder(nn.Module):
         )
 
         # excitation and filter
-        per *= (F.pad(f0[:, None, :], (1, 0)) > 20.0).to(torch.float) # set periodicity=0 if unvoiced.
+        per *= (F.pad(f0[:, None, :], (1, 0)) > 20.0).to(
+            torch.float
+        )  # set periodicity=0 if unvoiced.
         periodicity = self.per2bins(per)
-        aperiodicity = self.per2bins(1-per)
+        aperiodicity = self.per2bins(1 - per)
         excitation = aperiodicity * noi_stft + periodicity * imp_stft
         voi_stft = excitation * estimate_minimum_phase(env)
 

@@ -1,9 +1,9 @@
 from typing import Literal, TypeAlias
 
 import torch
-import torch.nn as nn
-import torch.nn.functional as F
 from alias_free_torch import Activation1d as AliasFreeActivation1d
+from torch import nn as nn
+from torch.nn import functional as F
 
 ActivationName: TypeAlias = Literal[
     "lrelu", "silu", "gelu", "snake", "snakebeta", "linear", "elu"

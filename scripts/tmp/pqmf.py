@@ -1,7 +1,7 @@
 import numpy as np
 import torch
-import torch.nn.functional as F
 from scipy import signal as sig
+from torch.nn import functional as F
 
 
 # adapted from

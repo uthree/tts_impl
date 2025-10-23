@@ -1,7 +1,7 @@
 import numpy as np
 import torch
-import torch.nn.functional as F
 from numba import jit
+from torch.nn import functional as F
 
 
 @jit(nopython=True)

@@ -1,6 +1,6 @@
 import torch
-import torch.nn as nn
-import torch.nn.functional as F
+from torch import nn as nn
+from torch.nn import functional as F
 
 
 def estimate_energy(waveform: torch.Tensor, hop_length: int) -> torch.Tensor:

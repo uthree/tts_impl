@@ -1,6 +1,6 @@
 import torch
-import torch.nn as nn
-import torch.nn.functional as F
+from torch import nn as nn
+from torch.nn import functional as F
 from tts_impl.functional.length_regurator import (
     duplicate_by_duration,
     gaussian_upsampling,

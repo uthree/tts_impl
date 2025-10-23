@@ -2,7 +2,7 @@ from typing import List, Optional
 
 import numpy as np
 import torch
-import torch.nn as nn
+from torch import nn as nn
 from torch.nn.utils.parametrizations import weight_norm
 from tts_impl.net.vocoder.hifigan.generator import (
     ResBlock1,

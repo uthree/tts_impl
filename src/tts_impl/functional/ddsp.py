@@ -1,7 +1,7 @@
 from typing import Optional
 
 import torch
-import torch.nn.functional as F
+from torch.nn import functional as F
 
 
 def framewise_fir_filter(
