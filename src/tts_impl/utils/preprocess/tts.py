@@ -52,7 +52,7 @@ class TTSDataCollector(DataCollector):
         if self.sample_rate is not None and sr != self.sample_rate:
             wf = resample(wf, sr, self.sample_rate)
             sr = self.sample_rate
-        if self.max_lengths is not None:
+        if self.max_length is not None:
             if wf.shape[1] > self.max_length:
                 wf = wf[:, : self.max_length]
         return wf, sr

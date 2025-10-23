@@ -16,6 +16,7 @@ dependencies = [
     "omegaconf>=2.3.0",
     "pyaudio>=0.2.14",
     "pylint>=4.0.2",
+    "pyopenjtalk-plus>=0.4.1.post4",
     "pysen>=0.11.0",
     "pytest>=8.4.2",
     "pyworld>=0.3.5",
