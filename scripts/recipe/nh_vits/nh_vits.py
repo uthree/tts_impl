@@ -26,7 +26,7 @@ class Nhvits(Recipe):
     def preprocess(
         self,
         target_dir: str = "your_target_dir",
-        sample_rate: int = 22050,
+        sample_rate: int = 48000,
         transcriptions_filename: str = "transcripts_utf8.txt",
         frame_size: int = 256,
         pe_algorithm: str = "fcpe",

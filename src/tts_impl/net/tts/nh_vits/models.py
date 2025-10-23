@@ -29,6 +29,7 @@ class Decoder(nn.Module):
                 kernel_size: int = 5,
                 dilation_rate: int = 1,
                 n_layers: int = 16, gin_channels: int=0):
+        super().__init__()
         self.fft_bin = n_fft // 2 + 1
         self.dim_periodicity = dim_periodicity
         out_channels = self.fft_bin + dim_periodicity + 1
@@ -36,10 +37,11 @@ class Decoder(nn.Module):
         self.wn = modules.WN(hidden_channels, kernel_size, dilation_rate, n_layers, gin_channels=gin_channels)
         self.post = nn.Conv1d(hidden_channels, out_channels, 1)
 
-    def forward(self, x, x_mask, g=None):
-        x = self.pre(x) * x_mask
+    def forward(self, x, g=None):
+        x = self.pre(x)
+        x_mask = torch.ones(x.shape[0], 1, x.shape[2], device=x.device)
         x = self.wn(x, x_mask, g=g)
-        x = self.post(x) * x_mask
+        x = self.post(x)
         log_f0, periodicity, spectral_envelope = torch.split(x, [1, self.dim_periodicity, self.fft_bin], dim=1)
         return torch.exp(log_f0), torch.sigmoid(periodicity), torch.exp(spectral_envelope)
     
@@ -182,13 +184,13 @@ class NhvitsGenerator(nn.Module):
         ).squeeze(1)
 
         # decode
-        f0_hat, periodicity, spectral_envelope = self.dec.forward(z_slice, x_mask, g=g)
+        f0_hat, periodicity, spectral_envelope = self.dec.forward(z_slice, g=g)
 
         # pitch estimation loss
         loss_f0 = log_f0_loss(f0_hat, f0_slice, uv_slice)
 
         # synthesize
-        o = self.vocoder.synthesize(f0_slice, periodicity, spectral_envelope)
+        o = self.vocoder.synthesize(f0_slice, periodicity, spectral_envelope).unsqueeze(1)
 
         outputs = {
             "fake": o,
@@ -221,7 +223,7 @@ class NhvitsGenerator(nn.Module):
         length_scale=1.0,
         noise_scale_w=0.8,
         max_len=None,
-        use_sdp=True,
+        use_sdp=False,
         w=None,
     ):
         x, m_p, logs_p, x_mask = self.enc_p(x, x_lengths)
@@ -256,11 +258,12 @@ class NhvitsGenerator(nn.Module):
 
         # decoder
         f0, periodicity, spectral_envelope = self.dec.forward(
-            (z * y_mask)[:, :, :max_len], y_mask, g=g
+            (z * y_mask)[:, :, :max_len], g=g
         )
+        f0 = f0.squeeze(1)
 
         # vocoder
-        o = self.vocoder.synthesize(f0, periodicity, spectral_envelope)
+        o = self.vocoder.synthesize(f0, periodicity, spectral_envelope).unsqueeze(1)
         return o
 
     def voice_conversion(self, y, y_lengths, sid_src, sid_tgt):

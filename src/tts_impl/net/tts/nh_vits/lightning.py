@@ -122,7 +122,7 @@ class NhvitsLightningModule(L.LightningModule):
 
         # get frame size and segment size
         segment_size = self.generator.segment_size
-        dec_frame_size = self.generator.dec.frame_size
+        dec_frame_size = self.generator.vocoder.hop_length
 
         outputs = self.generator.forward(
             x, x_lengths, y, y_lengths, f0, sid=sid, w=w
@@ -141,21 +141,19 @@ class NhvitsLightningModule(L.LightningModule):
         loss_dur = outputs["loss_dur"]
         loss_dur = loss_dur.mean()
         loss_f0 = outputs["loss_f0"]
-        loss_uv = outputs["loss_uv"]
         loss_kl = kl_loss(z_p, logs_q, m_p, logs_p, z_mask)
 
         # logs
         self.log("train loss/KL divergence", loss_kl)
         self.log("train loss/duration", loss_dur)
         self.log("train loss/pitch estimation", loss_f0)
-        self.log("train loss/uv estimation", loss_uv)
 
         # slice real input
         real = slice_segments(
             waveform, ids_slice * dec_frame_size, segment_size * dec_frame_size
         ).detach()
 
-        loss = loss_dur + loss_kl + loss_f0 + loss_uv
+        loss = loss_dur + loss_kl + loss_f0
         return real, fake, loss
 
     def _vocoder_adversarial_loss(
