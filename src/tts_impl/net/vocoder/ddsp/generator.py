@@ -17,33 +17,20 @@ class DdspGenerator(nn.Module, GanVocoderGenerator):
         self,
         in_channels: int = 80,
         d_model: int = 256,
-        num_layers: int = 4,
-        reverb_size: int = 8192,
+        num_layers: int = 3,
         gin_channels: int = 0,
         vocoder: SubtractiveVocoder.Config = SubtractiveVocoder.Config(),
     ):
         super().__init__()
         self.fft_bin = vocoder.n_fft // 2 + 1
-        self.reverb_size = reverb_size
         self.sample_rate = vocoder.sample_rate
         self.vocoder = SubtractiveVocoder(**vocoder)
         self.dim_periodicity = self.vocoder.dim_periodicity
         self.gin_channels = gin_channels
         self.sample_rate = vocoder.sample_rate
         self.pre = nn.Conv1d(in_channels, d_model, 1)
-        self.wn = WN(d_model, 5, 1, num_layers, gin_channels)
+        self.wn = WN(d_model, 3, 1, num_layers, gin_channels)
         self.post = nn.Conv1d(d_model, self.dim_periodicity + self.fft_bin, 1)
-
-        if self.reverb_size > 0:
-            self.reverb = nn.Parameter(torch.randn(reverb_size))
-
-            t = torch.arange(self.reverb_size) / self.vocoder.sample_rate
-            self.register_buffer("t", t)
-
-            if gin_channels > 0:
-                self.to_reverb_params = nn.Conv1d(gin_channels, 2, 1)
-            else:
-                self.reverb_params = nn.Parameter(torch.zeros(2))
 
     def net(self, x, g=None):
         x = self.pre(x)
