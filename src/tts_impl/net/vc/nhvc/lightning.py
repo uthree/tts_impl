@@ -1,6 +1,7 @@
 from typing import Any, List, Optional, Tuple
 
 import torch
+import torchaudio
 from lightning import LightningModule
 from torch import nn as nn
 from torch import optim as optim
@@ -14,7 +15,6 @@ from tts_impl.net.vocoder.hifigan.loss import (
 )
 from tts_impl.transforms import LogMelSpectrogram
 from tts_impl.utils.config import derive_config
-import torchaudio
 
 from .generator import NhvcGenerator
 
@@ -83,7 +83,9 @@ class NhvcLightningModule(LightningModule):
         self.generator = NhvcGenerator(**generator)
         self.discriminator = HifiganDiscriminator(**discriminator)
         self.spectrogram = LogMelSpectrogram(**mel)
-        self.hubert = torch.hub.load("bshall/hubert:main", "hubert_soft", trust_repo=True).eval()
+        self.hubert = torch.hub.load(
+            "bshall/hubert:main", "hubert_soft", trust_repo=True
+        ).eval()
         self.gin_channels = gin_channels
         self.n_speakers = n_speakers
         self.weight_mel = weight_mel
@@ -109,11 +111,13 @@ class NhvcLightningModule(LightningModule):
         else:
             acoustic_features = self.spectrogram(real.sum(1)).detach()
 
-        orig_sr=self.generator.vocoder.sample_rate
+        orig_sr = self.generator.vocoder.sample_rate
         tgt_sr = 16000
         ssl = self.hubert.units(torchaudio.functional.resample(real, orig_sr, tgt_sr))
 
-        fake, loss_f0, loss_distill = self._generator_forward(acoustic_features, f0, ssl, sid)
+        fake, loss_f0, loss_distill = self._generator_forward(
+            acoustic_features, f0, ssl, sid
+        )
         slice_ids = self._adversarial_training_step(real, fake, loss_f0, loss_distill)
         self._discriminator_training_step(real, fake, slice_ids)
 
@@ -132,7 +136,13 @@ class NhvcLightningModule(LightningModule):
 
         return fake, loss_f0, loss_distill
 
-    def _adversarial_training_step(self, real: torch.Tensor, fake: torch.Tensor, loss_f0: torch.Tensor, loss_distill: torch.Tensor) -> Any:
+    def _adversarial_training_step(
+        self,
+        real: torch.Tensor,
+        fake: torch.Tensor,
+        loss_f0: torch.Tensor,
+        loss_distill: torch.Tensor,
+    ) -> Any:
         # spectrogram
         spec_real = self.spectrogram(real).detach()
         spec_fake = self.spectrogram(fake)
@@ -156,7 +166,8 @@ class NhvcLightningModule(LightningModule):
             loss_mel * self.weight_mel
             + loss_feat * self.weight_feat
             + loss_adv * self.weight_adv
-            + loss_f0 + loss_distill
+            + loss_f0
+            + loss_distill
         )
 
         # update parameters
@@ -193,9 +204,11 @@ class NhvcLightningModule(LightningModule):
         else:
             acoustic_features = self.spectrogram(waveform.sum(1)).detach()
 
-        orig_sr=self.generator.vocoder.sample_rate
+        orig_sr = self.generator.vocoder.sample_rate
         tgt_sr = 16000
-        ssl = self.hubert.units(torchaudio.functional.resample(waveform, orig_sr, tgt_sr))
+        ssl = self.hubert.units(
+            torchaudio.functional.resample(waveform, orig_sr, tgt_sr)
+        )
 
         spec_real = self.spectrogram(waveform).detach()
         fake, _, _ = self._generator_forward(acoustic_features, ssl=ssl, f0=f0, sid=sid)
@@ -210,7 +223,7 @@ class NhvcLightningModule(LightningModule):
             r = waveform[i].sum(dim=0, keepdim=True).detach().cpu()
             spec_fake_img = normalize(spec_fake[i, 0].detach().cpu().flip(0))
             spec_real_img = normalize(spec_real[i, 0].detach().cpu().flip(0))
-            
+
             sid_n = sid[i].item()
             tid_n = tid[i].item()
 

@@ -1,6 +1,7 @@
 import pytest
 import torch
 from torch.nn import functional as F
+
 from tts_impl.net.aligner import ForcedAligner
 
 

@@ -1,5 +1,6 @@
 import pytest
 import torch
+
 from tts_impl.functional.monotonic_align import maximum_path
 
 

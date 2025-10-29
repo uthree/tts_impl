@@ -2,6 +2,7 @@ import pytest
 import torch
 from torch import nn as nn
 from torch.nn import functional as F
+
 from tts_impl.net.tts.vits.lightning import VitsGenerator
 
 

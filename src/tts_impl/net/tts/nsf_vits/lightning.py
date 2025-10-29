@@ -168,7 +168,7 @@ class NsfvitsLightningModule(L.LightningModule):
         loss_feat = feature_loss(fmap_real, fmap_fake)
         loss_mel = F.l1_loss(spec_fake, spec_real)
         loss_g = (
-            + loss_mel * self.weight_mel
+            +loss_mel * self.weight_mel
             + loss_feat * self.weight_feat
             + loss_adv * self.weight_adv
         )
@@ -214,14 +214,13 @@ class NsfvitsLightningModule(L.LightningModule):
             self.generator.parameters(),
             lr=self.lr,
         )
-        sch_g =  CosineAnnealingLR(opt_g, 1000)
+        sch_g = CosineAnnealingLR(opt_g, 1000)
         opt_d = optim.Adafactor(
             self.discriminator.parameters(),
             lr=self.lr,
         )
-        sch_d =  CosineAnnealingLR(opt_g, 1000)
+        sch_d = CosineAnnealingLR(opt_g, 1000)
         return [opt_g, opt_d], [sch_g, sch_d]
-
 
     @torch.no_grad
     def validation_step(self, batch, bid):
