@@ -1,9 +1,9 @@
 # code base from https://github.com/rishikksh20/UnivNet-pytorch/blob/master/stft_loss.py
-
 from typing import List
 
 import torch
 from torch.nn import functional as F
+
 from tts_impl.utils.config import derive_config
 
 

@@ -8,7 +8,7 @@ class Aligner(Protocol):
         self,
         text: torch.Tensor,
         feats: torch.Tensor,
-    ) -> torch.Tensor: # type: ignore
+    ) -> torch.Tensor:  # type: ignore
         """
         Args:
             text :Batched text embedding (B, C_text, T_text)

@@ -3,6 +3,7 @@ from typing import Literal
 import torch
 from torch import nn as nn
 from torch.nn import functional as F
+
 from tts_impl.utils.config import derive_config
 
 from .activation import ActivationName, init_activation

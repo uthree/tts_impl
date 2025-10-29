@@ -4,15 +4,10 @@ from torch import nn as nn
 from torch.nn import functional as F
 
 from tts_impl.net.vocoder.discriminator import (
-    CombinedDiscriminator,
-    MultiPeriodDiscriminator,
-    MultiResolutionStftDiscriminator,
-    MultiScaleDiscriminator,
-)
-from tts_impl.net.vocoder.hifigan.lightning import (
-    HifiganDiscriminator,
-    HifiganGenerator,
-)
+    CombinedDiscriminator, MultiPeriodDiscriminator,
+    MultiResolutionStftDiscriminator, MultiScaleDiscriminator)
+from tts_impl.net.vocoder.hifigan.lightning import (HifiganDiscriminator,
+                                                    HifiganGenerator)
 
 
 @pytest.mark.parametrize("activation", ["lrelu", "silu", "gelu", "snake", "snakebeta"])

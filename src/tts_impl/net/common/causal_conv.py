@@ -3,6 +3,7 @@ from typing import Optional, Tuple
 import torch
 from torch import nn as nn
 from torch.nn import functional as F
+
 from tts_impl.net.base.stateful import StatefulModule
 
 

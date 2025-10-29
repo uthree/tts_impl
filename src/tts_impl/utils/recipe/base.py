@@ -11,6 +11,7 @@ from lightning.pytorch.callbacks import ModelCheckpoint, RichProgressBar
 from omegaconf import OmegaConf
 from rich import print
 from rich_argparse import RichHelpFormatter
+
 from tts_impl.utils.config import arguments_dataclass_of
 
 

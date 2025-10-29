@@ -18,13 +18,10 @@ def test_vits_generator():
 
 from tts_impl.net.tts.vits.attentions import Decoder, Encoder
 from tts_impl.net.tts.vits.lightning import VitsLightningModule
-from tts_impl.net.tts.vits.models import (
-    DurationPredictor,
-    PosteriorEncoder,
-    ResidualCouplingBlock,
-    StochasticDurationPredictor,
-    TextEncoder,
-)
+from tts_impl.net.tts.vits.models import (DurationPredictor, PosteriorEncoder,
+                                          ResidualCouplingBlock,
+                                          StochasticDurationPredictor,
+                                          TextEncoder)
 
 
 @pytest.mark.parametrize("batch_size", [1, 4])

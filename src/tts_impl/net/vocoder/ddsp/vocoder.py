@@ -6,6 +6,7 @@ import torchaudio
 from torch import Tensor
 from torch import nn as nn
 from torch.nn import functional as F
+
 from tts_impl.functional.ddsp import estimate_minimum_phase, fft_convolve, impulse_train
 from tts_impl.utils.config import derive_config
 

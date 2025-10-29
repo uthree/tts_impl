@@ -141,5 +141,5 @@ def sanity_check_stateful_module(
             y_t, h_t = stateful_module(x_t, h_t)
             y_seq.append(y_t)
         y_seq = torch.cat(y_seq, dim=1)
-        print((y_seq-y_par).mean())
+        print((y_seq - y_par).mean())
         assert torch.allclose(y_par, y_seq, atol=atol)
