@@ -2,15 +2,15 @@ import math
 from typing import Optional
 
 import torch
+import torchaudio
 from torch import nn as nn
 from torch.nn import functional as F
-
 from tts_impl.net.base.vocoder import GanVocoderGenerator
 from tts_impl.net.tts.vits.modules import WN
 from tts_impl.utils.config import derive_config
 
 from .vocoder import HomomorphicVocoder
-import torchaudio
+
 
 @derive_config
 class DdspGenerator(nn.Module, GanVocoderGenerator):
@@ -20,7 +20,7 @@ class DdspGenerator(nn.Module, GanVocoderGenerator):
         d_model: int = 256,
         num_layers: int = 3,
         gin_channels: int = 0,
-        dim_periodicity: int=16,
+        dim_periodicity: int = 16,
         vocoder: HomomorphicVocoder.Config = HomomorphicVocoder.Config(),
     ):
         super().__init__()
@@ -30,7 +30,9 @@ class DdspGenerator(nn.Module, GanVocoderGenerator):
         self.dim_periodicity = dim_periodicity
         self.gin_channels = gin_channels
         self.sample_rate = vocoder.sample_rate
-        self.per_inv_mel = torchaudio.transforms.InverseMelScale(self.fft_bin, dim_periodicity, self.vocoder.sample_rate)
+        self.per_inv_mel = torchaudio.transforms.InverseMelScale(
+            self.fft_bin, dim_periodicity, self.vocoder.sample_rate
+        )
         self.pre = nn.Conv1d(in_channels, d_model, 1)
         self.wn = WN(d_model, 3, 1, num_layers, gin_channels)
         self.post = nn.Conv1d(d_model, self.dim_periodicity + self.fft_bin, 1)

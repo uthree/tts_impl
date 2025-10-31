@@ -2,11 +2,14 @@ import pytest
 import torch
 from torch import nn as nn
 from torch.nn import functional as F
-
-from tts_impl.functional import (cross_correlation, fft_convolve,
-                                 framewise_fir_filter, impulse_train,
-                                 sinusoidal_harmonics,
-                                 spectral_envelope_filter)
+from tts_impl.functional import (
+    cross_correlation,
+    fft_convolve,
+    framewise_fir_filter,
+    impulse_train,
+    sinusoidal_harmonics,
+    spectral_envelope_filter,
+)
 from tts_impl.net.vocoder.ddsp import HomomorphicVocoder
 
 

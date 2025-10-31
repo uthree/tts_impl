@@ -1,7 +1,6 @@
 import torch
 from torch import nn as nn
 from torch.nn import functional as F
-
 from tts_impl.net.aligner.forced_align import ForcedAligner
 from tts_impl.net.common.convnext import ConvNeXt1d
 from tts_impl.net.vocoder.ddsp import SubtractiveVocoder

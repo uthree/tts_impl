@@ -6,7 +6,6 @@ import torchaudio
 from torch import Tensor
 from torch import nn as nn
 from torch.nn import functional as F
-
 from tts_impl.functional.ddsp import estimate_minimum_phase, fft_convolve, impulse_train
 from tts_impl.utils.config import derive_config
 
@@ -85,7 +84,7 @@ class HomomorphicVocoder(nn.Module):
         per *= (F.pad(f0[:, None, :], (1, 0)) > 20.0).to(
             torch.float
         )  # set periodicity=0 if unvoiced.
-        excitation = (1 - per) * noi_stft + per* imp_stft
+        excitation = (1 - per) * noi_stft + per * imp_stft
         voi_stft = excitation * estimate_minimum_phase(env)
 
         # inverse STFT

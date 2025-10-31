@@ -2,7 +2,6 @@ from typing import Optional
 
 import torch
 from torch import nn as nn
-
 from tts_impl.net.base.vocoder import GanVocoderGenerator
 from tts_impl.utils.config import derive_config
 

@@ -2,7 +2,6 @@ from typing import Literal
 
 import torch
 from torch import nn as nn
-
 from tts_impl.functional.f0_estimation import estimate_f0
 
 

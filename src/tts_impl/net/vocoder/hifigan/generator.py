@@ -7,7 +7,6 @@ from torch import nn as nn
 from torch.nn import functional as F
 from torch.nn.utils import remove_weight_norm
 from torch.nn.utils.parametrizations import weight_norm
-
 from tts_impl.net.base.vocoder import GanVocoderGenerator
 from tts_impl.net.common.activation import init_activation
 from tts_impl.utils.config import derive_config

@@ -1,6 +1,5 @@
 import pytest
 import torch
-
 from tts_impl.net.base.stateful import sanity_check_stateful_module
 from tts_impl.net.common.causal_conv import CachedCausalConv
 

@@ -5,7 +5,6 @@ import torch
 from torch import Tensor
 from torch import nn as nn
 from torch.nn import functional as F
-
 from tts_impl.net.base.stateful import StatefulModule, StatefulModuleSequential
 from tts_impl.net.common.mingru import MinGRU
 from tts_impl.net.vocoder.ddsp import SubtractiveVocoder
