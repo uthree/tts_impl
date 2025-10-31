@@ -23,12 +23,12 @@ class DdspGenerator(nn.Module, GanVocoderGenerator):
         vocoder: HomomorphicVocoder.Config = HomomorphicVocoder.Config(),
     ):
         super().__init__()
-        self.fft_bin = vocoder.n_fft // 2 + 1
         self.sample_rate = vocoder.sample_rate
         self.vocoder = HomomorphicVocoder(**vocoder)
         self.dim_periodicity = dim_periodicity
         self.gin_channels = gin_channels
         self.sample_rate = vocoder.sample_rate
+        self.fft_bin = vocoder.n_fft // 2 + 1
         self.per_inv_mel = torchaudio.transforms.InverseMelScale(
             self.fft_bin, dim_periodicity, self.vocoder.sample_rate
         )

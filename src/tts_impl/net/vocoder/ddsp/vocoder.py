@@ -11,7 +11,7 @@ from tts_impl.utils.config import derive_config
 
 @derive_config
 class HomomorphicVocoder(nn.Module):
-    def __init__(self, hop_length: int, n_fft: int | None, sample_rate: int = 48000):
+    def __init__(self, hop_length: int=256, n_fft: int | None=1024, sample_rate: int = 48000):
         super().__init__()
         self.hop_length = hop_length
         self.sample_rate = sample_rate
