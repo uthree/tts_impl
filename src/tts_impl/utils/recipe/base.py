@@ -3,7 +3,6 @@ import inspect
 import sys
 from dataclasses import asdict
 from pathlib import Path
-from typing import Optional
 
 import torch
 from lightning import LightningDataModule, LightningModule, Trainer
@@ -46,7 +45,7 @@ class Recipe:
     Recipe(WIP) experimental feature
     """
 
-    def __init__(self, target_module: LightningModule, name: Optional[str] = None):
+    def __init__(self, target_module: LightningModule, name: str | None = None):
         self.TargetModule = target_module
 
         if name is None:

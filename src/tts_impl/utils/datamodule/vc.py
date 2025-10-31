@@ -1,7 +1,7 @@
 import multiprocessing
 import os
 from pathlib import Path
-from typing import Any, List, Literal, Mapping, Optional, Union
+from typing import Any, Literal, Mapping
 
 import lightning
 import torch
@@ -14,15 +14,15 @@ from tts_impl.utils.dataset.vc import VcDataset
 class VcDataModule(lightning.LightningDataModule):
     def __init__(
         self,
-        root: Union[str, os.PathLike],
+        root: str | os.PathLike,
         seed: int = 42,
         batch_size: int = 1,
         num_validation_data: int = 10,
         num_test_data: int = 200,
         format: Literal["flac", "mp3", "wav", "ogg"] = "flac",
-        sizes: Optional[Mapping[str, Any]] = {},
-        sample_rate: Optional[int] = None,
-        num_workers: Optional[int] = None,
+        sizes: Mapping[str, Any] | None = {},
+        sample_rate: int | None = None,
+        num_workers: int | None = None,
         **kwargs,
     ):
         super().__init__()

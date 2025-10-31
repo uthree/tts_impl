@@ -1,4 +1,4 @@
-from typing import Optional, Protocol, Tuple
+from typing import Protocol
 
 import torch
 
@@ -8,8 +8,8 @@ class LengthRegurator(Protocol):
         self,
         x: torch.Tensor,
         w: torch.Tensor,
-        x_mask: Optional[torch.Tensor] = None,
-        y_mask: Optional[torch.Tensor] = None,
+        x_mask: torch.Tensor | None = None,
+        y_mask: torch.Tensor | None = None,
     ) -> torch.Tensor:
         """
         Args:
@@ -28,8 +28,8 @@ class TextEncoder(Protocol):
     """
 
     def forward(
-        self, x: torch.Tensor, g: Optional[torch.Tensor] = None
-    ) -> Tuple[torch.Tensor]:
+        self, x: torch.Tensor, g: torch.Tensor | None = None
+    ) -> tuple[torch.Tensor]:
         """
         Args:
             x: phoneme ids (B, T_text)
@@ -46,8 +46,8 @@ class VariationalTextEncoder(Protocol):
     """
 
     def forward(
-        self, x: torch.Tensor, g: Optional[torch.Tensor] = None
-    ) -> Tuple[torch.Tensor]:
+        self, x: torch.Tensor, g: torch.Tensor | None = None
+    ) -> tuple[torch.Tensor]:
         """
         Args:
             x: phoneme ids (B, T_text)
@@ -66,8 +66,8 @@ class AcousticFeatureEncoder(Protocol):
     """
 
     def forward(
-        self, x: torch.Tensor, g: Optional[torch.Tensor] = None
-    ) -> Tuple[torch.Tensor]:
+        self, x: torch.Tensor, g: torch.Tensor | None = None
+    ) -> tuple[torch.Tensor]:
         """
         Args:
             x:  (B, in_channels, T_feat)
@@ -84,8 +84,8 @@ class VariationalAcousticFeatureEncoder(Protocol):
     """
 
     def forward(
-        self, x: torch.Tensor, g: Optional[torch.Tensor] = None
-    ) -> Tuple[torch.Tensor]:
+        self, x: torch.Tensor, g: torch.Tensor | None = None
+    ) -> tuple[torch.Tensor]:
         """
         Args:
             x:  (B, in_channels, T_feat)

@@ -1,5 +1,4 @@
 # code from https://github.com/supertone-inc/super-monotonic-align/blob/main/super_monotonic_align/__init__.py
-
 import torch
 import triton
 from triton import language as tl

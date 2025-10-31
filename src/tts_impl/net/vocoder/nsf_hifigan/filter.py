@@ -1,5 +1,3 @@
-from typing import List, Optional
-
 import numpy as np
 import torch
 from torch import nn as nn
@@ -20,9 +18,9 @@ class NsfhifiganFilter(nn.Module):
         in_channels: int = 80,
         upsample_initial_channels: int = 512,
         resblock_type: str = "1",
-        resblock_kernel_sizes: List[int] = [3, 7, 11],
-        resblock_dilations: List[List[int]] = [[1, 3, 5], [1, 3, 5], [1, 3, 5]],
-        upsample_rates: List[int] = [8, 8, 2, 2],
+        resblock_kernel_sizes: list[int] = [3, 7, 11],
+        resblock_dilations: list[list[int]] = [[1, 3, 5], [1, 3, 5], [1, 3, 5]],
+        upsample_rates: list[int] = [8, 8, 2, 2],
         out_channels: int = 1,
         tanh_post_activation: bool = True,
         activation: str = "silu",
@@ -114,7 +112,7 @@ class NsfhifiganFilter(nn.Module):
         self,
         x: torch.Tensor,
         s: torch.Tensor,
-        g: Optional[torch.Tensor] = None,
+        g: torch.Tensor | None = None,
     ):
         """
         args:

@@ -3,7 +3,7 @@ import os
 import shutil
 from logging import Logger
 from pathlib import Path
-from typing import Any, Generator, List, Optional, Union
+from typing import Any, Generator
 
 import torch
 from rich.console import Console
@@ -128,14 +128,14 @@ class CacheWriter:
 
     def __init__(
         self,
-        root: Union[str, os.PathLike] = "dataset_cache",
+        root: str | os.PathLike = "dataset_cache",
         delete_old_cache=True,
         *args,
         **kwargs,
     ):
         """
         Args
-            root: Union[str, os.PathLike], Directory for caching datasets.
+            root: str | os.PathLike, Directory for caching datasets.
             remove_old_cache: bool
         """
         self.delete_old_cache = delete_old_cache
@@ -184,11 +184,11 @@ class Preprocessor:
 
     def __init__(
         self,
-        collectors: List[DataCollector] = [],
-        extractors: List[Extractor] = [],
-        writer: Optional[CacheWriter] = None,
-        console: Optional[Console] = None,
-        logger: Optional[Logger] = None,
+        collectors: list[DataCollector] = [],
+        extractors: list[Extractor] = [],
+        writer: CacheWriter | None = None,
+        console: Console | None = None,
+        logger: Logger | None = None,
     ):
         self.collectors = collectors
         self.extractors = extractors

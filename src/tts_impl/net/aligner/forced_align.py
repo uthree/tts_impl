@@ -1,6 +1,4 @@
 # Code from https://github.com/imdanboy/jets/blob/main/espnet2/gan_tts/jets/alignments.py
-from typing import Tuple
-
 import numpy as np
 import torch
 from torch import nn as nn
@@ -65,7 +63,7 @@ class ForcedAligner(nn.Module):
         feats: torch.Tensor,
         text_lengths: torch.Tensor,
         feats_lengths: torch.Tensor,
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
+    ) -> tuple[torch.Tensor, torch.Tensor]:
         """
         Args:
             text :Batched text embedding (B, adim, T_texts)

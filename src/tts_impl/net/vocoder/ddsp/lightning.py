@@ -1,4 +1,4 @@
-from typing import Any, List, Optional, Tuple
+from typing import Any
 
 import torch
 from lightning import LightningModule
@@ -70,7 +70,7 @@ class DdspVocoderLightningModule(LightningModule):
         weight_feat: float = 1.0,
         weight_adv: float = 1.0,
         lr_decay: float = 0.999,
-        betas: List[float] = [0.8, 0.99],
+        betas: list[float] = [0.8, 0.99],
         segment_size: int = 8192,
         lr: float = 2e-4,
     ):
@@ -115,7 +115,7 @@ class DdspVocoderLightningModule(LightningModule):
         self,
         x: torch.Tensor,
         f0: torch.Tensor,
-        sid: Optional[torch.Tensor],
+        sid: torch.Tensor | None,
     ) -> torch.Tensor:
         if sid is not None:
             g = self.speaker_embedding(sid).unsqueeze(2)

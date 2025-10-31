@@ -1,6 +1,5 @@
 import pytest
 import torch
-
 from tts_impl.g2p.base import Grapheme2Phoneme, pad, remove_duplicates
 
 
@@ -123,9 +122,7 @@ def test_encode_single():
     g2p = Grapheme2Phoneme(languages)
 
     token_ids, tokens_lengths, language_ids = g2p.encode(
-        transcriptions=["abc"],
-        languages=["test"],
-        length=10
+        transcriptions=["abc"], languages=["test"], length=10
     )
 
     assert token_ids.shape == (1, 10)
@@ -140,9 +137,7 @@ def test_encode_batch():
     g2p = Grapheme2Phoneme(languages)
 
     token_ids, tokens_lengths, language_ids = g2p.encode(
-        transcriptions=["ab", "abcd"],
-        languages=["test", "test"],
-        length=10
+        transcriptions=["ab", "abcd"], languages=["test", "test"], length=10
     )
 
     assert token_ids.shape == (2, 10)
@@ -154,15 +149,18 @@ def test_encode_batch():
 
 def test_encode_multiple_languages():
     """Test encoding with multiple languages."""
+
     class MockLangModule1:
         def phonemes(self):
             return ["x", "y", "z"]
+
         def g2p(self, text):
             return ["x"] * len(text)
 
     class MockLangModule2:
         def phonemes(self):
             return ["p", "q", "r"]
+
         def g2p(self, text):
             return ["p"] * len(text)
 
@@ -173,13 +171,13 @@ def test_encode_multiple_languages():
     g2p = Grapheme2Phoneme(languages)
 
     token_ids, tokens_lengths, language_ids = g2p.encode(
-        transcriptions=["abc", "def"],
-        languages=["lang1", "lang2"],
-        length=10
+        transcriptions=["abc", "def"], languages=["lang1", "lang2"], length=10
     )
 
     assert token_ids.shape == (2, 10)
-    assert language_ids[0] != language_ids[1]  # Different languages should have different IDs
+    assert (
+        language_ids[0] != language_ids[1]
+    )  # Different languages should have different IDs
 
 
 def test_encode_truncation():
@@ -189,9 +187,7 @@ def test_encode_truncation():
 
     long_text = "a" * 100
     token_ids, tokens_lengths, language_ids = g2p.encode(
-        transcriptions=[long_text],
-        languages=["test"],
-        length=10
+        transcriptions=[long_text], languages=["test"], length=10
     )
 
     assert token_ids.shape == (1, 10)

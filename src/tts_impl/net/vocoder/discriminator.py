@@ -1,6 +1,4 @@
 # HiFi-GAN Discriminator from https://arxiv.org/abs/2010.05646
-from typing import List, Tuple
-
 import torch
 from torch import nn as nn
 from torch.nn import functional as F
@@ -63,7 +61,7 @@ class DiscriminatorP(nn.Module):
             c = c_n
         self.conv_post = norm_f(nn.Conv2d(c, 1, (3, 1), 1, (1, 0)))
 
-    def forward(self, x: torch.Tensor) -> Tuple[torch.Tensor, List[torch.Tensor]]:
+    def forward(self, x: torch.Tensor) -> tuple[torch.Tensor, list[torch.Tensor]]:
         """
         args:
             x: [batch_size, 1, time]
@@ -114,7 +112,7 @@ class DiscriminatorS(nn.Module):
         )
         self.conv_post = norm_f(nn.Conv1d(1024, 1, 3, 1, padding=1))
 
-    def forward(self, x: torch.Tensor) -> Tuple[torch.Tensor, List[torch.Tensor]]:
+    def forward(self, x: torch.Tensor) -> tuple[torch.Tensor, list[torch.Tensor]]:
         """
         args:
             x: [batch_size, 1, time]
@@ -140,14 +138,14 @@ class CombinedDiscriminator(nn.Module, GanVocoderDiscriminator):
     Combined multiple discriminators.
     """
 
-    def __init__(self, *discriminators: List[nn.Module]):
+    def __init__(self, *discriminators: list[nn.Module]):
         super().__init__()
         self.discriminators = nn.ModuleList(discriminators)
 
     def append(self, d):
         self.discriminators.append(d)
 
-    def forward(self, x: torch.Tensor) -> Tuple[List[torch.Tensor], List[torch.Tensor]]:
+    def forward(self, x: torch.Tensor) -> tuple[list[torch.Tensor], list[torch.Tensor]]:
         fmap = []
         logits = []
         for sd in self.discriminators:
@@ -164,7 +162,7 @@ class CombinedDiscriminator(nn.Module, GanVocoderDiscriminator):
 class MultiPeriodDiscriminator(CombinedDiscriminator):
     def __init__(
         self,
-        periods: List[int] = [2, 3, 5, 7, 11],
+        periods: list[int] = [2, 3, 5, 7, 11],
         kernel_size: int = 5,
         stride: int = 3,
         use_spectral_norm: bool = False,
@@ -192,7 +190,7 @@ class MultiPeriodDiscriminator(CombinedDiscriminator):
 
 @derive_config
 class MultiScaleDiscriminator(CombinedDiscriminator):
-    def __init__(self, scales: List[int] = [1, 2, 4]):
+    def __init__(self, scales: list[int] = [1, 2, 4]):
         super().__init__()
         self.discriminators = nn.ModuleList()
         for i, s in enumerate(scales):
@@ -267,8 +265,8 @@ class DiscriminatorR(nn.Module):
 class MultiResolutionStftDiscriminator(CombinedDiscriminator):
     def __init__(
         self,
-        n_fft: List[int] = [1024, 2048, 512],
-        hop_size: List[int] = [120, 240, 50],
+        n_fft: list[int] = [1024, 2048, 512],
+        hop_size: list[int] = [120, 240, 50],
         channels: int = 32,
         num_layers: int = 4,
         pre_layernorm: bool = False,
@@ -340,8 +338,8 @@ class DiscriminatorX(nn.Module):
 class MultiResolutionXcorrDiscriminator(CombinedDiscriminator):
     def __init__(
         self,
-        n_fft: List[int] = [1024, 2048, 512],
-        hop_size: List[int] = [120, 240, 50],
+        n_fft: list[int] = [1024, 2048, 512],
+        hop_size: list[int] = [120, 240, 50],
         channels: int = 32,
         num_layers: int = 4,
     ):

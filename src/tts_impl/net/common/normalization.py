@@ -1,5 +1,3 @@
-from typing import Optional, Tuple
-
 import torch
 from torch import nn as nn
 from torch.nn import functional as F
@@ -249,7 +247,7 @@ class ExponentialMovingAverage(StatefulModule):
 
     def _sequential_forward(
         self, x: torch.Tensor, h: torch.Tensor
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
+    ) -> tuple[torch.Tensor, torch.Tensor]:
         """
         calculate exponential moving average.
 
@@ -268,7 +266,7 @@ class ExponentialMovingAverage(StatefulModule):
 
     def _parallel_forward(
         self, x: torch.Tensor, h: torch.Tensor
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
+    ) -> tuple[torch.Tensor, torch.Tensor]:
         """
         calculate exponential moving average for each time using cumsum for performance.
 
@@ -331,7 +329,7 @@ class EmaLayerNorm(StatefulModule):
 
     def _both_forward(
         self, x: torch.Tensor, h: torch.Tensor
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
+    ) -> tuple[torch.Tensor, torch.Tensor]:
         """
         Args:
             x: shape=(batch_size, seq_len, d_model)
@@ -413,7 +411,7 @@ class EmaInstanceNorm(StatefulModule):
 
     def _both_forward(
         self, x: torch.Tensor, h: torch.Tensor
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
+    ) -> tuple[torch.Tensor, torch.Tensor]:
         """
         Args:
             x: shape=(batch_size, seq_len, d_model)

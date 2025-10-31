@@ -2,7 +2,7 @@ import inspect
 from copy import copy
 from dataclasses import field, make_dataclass
 from functools import partial
-from typing import Any, Optional
+from typing import Any
 
 """
 激ヤバ黒魔術コード！！！！
@@ -10,7 +10,7 @@ using DARK-SIDE POWER !!!!
 """
 
 
-def arguments_dataclass_of(fn: callable, cls_name: Optional[str] = None) -> type:
+def arguments_dataclass_of(fn: callable, cls_name: str | None = None) -> type:
     """
     Returns:
         type: configuration dataclass
@@ -77,7 +77,7 @@ def __repr__(self):
     return self.__dict__.__repr__()
 
 
-def config_of(cls: type, cls_name: Optional[str] = None) -> type:
+def config_of(cls: type, cls_name: str | None = None) -> type:
     """
     Derive configuration dataclass from constructor
 
@@ -110,7 +110,7 @@ def default_config(cls):
     return cls.Config()
 
 
-def derive_config(cls, cls_name: Optional[None] = None):
+def derive_config(cls, cls_name: str | None = None):
     """
     Decorator for deriving configuration dataclass and attach it to Class.Config automatically.
     """

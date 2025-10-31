@@ -1,7 +1,6 @@
 import json
 import os
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Union
 
 import torch
 import torchaudio
@@ -17,10 +16,10 @@ class TTSDataset(Dataset):
 
     def __init__(
         self,
-        root: Union[str, os.PathLike] = "dataset_cache",
+        root: str | os.PathLike = "dataset_cache",
         format: str = "flac",
-        sample_rate: Optional[int] = None,
-        sizes: Dict[str, Union[int, Tuple[int], List[int]]] = {},
+        sample_rate: int | None = None,
+        sizes: dict[str, int | tuple[int] | list[int]] = {},
         mix_down: bool = False,
         weights_only=True,
     ):
@@ -29,7 +28,7 @@ class TTSDataset(Dataset):
             root: PathLike, root directory path.
             format: str, audio file extension. default="frac"
             sample_rate: Option[int], output sampling rate
-            sizes: Dict[str, Union[int, Tuple[int], List[int]]]
+            sizes: dict[str, int | tuple[int] | list[int]]
             mix_down: bool, When True, it will be mixed down to mono (channels=1).
             weights_only: bool
 

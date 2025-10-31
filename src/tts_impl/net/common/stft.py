@@ -1,4 +1,4 @@
-from typing import Literal, Tuple
+from typing import Literal
 
 import torch
 from torch import Tensor
@@ -43,7 +43,7 @@ class STFT(nn.Module):
             kernel = kernel * window[None, None, :]
         return kernel
 
-    def forward(self, x: Tensor) -> Tuple[Tensor, Tensor]:
+    def forward(self, x: Tensor) -> tuple[Tensor, Tensor]:
         """
         Args:
             x: shape=(batch_size, 1, Length)

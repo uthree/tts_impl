@@ -1,5 +1,5 @@
 import math
-from typing import Literal, Optional
+from typing import Literal
 
 import torch
 from torch import nn
@@ -217,7 +217,7 @@ class TextEncoder(nn.Module, VariationalTextEncoder):
         n_layers: int = 6,
         kernel_size: int = 3,
         p_dropout: int = 0.1,
-        window_size: Optional[int] = 4,
+        window_size: int | None = 4,
         glu: bool = False,
         rotary_pos_emb: bool = False,
         norm: Literal["layernorm", "rmsnorm", "none", "tanh"] = "layernorm",

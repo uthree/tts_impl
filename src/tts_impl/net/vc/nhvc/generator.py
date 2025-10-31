@@ -1,5 +1,4 @@
 import math
-from typing import Tuple
 
 import torch
 from torch import Tensor
@@ -45,7 +44,7 @@ class NhvcEncoder(StatefulModule):
 
     def _parallel_forward(
         self, x: Tensor, h: Tensor, *args, **kwargs
-    ) -> Tuple[Tensor, Tensor]:
+    ) -> tuple[Tensor, Tensor]:
         x = self.pre(x)
         x, h_last = self.stack._parallel_forward(x, h, *args, **kwargs)
         x = self.post(x)

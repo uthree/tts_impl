@@ -1,5 +1,3 @@
-from typing import Optional
-
 import torch
 from torch import nn as nn
 from tts_impl.functional.length_regurator import (
@@ -17,8 +15,8 @@ class DuplicateByDuration(nn.Module, LengthRegurator):
         self,
         x: torch.Tensor,
         w: torch.Tensor,
-        x_mask: Optional[torch.Tensor] = None,
-        y_mask: Optional[torch.Tensor] = None,
+        x_mask: torch.Tensor | None = None,
+        y_mask: torch.Tensor | None = None,
     ):
         """
         Args:
@@ -41,8 +39,8 @@ class GaussianUpsampling(nn.Module, LengthRegurator):
         self,
         x: torch.Tensor,
         w: torch.Tensor,
-        x_mask: Optional[torch.Tensor] = None,
-        y_mask: Optional[torch.Tensor] = None,
+        x_mask: torch.Tensor | None = None,
+        y_mask: torch.Tensor | None = None,
     ):
         """
         Gaussian upsampling with fixed temperature as in:

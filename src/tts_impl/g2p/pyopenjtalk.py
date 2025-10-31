@@ -1,5 +1,3 @@
-from typing import List
-
 from .base import LanguageModule
 
 try:
@@ -18,10 +16,10 @@ class PyopenjtalkG2P(LanguageModule):
     def __init__(self):
         super().__init__()
 
-    def g2p(self, text) -> List[str]:
+    def g2p(self, text) -> list[str]:
         return ["pau"] + pyopenjtalk.g2p(text).split(" ") + ["pau"]
 
-    def phonemes(self) -> List[str]:
+    def phonemes(self) -> list[str]:
         return [
             "pau",
             "I",

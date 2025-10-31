@@ -1,13 +1,13 @@
-from typing import Dict, List, Protocol, Tuple
+from typing import Protocol
 
 import torch
 
 
 class LanguageModule(Protocol):
-    def phonemes(self) -> List[str]:
+    def phonemes(self) -> list[str]:
         pass
 
-    def g2p(self, text: str) -> List[str]:
+    def g2p(self, text: str) -> list[str]:
         pass
 
 
@@ -15,7 +15,7 @@ def remove_duplicates(lst):
     return list(sorted(list(set(lst))))
 
 
-def pad(ids: List[int], length: int = 100, pad_id: int = 0) -> List[int]:
+def pad(ids: list[int], length: int = 100, pad_id: int = 0) -> list[int]:
     while len(ids) < length:
         ids.append(pad_id)
     ids = ids[:length]
@@ -23,7 +23,7 @@ def pad(ids: List[int], length: int = 100, pad_id: int = 0) -> List[int]:
 
 
 class Grapheme2Phoneme:
-    def __init__(self, languages: Dict[str, LanguageModule]):
+    def __init__(self, languages: dict[str, LanguageModule]):
         self.language_modules = languages
         self.languages = list(self.language_modules.keys())
 
@@ -37,18 +37,18 @@ class Grapheme2Phoneme:
     def _lang_id_single(self, language: str) -> int:
         return self.languages.index(language)
 
-    def _g2p_single(self, text: str, language: str) -> List[str]:
+    def _g2p_single(self, text: str, language: str) -> list[str]:
         return self.language_modules[language].g2p(text)
 
-    def _p2id_single(self, phoneme_seq: List[str]) -> List[int]:
+    def _p2id_single(self, phoneme_seq: list[str]) -> list[int]:
         r = []
         for p in phoneme_seq:
             r.append(self.phonemes.index(p))
         return r
 
     def encode(
-        self, transcriptions: List[str], languages: List[str], length: int = 100
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        self, transcriptions: list[str], languages: list[str], length: int = 100
+    ) -> tuple[torch.Tensor, torch.Tensor]:
         """
         encode transcriptions, language identifiers to `torch.Tensor`.
 

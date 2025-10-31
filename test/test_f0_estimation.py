@@ -1,6 +1,5 @@
 import pytest
 import torch
-
 from tts_impl.functional.f0_estimation import estimate_f0
 
 
@@ -8,7 +7,9 @@ from tts_impl.functional.f0_estimation import estimate_f0
 @pytest.mark.parametrize("sample_rate", [16000, 22050, 24000])
 @pytest.mark.parametrize("frame_size", [256, 480])
 @pytest.mark.parametrize("duration", [1.0, 2.0])
-def test_estimate_f0_yin(batch_size: int, sample_rate: int, frame_size: int, duration: float):
+def test_estimate_f0_yin(
+    batch_size: int, sample_rate: int, frame_size: int, duration: float
+):
     """Test F0 estimation using YIN algorithm."""
     length = int(sample_rate * duration)
     waveform = torch.randn(batch_size, 1, length)

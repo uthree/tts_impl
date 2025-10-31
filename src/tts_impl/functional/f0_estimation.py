@@ -1,5 +1,5 @@
 import warnings
-from typing import Literal, Optional
+from typing import Literal
 
 import numpy as np
 import torch
@@ -104,7 +104,7 @@ def estimate_f0_fcpe(wf, sample_rate=24000, frame_size=480, f0_min=20, f0_max=20
     return f0.detach()
 
 
-def unload_torchfcpe(device: Optional[torch.device]):
+def unload_torchfcpe(device: torch.device | None):
     if device is not None:
         del torchfcpe_model[device]
     else:

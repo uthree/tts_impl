@@ -1,4 +1,4 @@
-from typing import Literal, Optional
+from typing import Literal
 
 import numpy as np
 import torch
@@ -7,7 +7,6 @@ from .mas_naive import maximum_path_naive
 
 available_mas_algorithms = ["naive"]
 default_mas_alogirhtm = "naive"
-
 
 try:
     from .core import maximum_path_c  # type: ignore
@@ -23,7 +22,6 @@ except ImportError:
     #    "`cd /monotonic_align; python setup.py build_ext --inplace`"
     # )
 
-
 try:
     from .mas_torch_jit import maximum_path_jit1, maximum_path_jit2
 
@@ -34,7 +32,6 @@ try:
 except ImportError:
     torch_jit_available = False
 
-
 try:
     import triton
 
@@ -44,7 +41,6 @@ try:
     available_mas_algorithms.append("triton")
 except ImportError:
     pass
-
 
 try:
     from .mas_numba import maximum_path_numba
@@ -71,10 +67,10 @@ def _mas_on_cpu(attn, attn_mask, fn):
 
 def maximum_path(
     attn: torch.Tensor,
-    attn_mask: Optional[torch.Tensor] = None,
-    algorithm: Optional[
-        Literal["naive", "numba", "cython", "jit1", "jit2", "triton"]
-    ] = None,
+    attn_mask: torch.Tensor | None = None,
+    algorithm: (
+        Literal["naive", "numba", "cython", "jit1", "jit2", "triton"] | None
+    ) = None,
 ) -> torch.Tensor:
     """Calculate maximum path.
 

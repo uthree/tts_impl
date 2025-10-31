@@ -1,5 +1,3 @@
-from typing import Optional
-
 import torch
 from torch import nn as nn
 from tts_impl.net.base.vocoder import GanVocoderGenerator
@@ -31,9 +29,9 @@ class NsfhifiganGenerator(nn.Module, GanVocoderGenerator):
     def forward(
         self,
         x,
-        g: Optional[torch.Tensor] = None,
-        f0: Optional[torch.Tensor] = None,
-        uv: Optional[torch.Tensor] = None,
+        g: torch.Tensor | None = None,
+        f0: torch.Tensor | None = None,
+        uv: torch.Tensor | None = None,
     ) -> torch.Tensor:
         """
         Args:

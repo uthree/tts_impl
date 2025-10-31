@@ -1,6 +1,4 @@
 # code base from https://github.com/rishikksh20/UnivNet-pytorch/blob/master/stft_loss.py
-from typing import List
-
 import torch
 from torch.nn import functional as F
 from tts_impl.utils.config import derive_config
@@ -115,9 +113,9 @@ class MultiResolutionSTFTLoss(torch.nn.Module):
 
     def __init__(
         self,
-        fft_sizes: List[int] = [1024, 2048, 512],
-        hop_sizes: List[int] = [120, 240, 50],
-        win_lengths: List[int] = [600, 1200, 240],
+        fft_sizes: list[int] = [1024, 2048, 512],
+        hop_sizes: list[int] = [120, 240, 50],
+        win_lengths: list[int] = [600, 1200, 240],
         window: str = "hann_window",
     ):
         """Initialize Multi resolution STFT loss module.

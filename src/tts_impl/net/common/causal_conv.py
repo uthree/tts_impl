@@ -1,5 +1,3 @@
-from typing import Optional, Tuple
-
 import torch
 from torch import nn as nn
 from torch.nn import functional as F
@@ -24,7 +22,7 @@ class CachedCausalConv(StatefulModule):
         x, h = self._parallel_forward(x, h)
         return x, h
 
-    def _parallel_forward(self, x, h) -> Tuple[torch.Tensor, torch.Tensor]:
+    def _parallel_forward(self, x, h) -> tuple[torch.Tensor, torch.Tensor]:
         b, l, d = x.shape
         d = self.d_model
         k = self.kernel_size

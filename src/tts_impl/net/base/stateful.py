@@ -1,4 +1,4 @@
-from typing import Optional, Sequence, Tuple
+from typing import Sequence
 
 import torch
 from torch import nn as nn
@@ -11,8 +11,8 @@ class StatefulModule(nn.Module):
     """
 
     def forward(
-        self, x: torch.Tensor, h: Optional[torch.Tensor] = None, *args, **kwargs
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        self, x: torch.Tensor, h: torch.Tensor | None = None, *args, **kwargs
+    ) -> tuple[torch.Tensor, torch.Tensor]:
         """
         default implementation of forward pass
 
@@ -40,7 +40,7 @@ class StatefulModule(nn.Module):
 
     def _sequential_forward(
         self, x: torch.Tensor, h: torch.Tensor, *args, **kwargs
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
+    ) -> tuple[torch.Tensor, torch.Tensor]:
         """
         Sequential mode forward pass.
 
@@ -56,7 +56,7 @@ class StatefulModule(nn.Module):
 
     def _parallel_forward(
         self, x: torch.Tensor, h: torch.Tensor, *args, **kwargs
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
+    ) -> tuple[torch.Tensor, torch.Tensor]:
         """
         Parallel mode forward pass.
 
@@ -109,7 +109,7 @@ class StatefulModuleSequential(StatefulModule):
 
     def _parallel_forward(
         self, x: torch.Tensor, h: torch.Tensor, *args, **kwargs
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
+    ) -> tuple[torch.Tensor, torch.Tensor]:
 
         # calculate sum of all hidden state dimension if it's not already calculated.
         if self.h_dim_list is None:
@@ -129,7 +129,7 @@ class StatefulModuleSequential(StatefulModule):
 def sanity_check_stateful_module(
     stateful_module: StatefulModule,
     x: torch.Tensor,
-    h_0: Optional[torch.Tensor] = None,
+    h_0: torch.Tensor | None = None,
     atol: float = 1e-4,
 ):
     with torch.no_grad():

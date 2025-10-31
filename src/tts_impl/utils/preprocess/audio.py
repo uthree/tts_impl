@@ -3,7 +3,7 @@ import logging
 import os
 import shutil
 from pathlib import Path
-from typing import Any, List, Literal, Optional, Union
+from typing import Any, Literal
 
 import torch
 import torchaudio
@@ -17,10 +17,10 @@ from .base import CacheWriter, DataCollector, Extractor, FunctionalExtractor
 class AudioDataCollector(DataCollector):
     def __init__(
         self,
-        target: Union[str, os.PathLike],
-        length: Optional[int] = None,
-        formats: List[str] = ["wav", "mp3", "flac", "ogg"],
-        sample_rate: Optional[int] = None,
+        target: str | os.PathLike,
+        length: int | None = None,
+        formats: list[str] = ["wav", "mp3", "flac", "ogg"],
+        sample_rate: int | None = None,
     ):
         """
         Args:
@@ -71,7 +71,7 @@ class AudioDataCollector(DataCollector):
 class AudioCacheWriter(CacheWriter):
     def __init__(
         self,
-        root: Union[str, os.PathLike] = "dataset_cache",
+        root: str | os.PathLike = "dataset_cache",
         format: Literal["flac", "wav", "mp3", "ogg"] = "flac",
         delete_old_cache: bool = True,
         max_files_per_dir: int = 10000,

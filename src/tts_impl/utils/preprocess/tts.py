@@ -4,7 +4,7 @@ import os
 import re
 import shutil
 from pathlib import Path
-from typing import Any, Generator, List, Literal, Mapping, Optional, Union
+from typing import Any, Generator, Literal, Mapping
 
 import torch
 import torchaudio
@@ -17,15 +17,15 @@ from .base import CacheWriter, DataCollector, Extractor
 class TTSDataCollector(DataCollector):
     def __init__(
         self,
-        target: Union[str, os.PathLike],
-        formats: List[str] = ["wav", "mp3", "flac", "ogg"],
-        sample_rate: Optional[int] = None,
-        language: Optional[str] = None,
+        target: str | os.PathLike,
+        formats: list[str] = ["wav", "mp3", "flac", "ogg"],
+        sample_rate: int | None = None,
+        language: str | None = None,
         transcriptions_filename: str = "transcriptions.txt",
         transcriptions_encoding: str = "utf-8",
         filename_blacklist: list[str] = [],
         concatenate: bool = False,
-        max_length: Optional[int] = None,
+        max_length: int | None = None,
     ):
         self.target = Path(target)
         self.formats = formats
@@ -167,7 +167,7 @@ class TTSDataCollector(DataCollector):
 class TTSCacheWriter(CacheWriter):
     def __init__(
         self,
-        root: Union[str, os.PathLike] = "dataset_cache",
+        root: str | os.PathLike = "dataset_cache",
         format: Literal["flac", "wav", "mp3", "ogg"] = "flac",
         delete_old_cache: bool = True,
     ):

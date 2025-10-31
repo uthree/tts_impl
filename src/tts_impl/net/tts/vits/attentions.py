@@ -1,5 +1,4 @@
 # code from https://github.com/jaywalnut310/vits/blob/main/attentions.py
-
 import math
 from typing import Literal
 

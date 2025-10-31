@@ -1,11 +1,10 @@
 import math
-from typing import Union
 
 import torch
 from torch.nn import functional as F
 
 
-def freq2note(f0: Union[torch.Tensor, float], eps=1e-4) -> Union[torch.Tensor, float]:
+def freq2note(f0: torch.Tensor | float, eps=1e-4) -> torch.Tensor | float:
     """
     Convert frequency to midi note scale.
     """
@@ -18,7 +17,7 @@ def freq2note(f0: Union[torch.Tensor, float], eps=1e-4) -> Union[torch.Tensor, f
     return n
 
 
-def note2freq(n: Union[torch.Tensor, float]) -> Union[torch.Tensor, float]:
+def note2freq(n: torch.Tensor | float) -> torch.Tensor | float:
     """
     Convert midi note to frequency.
     """

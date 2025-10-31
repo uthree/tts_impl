@@ -1,5 +1,3 @@
-from typing import Optional
-
 import torch
 from torch.nn import functional as F
 
@@ -7,8 +5,8 @@ from torch.nn import functional as F
 def gaussian_upsampling(
     x: torch.Tensor,
     w: torch.Tensor,
-    x_mask: Optional[torch.Tensor] = None,
-    y_mask: Optional[torch.Tensor] = None,
+    x_mask: torch.Tensor | None = None,
+    y_mask: torch.Tensor | None = None,
     delta: float = 0.1,
 ) -> torch.Tensor:
     """
@@ -84,8 +82,8 @@ def generate_path(duration, mask):
 def duplicate_by_duration(
     x: torch.Tensor,
     w: torch.Tensor,
-    x_mask: Optional[torch.Tensor] = None,
-    y_mask: Optional[torch.Tensor] = None,
+    x_mask: torch.Tensor | None = None,
+    y_mask: torch.Tensor | None = None,
 ):
     """
     duplicate text embedding by duration.

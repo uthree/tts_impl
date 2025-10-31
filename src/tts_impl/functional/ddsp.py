@@ -1,5 +1,3 @@
-from typing import Optional
-
 import torch
 from torch.nn import functional as F
 
@@ -68,7 +66,7 @@ def impulse_train(
     f0: torch.Tensor,
     hop_length: int,
     sample_rate: int,
-    uv: Optional[torch.Tensor] = None,
+    uv: torch.Tensor | None = None,
 ) -> torch.Tensor:
     """
     Args:
@@ -132,7 +130,7 @@ def sinusoidal_harmonics(
     sample_rate: int,
     hop_length: int,
     fmin: float = 0.0,
-    fmax: Optional[float] = None,
+    fmax: float | None = None,
 ) -> torch.Tensor:
     """
     generate sinusoidal harmonic signal

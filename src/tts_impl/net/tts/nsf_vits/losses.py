@@ -1,5 +1,3 @@
-from typing import Optional
-
 import torch
 from torch import nn as nn
 from torch.nn import functional as F
@@ -10,7 +8,7 @@ def safe_log(x: torch.Tensor) -> torch.Tensor:
 
 
 def log_f0_loss(
-    f0_hat: torch.Tensor, f0: torch.Tensor, uv: Optional[torch.Tensor] = None
+    f0_hat: torch.Tensor, f0: torch.Tensor, uv: torch.Tensor | None = None
 ) -> torch.Tensor:
     if uv is None:
         uv = (f0 >= 20.0).float()

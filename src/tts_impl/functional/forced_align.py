@@ -1,5 +1,4 @@
 # Code from https://github.com/imdanboy/jets/blob/main/espnet2/gan_tts/jets/alignments.py
-
 import numpy as np
 import torch
 from numba import jit

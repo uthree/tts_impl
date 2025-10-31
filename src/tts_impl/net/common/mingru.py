@@ -1,5 +1,3 @@
-from typing import Optional, Tuple
-
 import torch
 from torch import nn as nn
 from torch.nn import functional as F
@@ -44,7 +42,7 @@ def log_g(x: torch.Tensor) -> torch.Tensor:
 @torch.jit.script
 def mingru_parallel(
     z: torch.Tensor, h: torch.Tensor, h_prev: torch.Tensor
-) -> Tuple[torch.Tensor, torch.Tensor]:
+) -> tuple[torch.Tensor, torch.Tensor]:
     """
     Parallel forward pass for minGRU.
 
@@ -95,7 +93,7 @@ class MinGRU(StatefulModule):
     def __init__(
         self,
         d_model: int,
-        d_hidden: Optional[int] = None,
+        d_hidden: int | None = None,
         bias: bool = True,
     ):
         """
@@ -103,7 +101,7 @@ class MinGRU(StatefulModule):
 
         Args:
             d_model: int, input dimension
-            d_hidden: Optional[int], hidden dimension, if `None` given, set same to `d_model` automatically.
+            d_hidden: int | None, hidden dimension, if `None` given, set same to `d_model` automatically.
             bias: bool, if True is given, add bias to Linear module., default is `True`
         """
         super().__init__()
@@ -116,7 +114,7 @@ class MinGRU(StatefulModule):
 
     def _sequential_forward(
         self, x: torch.Tensor, h_prev: torch.Tensor
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
+    ) -> tuple[torch.Tensor, torch.Tensor]:
         z = self.linear_z(x)
         h = self.linear_h(x)
         h = mingru_sequential(z, h, h_prev)
@@ -124,7 +122,7 @@ class MinGRU(StatefulModule):
 
     def _parallel_forward(
         self, x: torch.Tensor, h_prev: torch.Tensor
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
+    ) -> tuple[torch.Tensor, torch.Tensor]:
         z = self.linear_z(x)
         h = self.linear_h(x)
         y, h_next = mingru_parallel(z, h, h_prev)

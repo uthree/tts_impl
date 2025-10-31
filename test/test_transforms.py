@@ -1,6 +1,5 @@
 import pytest
 import torch
-
 from tts_impl.transforms.log_mel_spectrogram import LogMelSpectrogram
 from tts_impl.transforms.pitch_estimation import PitchEstimation
 
@@ -11,11 +10,7 @@ from tts_impl.transforms.pitch_estimation import PitchEstimation
 @pytest.mark.parametrize("hop_length", [128, 256, 512])
 @pytest.mark.parametrize("n_mels", [40, 80, 128])
 def test_log_mel_spectrogram_shape(
-    batch_size: int,
-    sample_rate: int,
-    n_fft: int,
-    hop_length: int,
-    n_mels: int
+    batch_size: int, sample_rate: int, n_fft: int, hop_length: int, n_mels: int
 ):
     """Test LogMelSpectrogram output shape."""
     duration = 2.0  # seconds
@@ -108,10 +103,7 @@ def test_log_mel_spectrogram_safe_log():
 @pytest.mark.parametrize("frame_size", [256, 480])
 @pytest.mark.parametrize("algorithm", ["yin"])
 def test_pitch_estimation_shape(
-    batch_size: int,
-    sample_rate: int,
-    frame_size: int,
-    algorithm: str
+    batch_size: int, sample_rate: int, frame_size: int, algorithm: str
 ):
     """Test PitchEstimation output shape."""
     duration = 2.0

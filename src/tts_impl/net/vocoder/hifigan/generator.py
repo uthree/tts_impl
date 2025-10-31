@@ -1,6 +1,6 @@
 # HiFi-GAN from https://arxiv.org/abs/2010.05646
 from dataclasses import dataclass, field
-from typing import List, Literal, Optional
+from typing import Literal
 
 import torch
 from torch import nn as nn
@@ -29,7 +29,7 @@ class ResBlock1(nn.Module):
         self,
         channels: int,
         kernel_size: int = 3,
-        dilations: List[int] = [1, 3, 5],
+        dilations: list[int] = [1, 3, 5],
         activation: str = "lrelu",
         alias_free: bool = False,
     ):
@@ -90,7 +90,7 @@ class ResBlock2(nn.Module):
         self,
         channels: int,
         kernel_size: int = 3,
-        dilations: List[int] = [1, 3],
+        dilations: list[int] = [1, 3],
         activation: str = "lrelu",
         alias_free: bool = False,
     ):
@@ -137,9 +137,9 @@ class HifiganGenerator(nn.Module, GanVocoderGenerator):
         in_channels: int = 80,
         upsample_initial_channels: int = 512,
         resblock_type: str = "1",
-        resblock_kernel_sizes: List[int] = [3, 7, 11],
-        resblock_dilations: List[List[int]] = [[1, 3, 5], [1, 3, 5], [1, 3, 5]],
-        upsample_rates: List[int] = [8, 8, 2, 2],
+        resblock_kernel_sizes: list[int] = [3, 7, 11],
+        resblock_dilations: list[list[int]] = [[1, 3, 5], [1, 3, 5], [1, 3, 5]],
+        upsample_rates: list[int] = [8, 8, 2, 2],
         out_channels: int = 1,
         tanh_post_activation: bool = True,
         gin_channels: int = 0,
@@ -207,9 +207,7 @@ class HifiganGenerator(nn.Module, GanVocoderGenerator):
 
         self.apply(init_weights)
 
-    def forward(
-        self, x: torch.Tensor, g: Optional[torch.Tensor] = None, *args, **kwargs
-    ):
+    def forward(self, x: torch.Tensor, g: torch.Tensor | None = None, *args, **kwargs):
         """
         inputs:
             x: [batch_size, in_channels, num_frames], dtype=float

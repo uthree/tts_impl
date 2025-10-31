@@ -1,5 +1,4 @@
 # code from https://github.com/jaywalnut310/vits/blob/main/modules.py
-
 import math
 
 import numpy as np

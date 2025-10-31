@@ -1,5 +1,3 @@
-from typing import Optional
-
 import torch
 import torchaudio
 from torch import nn as nn

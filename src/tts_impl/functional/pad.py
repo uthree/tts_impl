@@ -1,13 +1,9 @@
-from typing import List, Tuple, Union
-
 import torch
 from torch import nn as nn
 from torch.nn import functional as F
 
 
-def adjust_size_1d(
-    x: torch.Tensor, size: Union[int, Tuple[int], List[int]]
-) -> torch.Tensor:
+def adjust_size_1d(x: torch.Tensor, size: int | tuple[int] | list[int]) -> torch.Tensor:
     """
     Adjust the size of a 3D tensor (B, C, L) to the specified (L).
 
@@ -29,9 +25,7 @@ def adjust_size_1d(
     return x
 
 
-def adjust_size_2d(
-    x: torch.Tensor, size: Union[Tuple[int, int], List[int]]
-) -> torch.Tensor:
+def adjust_size_2d(x: torch.Tensor, size: tuple[int, int] | list[int]) -> torch.Tensor:
     """
     Adjust the size of a 4D tensor (B, C, H, W) to the specified (H, W).
 
@@ -62,9 +56,7 @@ def adjust_size_2d(
     return x
 
 
-def adjust_size_3d(
-    x: torch.Tensor, size: Union[Tuple[int, int], List[int]]
-) -> torch.Tensor:
+def adjust_size_3d(x: torch.Tensor, size: tuple[int, int] | list[int]) -> torch.Tensor:
     """
     Adjust the size of a 5D tensor (B, C, D, H, W) to the specified (D, H, W).
 
@@ -103,7 +95,7 @@ def adjust_size_3d(
 
 
 def adjust_size(
-    x: torch.Tensor, size: Union[Tuple[int, int], List[int], int]
+    x: torch.Tensor, size: tuple[int, int] | list[int] | int
 ) -> torch.Tensor:
     """
     Adjust the size of a tensor.

@@ -1,5 +1,5 @@
 import math
-from typing import Literal, Optional
+from typing import Literal
 
 import torch
 from torch import nn
@@ -59,7 +59,7 @@ class PitchPredictor(nn.Module):
         Args:
             x: phoneme embeddings duplicated by duration, shape=(batch_size, inter_channels, feat_length)
             x_mask: mask of x.
-            g: speaker embedding, Optional[Tensor], shape=(batch_size, gin_channels, 1)
+            g: speaker embedding, Tensor | None, shape=(batch_size, gin_channels, 1)
 
         Returns:
             f0: shape=(batch_size, feat_length)

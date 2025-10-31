@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Any, List, Literal, Mapping, Optional
+from typing import Any, Literal, Mapping
 
 import torch
 from lightning import LightningModule
@@ -40,7 +40,7 @@ class NsfhifiganLightningModule(LightningModule):
         weight_feat: float = 1.0,
         weight_adv: float = 1.0,
         lr_decay: float = 0.999,
-        betas: List[float] = [0.8, 0.99],
+        betas: list[float] = [0.8, 0.99],
         lr: float = 2e-4,
     ):
         super().__init__()

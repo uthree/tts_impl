@@ -1,15 +1,20 @@
 import pytest
 import torch
-
-from tts_impl.functional.pad import (adjust_size, adjust_size_1d,
-                                     adjust_size_2d, adjust_size_3d)
+from tts_impl.functional.pad import (
+    adjust_size,
+    adjust_size_1d,
+    adjust_size_2d,
+    adjust_size_3d,
+)
 
 
 @pytest.mark.parametrize("batch_size", [1, 4])
 @pytest.mark.parametrize("channels", [1, 3])
 @pytest.mark.parametrize("input_length", [100, 256])
 @pytest.mark.parametrize("target_length", [50, 100, 300])
-def test_adjust_size_1d(batch_size: int, channels: int, input_length: int, target_length: int):
+def test_adjust_size_1d(
+    batch_size: int, channels: int, input_length: int, target_length: int
+):
     """Test adjust_size_1d function with various input and target sizes."""
     x = torch.randn(batch_size, channels, input_length)
     result = adjust_size_1d(x, target_length)
@@ -23,7 +28,9 @@ def test_adjust_size_1d(batch_size: int, channels: int, input_length: int, targe
 @pytest.mark.parametrize("channels", [1, 3])
 @pytest.mark.parametrize("input_size", [(64, 64), (100, 200)])
 @pytest.mark.parametrize("target_size", [(32, 32), (64, 64), (128, 128), (50, 100)])
-def test_adjust_size_2d(batch_size: int, channels: int, input_size: tuple, target_size: tuple):
+def test_adjust_size_2d(
+    batch_size: int, channels: int, input_size: tuple, target_size: tuple
+):
     """Test adjust_size_2d function with various input and target sizes."""
     h, w = input_size
     x = torch.randn(batch_size, channels, h, w)
@@ -40,7 +47,9 @@ def test_adjust_size_2d(batch_size: int, channels: int, input_size: tuple, targe
 @pytest.mark.parametrize("channels", [1, 3])
 @pytest.mark.parametrize("input_size", [(16, 16, 16), (32, 32, 32)])
 @pytest.mark.parametrize("target_size", [(8, 8, 8), (16, 16, 16), (48, 48, 48)])
-def test_adjust_size_3d(batch_size: int, channels: int, input_size: tuple, target_size: tuple):
+def test_adjust_size_3d(
+    batch_size: int, channels: int, input_size: tuple, target_size: tuple
+):
     """Test adjust_size_3d function with various input and target sizes."""
     d, h, w = input_size
     x = torch.randn(batch_size, channels, d, h, w)
@@ -54,18 +63,21 @@ def test_adjust_size_3d(batch_size: int, channels: int, input_size: tuple, targe
     assert result.shape[4] == target_w
 
 
-@pytest.mark.parametrize("input_shape,target_size", [
-    ((100,), 50),
-    ((100,), 150),
-    ((2, 100), 50),
-    ((2, 100), 150),
-    ((2, 3, 100), 50),
-    ((2, 3, 100), 150),
-    ((2, 3, 64, 64), (32, 32)),
-    ((2, 3, 64, 64), (128, 128)),
-    ((2, 3, 16, 16, 16), (8, 8, 8)),
-    ((2, 3, 16, 16, 16), (32, 32, 32)),
-])
+@pytest.mark.parametrize(
+    "input_shape,target_size",
+    [
+        ((100,), 50),
+        ((100,), 150),
+        ((2, 100), 50),
+        ((2, 100), 150),
+        ((2, 3, 100), 50),
+        ((2, 3, 100), 150),
+        ((2, 3, 64, 64), (32, 32)),
+        ((2, 3, 64, 64), (128, 128)),
+        ((2, 3, 16, 16, 16), (8, 8, 8)),
+        ((2, 3, 16, 16, 16), (32, 32, 32)),
+    ],
+)
 def test_adjust_size_generic(input_shape: tuple, target_size):
     """Test the generic adjust_size function with various tensor dimensions."""
     x = torch.randn(*input_shape)

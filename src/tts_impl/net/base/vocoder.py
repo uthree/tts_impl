@@ -1,4 +1,4 @@
-from typing import List, Optional, Protocol, Tuple
+from typing import Protocol
 
 import torch
 from lightning import LightningModule
@@ -12,9 +12,9 @@ class GanVocoderGenerator(Protocol):
     def forward(
         self,
         x: torch.Tensor,
-        g=Optional[torch.Tensor],
-        f0=Optional[torch.Tensor],
-        uv=Optional[torch.Tensor],
+        g=torch.Tensor | None,
+        f0=torch.Tensor | None,
+        uv=torch.Tensor | None,
     ) -> torch.Tensor:
         """
         Args:
@@ -32,13 +32,13 @@ class GanVocoderDiscriminator(Protocol):
     GAN-based vocoder discriminator
     """
 
-    def forward(self, x: torch.Tensor) -> Tuple[List[torch.Tensor], List[torch.Tensor]]:
+    def forward(self, x: torch.Tensor) -> tuple[list[torch.Tensor], list[torch.Tensor]]:
         """
         Args:
             x: waveform (batch_size, in_channels, length)
         Returns:
-            logits: List[Tensor]
-            fmap: List[Tensor]
+            logits: list[Tensor]
+            fmap: list[Tensor]
         """
 
 
@@ -50,12 +50,12 @@ class SanVocoderDiscriminator(Protocol):
 
     def forward(
         self, x: torch.Tensor
-    ) -> Tuple[List[torch.Tensor], List[torch.Tensor], List[torch.Tensor]]:
+    ) -> tuple[list[torch.Tensor], list[torch.Tensor], list[torch.Tensor]]:
         """
         Args:
             x: waveform (batch_size, in_channels, length)
         Returns:
-            logits: List[Tensor]
-            directions: List[Tensor]
-            fmap: List[Tensor]
+            logits: list[Tensor]
+            directions: list[Tensor]
+            fmap: list[Tensor]
         """
