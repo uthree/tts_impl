@@ -12,66 +12,47 @@ from tts_impl.utils.config import derive_config
 
 
 @derive_config
-class SubtractiveVocoder(nn.Module):
-    """
-    Subtractive DDSP Vocoder
-    """
-
-    def __init__(
-        self,
-        sample_rate: int = 24000,
-        hop_length: int = 256,
-        dim_periodicity: int = 16,
-        n_fft: int = 1024,
-    ):
-        """
-        Args:
-            sample_rate: int
-            hop_length: hop length of STFT, int
-            n_fft: fft window size of STFT, int
-            dim_periodicity: periodicity dim, int
-            min_phase: flag to use minimum phase, bool, default=True
-        """
+class HomomorphicVocoder(nn.Module):
+    def __init__(self, hop_length: int, n_fft: int | None, sample_rate: int = 48000):
         super().__init__()
-        self.sample_rate = sample_rate
-        self.n_fft = n_fft
-        self.fft_bin = n_fft // 2 + 1
         self.hop_length = hop_length
-        self.dim_periodicity = dim_periodicity
-        self.register_buffer("hann_window", torch.hann_window(n_fft))
-        self.per2bins = torchaudio.transforms.InverseMelScale(
-            self.fft_bin, dim_periodicity, sample_rate
-        )
+        self.sample_rate = sample_rate
+        if n_fft is None:
+            self.n_fft = self.hop_length * 4
+        else:
+            self.n_fft = n_fft
+        self.register_buffer("hann_window", torch.hann_window(self.n_fft))
 
-    def synthesize(
+    def forward(
         self,
-        f0: Tensor,
-        per: Tensor,
-        env: Tensor,
-        reverb: Optional[Tensor] = None,
-    ) -> Tensor:
-        """
+        f0: torch.Tensor,
+        per: torch.Tensor,
+        env: torch.Tensor,
+        rev: torch.Tensor | None = None,
+    ) -> torch.Tensor:
+        """Forward pass to synthesize audio from acoustic features.
+
         Args:
-            f0: shape=(batch_size, n_frames)
-            per: shape=(batch_size, fft_bin, n_frames)
-            env: shape=(batch_size, fft_bin, n_frames)
-            reverb: shape=(batch_size, filter_size), Optional, post-filter
+            f0: Fundamental frequency [batch_size, length]
+            per: Periodicity/voicing [batch_size, length]
+            env: Spectral envelope [batch_size, fft_bin, length]
+            rev: Optional reverb kernel [batch_size, kernel_size]
 
         Returns:
-            output: synthesized wave
+            Synthesized audio waveform [batch_size, length * hop_length]
         """
-
-        # cast to 32-bit float for stability.
-        dtype = f0.dtype
-        f0 = f0.to(torch.float)
+        dtype = per.dtype
+        f0 = f0.float()
         per = per.float()
         env = env.float()
+        if rev is not None:
+            rev = rev.float()
 
         # pad
         per = F.pad(per, (1, 0))
         env = F.pad(env, (1, 0))
 
-        # oscillate impulse and noise
+        # oscillate impulse and noise with energy normalization
         with torch.no_grad():
             imp_scale = torch.rsqrt(
                 torch.clamp_min(
@@ -104,9 +85,7 @@ class SubtractiveVocoder(nn.Module):
         per *= (F.pad(f0[:, None, :], (1, 0)) > 20.0).to(
             torch.float
         )  # set periodicity=0 if unvoiced.
-        periodicity = self.per2bins(per)
-        aperiodicity = self.per2bins(1 - per)
-        excitation = aperiodicity * noi_stft + periodicity * imp_stft
+        excitation = (1 - per) * noi_stft + per* imp_stft
         voi_stft = excitation * estimate_minimum_phase(env)
 
         # inverse STFT
@@ -117,10 +96,7 @@ class SubtractiveVocoder(nn.Module):
             window=self.hann_window,
         )
 
-        # apply post filter. (optional)
-        if reverb is not None:
-            voi = fft_convolve(voi, reverb)
-
-        # cast back to the original dtype.
-        voi = voi.to(dtype)
-        return voi
+        # apply post filter (reverb)
+        if rev is not None:
+            voi = fft_convolve(voi, rev)
+        return voi.to(dtype)
