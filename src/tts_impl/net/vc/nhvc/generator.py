@@ -6,7 +6,7 @@ from torch import nn as nn
 from torch.nn import functional as F
 from tts_impl.net.base.stateful import StatefulModule, StatefulModuleSequential
 from tts_impl.net.common.mingru import MinGRU
-from tts_impl.net.vocoder.ddsp import SubtractiveVocoder
+from tts_impl.net.vocoder.ddsp import HomomorphicVocoder
 from tts_impl.utils.config import derive_config
 
 
@@ -22,13 +22,14 @@ class NhvcEncoder(StatefulModule):
         d_model: int = 128,
         n_layers: int = 4,
         n_fft: int = 1024,
-        dim_phonemes: int = 64,
+        d_phonemes: int = 64,
+        n_phonemes: int = 64,
         n_f0_classes: int = 128,
         fmin: float = 20.0,
         fmax: float = 8000.0,
     ):
         super().__init__()
-        self.dim_phonemes = dim_phonemes
+        self.d_phonemes = d_phonemes
         self.n_f0_classes = n_f0_classes
         self.fft_bin = n_fft // 2 + 1
         self.pre = nn.Linear(in_channels, d_model)
@@ -37,7 +38,8 @@ class NhvcEncoder(StatefulModule):
         self.stack = StatefulModuleSequential(
             [MinGRU(d_model) for _ in range(n_layers)]
         )
-        self.post = nn.Linear(d_model, dim_phonemes + n_f0_classes + self.fft_bin)
+        self.post = nn.Linear(d_model, d_phonemes + n_f0_classes + self.fft_bin)
+        self.to_phoneme_prob = nn.Conv1d(d_phonemes, n_phonemes, 1, bias=False)
 
     def _initial_state(self, x: Tensor, *args, **kwargs) -> Tensor:
         return self.stack._initial_state(x, *args, **kwargs)
