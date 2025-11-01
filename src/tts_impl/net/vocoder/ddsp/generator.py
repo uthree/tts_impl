@@ -43,13 +43,13 @@ class DdspGenerator(nn.Module, GanVocoderGenerator):
         x = self.post(x)
         x = x.float()
         per, env = torch.split(x, [self.dim_periodicity, self.fft_bin], dim=1)
+        per = self.per_inv_mel(per)
         per = torch.sigmoid(per)
         env = torch.exp(env)
         return per, env
 
     def forward(self, x, f0, g=None, uv=None):
         per, env = self.net(x, g=g)
-        per = self.per_inv_mel(per)
         x = self.vocoder.forward(f0, per, env)
         x = x.unsqueeze(dim=1)
         return x
