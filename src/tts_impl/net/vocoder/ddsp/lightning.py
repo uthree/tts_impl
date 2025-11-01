@@ -117,7 +117,7 @@ class DdspVocoderLightningModule(LightningModule):
         f0: torch.Tensor,
         sid: torch.Tensor | None,
     ) -> torch.Tensor:
-        if sid is not None:
+        if sid is not None and self.n_speakers > 0 and self.gin_channels > 0:
             g = self.speaker_embedding(sid).unsqueeze(2)
         else:
             g = None
