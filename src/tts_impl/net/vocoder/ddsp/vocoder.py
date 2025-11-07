@@ -24,31 +24,31 @@ class HomomorphicVocoder(nn.Module):
     def forward(
         self,
         f0: torch.Tensor,
-        per: torch.Tensor,
-        env: torch.Tensor,
+        env_per: torch.Tensor,
+        env_noi: torch.Tensor,
         rev: torch.Tensor | None = None,
     ) -> torch.Tensor:
         """Forward pass to synthesize audio from acoustic features.
 
         Args:
             f0: Fundamental frequency [batch_size, length]
-            per: Periodicity/voicing [batch_size, length]
-            env: Spectral envelope [batch_size, fft_bin, length]
+            env_per: Periodic signal spectral envelope [batch_size, fft_bin, length]
+            env_noi: Noise spectral envelope [batch_size, fft_bin, length]
             rev: Optional reverb kernel [batch_size, kernel_size]
 
         Returns:
             Synthesized audio waveform [batch_size, length * hop_length]
         """
-        dtype = per.dtype
+        dtype = env_per.dtype
         f0 = f0.float()
-        per = per.float()
-        env = env.float()
+        env_per = env_per.float()
+        env_noi = env_noi.float()
         if rev is not None:
             rev = rev.float()
 
         # pad
-        per = F.pad(per, (1, 0))
-        env = F.pad(env, (1, 0))
+        env_per = F.pad(env_per, (1, 0))
+        env_noi = F.pad(env_noi, (1, 0))
 
         # oscillate impulse and noise with energy normalization
         with torch.no_grad():
@@ -80,11 +80,10 @@ class HomomorphicVocoder(nn.Module):
         )
 
         # excitation and filter
-        per *= (F.pad(f0[:, None, :], (1, 0)) > 20.0).to(
+        env_per *= (F.pad(f0[:, None, :], (1, 0)) > 20.0).to(
             torch.float
         )  # set periodicity=0 if unvoiced.
-        excitation = (1 - per) * noi_stft + per * imp_stft
-        voi_stft = excitation * estimate_minimum_phase(env)
+        voi_stft = imp_stft * estimate_minimum_phase(env_per) + noi_stft * env_noi
 
         # inverse STFT
         voi = torch.istft(

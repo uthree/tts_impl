@@ -95,6 +95,7 @@ class MinGRU(StatefulModule):
         d_model: int,
         d_hidden: int | None = None,
         bias: bool = True,
+        d_cond: int | None = None
     ):
         """
         Unofficial implementation of [minGRU](https://arxiv.org/abs/2410.01201v1).
@@ -111,18 +112,25 @@ class MinGRU(StatefulModule):
         self.d_hidden = d_hidden
         self.linear_h = nn.Linear(d_model, d_hidden, bias=bias)
         self.linear_z = nn.Linear(d_model, d_hidden, bias=bias)
+        self.d_cond = d_cond
+        if d_cond is not None:
+            self.cond = nn.Linear(d_cond, d_model * 2)
 
     def _sequential_forward(
-        self, x: torch.Tensor, h_prev: torch.Tensor
+        self, x: torch.Tensor, h_prev: torch.Tensor, cond: torch.Tensor| None=None
     ) -> tuple[torch.Tensor, torch.Tensor]:
+        mu, sigma = self.cond(cond).chunk(2, dim=2)
+        x = x * torch.exp(sigma) + mu
         z = self.linear_z(x)
         h = self.linear_h(x)
         h = mingru_sequential(z, h, h_prev)
         return h, h
 
     def _parallel_forward(
-        self, x: torch.Tensor, h_prev: torch.Tensor
+        self, x: torch.Tensor, h_prev: torch.Tensor, cond: torch.Tensor| None=None
     ) -> tuple[torch.Tensor, torch.Tensor]:
+        mu, sigma = self.cond(cond).chunk(2, dim=2)
+        x = x * torch.exp(sigma) + mu
         z = self.linear_z(x)
         h = self.linear_h(x)
         y, h_next = mingru_parallel(z, h, h_prev)

@@ -34,11 +34,11 @@ def test_subtractive_vocoder(
     fft_bin = n_fft // 2 + 1
     f0 = torch.ones(batch_size, num_frames) * 440.0
     per = torch.rand(batch_size, fft_bin, num_frames)
-    env = torch.rand(batch_size, fft_bin, num_frames)
+    noi = torch.rand(batch_size, fft_bin, num_frames)
     pf = (
         torch.randn(batch_size, post_filter_length) if post_filter_length != 0 else None
     )
-    o = vocoder.forward(f0, per, env, rev=pf)
+    o = vocoder.forward(f0, per, noi, rev=pf)
     assert o.shape[0] == batch_size
     assert o.shape[1] == num_frames * hop_length
 
