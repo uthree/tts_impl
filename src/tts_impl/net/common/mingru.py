@@ -119,8 +119,9 @@ class MinGRU(StatefulModule):
     def _sequential_forward(
         self, x: torch.Tensor, h_prev: torch.Tensor, cond: torch.Tensor| None=None
     ) -> tuple[torch.Tensor, torch.Tensor]:
-        mu, sigma = self.cond(cond).chunk(2, dim=2)
-        x = x * torch.exp(sigma) + mu
+        if cond is not None and self.d_cond is not None:
+            mu, sigma = self.cond(cond).chunk(2, dim=2)
+            x = x * torch.exp(sigma) + mu
         z = self.linear_z(x)
         h = self.linear_h(x)
         h = mingru_sequential(z, h, h_prev)
@@ -129,8 +130,9 @@ class MinGRU(StatefulModule):
     def _parallel_forward(
         self, x: torch.Tensor, h_prev: torch.Tensor, cond: torch.Tensor| None=None
     ) -> tuple[torch.Tensor, torch.Tensor]:
-        mu, sigma = self.cond(cond).chunk(2, dim=2)
-        x = x * torch.exp(sigma) + mu
+        if cond is not None and self.d_cond is not None:
+            mu, sigma = self.cond(cond).chunk(2, dim=2)
+            x = x * torch.exp(sigma) + mu
         z = self.linear_z(x)
         h = self.linear_h(x)
         y, h_next = mingru_parallel(z, h, h_prev)

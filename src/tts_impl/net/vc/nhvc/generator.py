@@ -51,6 +51,14 @@ class NhvcEncoder(StatefulModule):
         x, h_last = self.stack._parallel_forward(x, h, *args, **kwargs)
         x = self.post(x)
         return x, h_last
+    
+    def _sequential_forward(
+        self, x: Tensor, h: Tensor, *args, **kwargs
+    ) -> tuple[Tensor, Tensor]:
+        x = self.pre(x)
+        x, h_last = self.stack._sequential_forward(x, h, *args, **kwargs)
+        x = self.post(x)
+        return x, h_last
 
     def freq2idx(self, freq: Tensor) -> Tensor:
         log_fmin = math.log(self.fmin)
@@ -133,5 +141,13 @@ class NhvcDecoder(StatefulModule):
     ) -> tuple[Tensor, Tensor]:
         x = self.pre(x)
         x, h_last = self.stack._parallel_forward(x, h, *args, **kwargs)
+        x = self.post(x)
+        return x, h_last
+    
+    def _sequential_forward(
+        self, x: Tensor, h: Tensor, *args, **kwargs
+    ) -> tuple[Tensor, Tensor]:
+        x = self.pre(x)
+        x, h_last = self.stack._sequential_forward(x, h, *args, **kwargs)
         x = self.post(x)
         return x, h_last
