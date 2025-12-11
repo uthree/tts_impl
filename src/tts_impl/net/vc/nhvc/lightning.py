@@ -389,14 +389,22 @@ class NhvcLightningModule(LightningModule):
 
         # Voice conversion to different speakers (if multi-speaker model)
         if self.n_speakers > 0 and sid is not None:
+            # Group samples by speaker ID
+            speaker_samples = {}
+            for i in range(waveform.shape[0]):
+                spk = sid[i].item()
+                if spk not in speaker_samples:
+                    speaker_samples[spk] = []
+                speaker_samples[spk].append(i)
+
             # Select up to 2 samples for conversion
             num_samples = min(2, fake.shape[0])
             for i in range(num_samples):
                 source_sid = sid[i].item()
 
                 # Convert to all other speakers (up to 3 different targets)
-                target_sids = [s for s in range(self.n_speakers) if s != source_sid]
-                target_sids = target_sids[: min(3, len(target_sids))]
+                available_target_sids = [s for s in speaker_samples.keys() if s != source_sid]
+                target_sids = available_target_sids[: min(3, len(available_target_sids))]
 
                 for target_sid in target_sids:
                     # Extract single sample for conversion
@@ -428,6 +436,56 @@ class NhvcLightningModule(LightningModule):
                         self.current_epoch,
                         dataformats="HW",
                     )
+
+                    # Add target speaker's reconstruction for comparison
+                    if target_sid in speaker_samples and len(speaker_samples[target_sid]) > 0:
+                        # Use the first available sample from target speaker
+                        target_idx = speaker_samples[target_sid][0]
+                        target_acoustic = acoustic_features[target_idx : target_idx + 1]
+                        target_waveform = waveform[target_idx : target_idx + 1]
+
+                        # Reconstruct target speaker's audio with their own speaker ID
+                        target_reconstructed, _, _ = self._generator_forward(
+                            target_acoustic, torch.tensor([target_sid], device=acoustic_features.device)
+                        )
+                        spec_target_reconstructed = self.spectrogram(target_reconstructed)
+
+                        tr = target_reconstructed[0].sum(dim=0, keepdim=True).detach().cpu()
+                        tw = target_waveform[0].sum(dim=0, keepdim=True).detach().cpu()
+                        spec_target_reconstructed_img = normalize(
+                            spec_target_reconstructed[0, 0].detach().cpu().flip(0)
+                        )
+                        spec_target_real = self.spectrogram(target_waveform)
+                        spec_target_real_img = normalize(
+                            spec_target_real[0, 0].detach().cpu().flip(0)
+                        )
+
+                        # Log target speaker's reconstruction
+                        self.logger.experiment.add_audio(
+                            f"target_reconstructed waveform/{bid}_{i}_spk{target_sid}",
+                            tr,
+                            self.current_epoch,
+                            sample_rate=self.generator.sample_rate,
+                        )
+                        self.logger.experiment.add_image(
+                            f"target_reconstructed mel spectrogram/{bid}_{i}_spk{target_sid}",
+                            spec_target_reconstructed_img,
+                            self.current_epoch,
+                            dataformats="HW",
+                        )
+                        # Log target speaker's real audio
+                        self.logger.experiment.add_audio(
+                            f"target_real waveform/{bid}_{i}_spk{target_sid}",
+                            tw,
+                            self.current_epoch,
+                            sample_rate=self.generator.sample_rate,
+                        )
+                        self.logger.experiment.add_image(
+                            f"target_real mel spectrogram/{bid}_{i}_spk{target_sid}",
+                            spec_target_real_img,
+                            self.current_epoch,
+                            dataformats="HW",
+                        )
 
         return loss_mel
 
