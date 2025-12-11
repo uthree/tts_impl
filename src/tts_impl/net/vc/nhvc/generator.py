@@ -197,7 +197,7 @@ class NhvcGenerator(StatefulModule):
         vocoder: HomomorphicVocoder.Config = HomomorphicVocoder.Config(),
         n_speakers: int = 0,
         gin_channels: int = 0,
-        sample_rate: int = 48000,
+        sample_rate: int = 24000,
     ):
         super().__init__()
         self.encoder = NhvcEncoder(**encoder)

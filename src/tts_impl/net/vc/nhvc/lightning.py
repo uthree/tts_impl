@@ -65,6 +65,7 @@ class NhvcLightningModule(LightningModule):
         betas: list[float] = [0.8, 0.99],
         segment_size: int = 8192,
         lr: float = 2e-4,
+        metadata_path: str = "dataset_cache/metadata.json",
     ):
         super().__init__()
         self.automatic_optimization = False
@@ -105,6 +106,27 @@ class NhvcLightningModule(LightningModule):
         self.betas = betas
         self.segment_size = segment_size
 
+        # Load speaker average pitch information from metadata
+        self.speaker_avg_pitch_midi = None
+        if metadata_path is not None:
+            import json
+            from pathlib import Path
+
+            metadata_file = Path(metadata_path)
+            if metadata_file.exists():
+                with open(metadata_file, "r", encoding="utf-8") as f:
+                    metadata = json.load(f)
+                    if "speaker_avg_pitch" in metadata and "speakers" in metadata:
+                        # Map speaker name to speaker ID (index)
+                        speakers = metadata["speakers"]
+                        speaker_avg_pitch = metadata["speaker_avg_pitch"]
+                        self.speaker_avg_pitch_midi = {}
+                        for idx, speaker_name in enumerate(speakers):
+                            if speaker_name in speaker_avg_pitch:
+                                self.speaker_avg_pitch_midi[idx] = speaker_avg_pitch[
+                                    speaker_name
+                                ]
+
         self.save_hyperparameters()
 
     def training_step(self, batch: dict):
@@ -134,6 +156,7 @@ class NhvcLightningModule(LightningModule):
         self,
         x: torch.Tensor,
         sid: torch.Tensor | None,
+        pitch_shift_semitones: float = 0.0,
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """
         Forward pass with gradient separation between Encoder and Decoder.
@@ -146,6 +169,11 @@ class NhvcLightningModule(LightningModule):
         - Mel spectrogram reconstruction loss
         - Adversarial loss
         - Feature matching loss
+
+        Args:
+            x: Input features [B, C, T]
+            sid: Speaker ID [B]
+            pitch_shift_semitones: Pitch shift in semitones (MIDI scale)
 
         Returns:
             waveform: Generated waveform (detached from Encoder gradients)
@@ -177,6 +205,12 @@ class NhvcLightningModule(LightningModule):
 
         # Decode F0 from probabilities (keep gradients for Encoder)
         f0 = self.generator.encoder.decode_f0(f0_probs.transpose(1, 2))
+
+        # Apply pitch shift if requested
+        if pitch_shift_semitones != 0.0:
+            # Shift F0 by the specified number of semitones
+            # F0_shifted = F0_original * 2^(semitones/12)
+            f0 = f0 * (2.0 ** (pitch_shift_semitones / 12.0))
 
         # Normalize phoneme embeddings
         phoneme_emb = F.instance_norm(phoneme_emb.mT).mT
@@ -403,8 +437,12 @@ class NhvcLightningModule(LightningModule):
                 source_sid = sid[i].item()
 
                 # Convert to all other speakers (up to 3 different targets)
-                available_target_sids = [s for s in speaker_samples.keys() if s != source_sid]
-                target_sids = available_target_sids[: min(3, len(available_target_sids))]
+                available_target_sids = [
+                    s for s in speaker_samples.keys() if s != source_sid
+                ]
+                target_sids = available_target_sids[
+                    : min(3, len(available_target_sids))
+                ]
 
                 for target_sid in target_sids:
                     # Extract single sample for conversion
@@ -413,9 +451,22 @@ class NhvcLightningModule(LightningModule):
                         [target_sid], device=acoustic_features.device
                     )
 
-                    # Convert to target speaker
+                    # Calculate pitch shift based on average pitch difference
+                    pitch_shift = 0.0
+                    if (
+                        self.speaker_avg_pitch_midi is not None
+                        and source_sid in self.speaker_avg_pitch_midi
+                        and target_sid in self.speaker_avg_pitch_midi
+                    ):
+                        source_pitch = self.speaker_avg_pitch_midi[source_sid]
+                        target_pitch = self.speaker_avg_pitch_midi[target_sid]
+                        pitch_shift = target_pitch - source_pitch
+
+                    # Convert to target speaker with pitch shift
                     converted, _, _ = self._generator_forward(
-                        acoustic_single, target_sid_tensor
+                        acoustic_single,
+                        target_sid_tensor,
+                        pitch_shift_semitones=pitch_shift,
                     )
                     spec_converted = self.spectrogram(converted)
 
@@ -438,7 +489,10 @@ class NhvcLightningModule(LightningModule):
                     )
 
                     # Add target speaker's reconstruction for comparison
-                    if target_sid in speaker_samples and len(speaker_samples[target_sid]) > 0:
+                    if (
+                        target_sid in speaker_samples
+                        and len(speaker_samples[target_sid]) > 0
+                    ):
                         # Use the first available sample from target speaker
                         target_idx = speaker_samples[target_sid][0]
                         target_acoustic = acoustic_features[target_idx : target_idx + 1]
@@ -446,11 +500,19 @@ class NhvcLightningModule(LightningModule):
 
                         # Reconstruct target speaker's audio with their own speaker ID
                         target_reconstructed, _, _ = self._generator_forward(
-                            target_acoustic, torch.tensor([target_sid], device=acoustic_features.device)
+                            target_acoustic,
+                            torch.tensor([target_sid], device=acoustic_features.device),
                         )
-                        spec_target_reconstructed = self.spectrogram(target_reconstructed)
+                        spec_target_reconstructed = self.spectrogram(
+                            target_reconstructed
+                        )
 
-                        tr = target_reconstructed[0].sum(dim=0, keepdim=True).detach().cpu()
+                        tr = (
+                            target_reconstructed[0]
+                            .sum(dim=0, keepdim=True)
+                            .detach()
+                            .cpu()
+                        )
                         tw = target_waveform[0].sum(dim=0, keepdim=True).detach().cpu()
                         spec_target_reconstructed_img = normalize(
                             spec_target_reconstructed[0, 0].detach().cpu().flip(0)

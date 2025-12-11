@@ -5,13 +5,16 @@ import torchaudio
 from torch import Tensor
 from torch import nn as nn
 from torch.nn import functional as F
+
 from tts_impl.functional.ddsp import estimate_minimum_phase, fft_convolve, impulse_train
 from tts_impl.utils.config import derive_config
 
 
 @derive_config
 class HomomorphicVocoder(nn.Module):
-    def __init__(self, hop_length: int=256, n_fft: int | None=1024, sample_rate: int = 48000):
+    def __init__(
+        self, hop_length: int = 256, n_fft: int | None = 1024, sample_rate: int = 24000
+    ):
         super().__init__()
         self.hop_length = hop_length
         self.sample_rate = sample_rate

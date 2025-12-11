@@ -30,7 +30,7 @@ class Nhvc(Recipe):
     def preprocess(
         self,
         target_dir: str = "your_target_dir",
-        sample_rate: int = 48000,
+        sample_rate: int = 24000,
         num_frames: int = 500,
         frame_size: int = 256,
         dataset_cache_path: str = "dataset_cache",

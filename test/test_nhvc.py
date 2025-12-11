@@ -424,5 +424,43 @@ def test_nhvc_gradient_separation():
     assert encoder_has_grad, "Encoder should have gradients from f0 loss"
 
 
+def test_nhvc_pitch_shift():
+    """Test pitch shift functionality"""
+    module = NhvcLightningModule(
+        n_speakers=0,
+        gin_channels=0,
+    )
+
+    batch_size = 2
+    num_frames = 500
+    in_channels = 80
+
+    acoustic_features = torch.randn(batch_size, in_channels, num_frames)
+
+    # Generate audio without pitch shift
+    fake_no_shift, _, _ = module._generator_forward(
+        acoustic_features, sid=None, pitch_shift_semitones=0.0
+    )
+
+    # Generate audio with +12 semitones pitch shift (one octave up)
+    fake_shift_up, _, _ = module._generator_forward(
+        acoustic_features, sid=None, pitch_shift_semitones=12.0
+    )
+
+    # Generate audio with -12 semitones pitch shift (one octave down)
+    fake_shift_down, _, _ = module._generator_forward(
+        acoustic_features, sid=None, pitch_shift_semitones=-12.0
+    )
+
+    # Check that pitch-shifted outputs are different from original
+    assert not torch.allclose(fake_no_shift, fake_shift_up, atol=1e-3)
+    assert not torch.allclose(fake_no_shift, fake_shift_down, atol=1e-3)
+    assert not torch.allclose(fake_shift_up, fake_shift_down, atol=1e-3)
+
+    # Check output shapes are the same
+    assert fake_no_shift.shape == fake_shift_up.shape
+    assert fake_no_shift.shape == fake_shift_down.shape
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

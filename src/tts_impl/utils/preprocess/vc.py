@@ -77,6 +77,7 @@ class VcCacheWriter(CacheWriter):
         self.format = format
         self.delete_old_cache = delete_old_cache
         self.counter = dict()
+        self.f0_stats = dict()  # Store F0 statistics per speaker
         super().__init__()
 
     def prepare(self):
@@ -98,16 +99,52 @@ class VcCacheWriter(CacheWriter):
         else:
             self.counter[speaker] += 1
 
+        # Accumulate F0 statistics for average pitch calculation
+        if "f0" in data and speaker not in self.f0_stats:
+            self.f0_stats[speaker] = []
+
+        if "f0" in data:
+            f0 = data["f0"]
+            # Filter out unvoiced/silence frames (F0 < 20Hz)
+            # These are typically unvoiced consonants or silence regions
+            # and should not be included in average pitch calculation
+            voiced_f0 = f0[f0 > 20.0]
+            if len(voiced_f0) > 0:
+                self.f0_stats[speaker].extend(voiced_f0.tolist())
+
         subdir.mkdir(parents=True, exist_ok=True)
         counter = self.counter[speaker]
         torchaudio.save(subdir / f"{counter}.{self.format}", wf, sr)
         torch.save(data, subdir / f"{counter}.pt")
 
     def finalize(self):
+        from tts_impl.functional.midi import freq2note
+
         metadata = dict()
         speakers = sorted(self.counter.keys())
         metadata["speakers"] = speakers
         if self.sample_rate is not None:
             metadata["sample_rate"] = self.sample_rate
-        with open(self.root / "metadata.json", mode="w+") as f:
-            json.dump(metadata, f)
+
+        # Calculate average pitch per speaker in MIDI scale (logarithmic)
+        speaker_avg_pitch = {}
+        for speaker, f0_list in self.f0_stats.items():
+            if len(f0_list) > 0:
+                # Convert all F0 values to MIDI scale first (logarithmic scale)
+                midi_list = [freq2note(f0) for f0 in f0_list]
+                # Calculate average in MIDI scale (human perception is logarithmic)
+                avg_midi = sum(midi_list) / len(midi_list)
+                speaker_avg_pitch[speaker] = round(avg_midi, 2)
+
+                # For logging, also calculate Hz average for reference
+                avg_f0_hz = sum(f0_list) / len(f0_list)
+                self.logger.log(
+                    logging.INFO,
+                    f"Speaker {speaker}: avg MIDI = {avg_midi:.2f} (linear avg F0 = {avg_f0_hz:.2f} Hz for reference)",
+                )
+
+        if speaker_avg_pitch:
+            metadata["speaker_avg_pitch"] = speaker_avg_pitch
+
+        with open(self.root / "metadata.json", mode="w+", encoding="utf-8") as f:
+            json.dump(metadata, f, indent=2, ensure_ascii=False)
