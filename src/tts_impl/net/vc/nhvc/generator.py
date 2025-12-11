@@ -67,9 +67,12 @@ class NhvcEncoder(StatefulModule):
         log_delta_f = log_fmax - log_fmin
 
         log_freq = torch.log(torch.clamp(freq.float(), min=self.fmin, max=self.fmax))
-        idx = torch.ceil(
-            (log_freq - log_fmin) / log_delta_f * (self.n_f0_classes - 1)
+        # Map to [0, n_f0_classes-2] range (since we have n_f0_classes-1 F0 classes)
+        idx = torch.round(
+            (log_freq - log_fmin) / log_delta_f * (self.n_f0_classes - 2)
         ).long()
+        # Clamp to valid range
+        idx = torch.clamp(idx, min=0, max=self.n_f0_classes - 2)
         return idx
 
     def idx2freq(self, idx: Tensor) -> Tensor:
@@ -77,7 +80,8 @@ class NhvcEncoder(StatefulModule):
         log_fmax = math.log(self.fmax)
         log_delta_f = log_fmax - log_fmin
 
-        log_freq = ((idx.float() / (self.n_f0_classes - 1)) + log_fmin) * log_delta_f
+        # Map from [0, n_f0_classes-2] to [fmin, fmax]
+        log_freq = log_fmin + (idx.float() / (self.n_f0_classes - 2)) * log_delta_f
         freq = torch.exp(log_freq)
         return freq
 
@@ -87,14 +91,19 @@ class NhvcEncoder(StatefulModule):
             probs: shape=[batch_size, n_f0_classes, n_frames]
 
         Returns:
-            f0: shape=[batch_size, n_frames]
+            f0: shape=[batch_size, n_frames] in Hz
         """
         uv, f0_probs = torch.split(probs, [1, self.n_f0_classes - 1], dim=1)
         topk_result = torch.topk(f0_probs, k=k, dim=1)
         uv = (uv > 0.0).float().squeeze(1)
-        freqs = topk_result.indices.float()
-        probs = torch.softmax(topk_result.values, dim=1)
-        f0 = (freqs * probs).sum(dim=1) * uv
+
+        # Convert indices to frequencies
+        indices = topk_result.indices  # [B, k, T]
+        freqs = self.idx2freq(indices)  # [B, k, T] in Hz
+
+        # Weighted average using softmax probabilities
+        probs = torch.softmax(topk_result.values, dim=1)  # [B, k, T]
+        f0 = (freqs * probs).sum(dim=1) * uv  # [B, T]
         return f0
 
     def f0_loss(self, probs: Tensor, f0) -> Tensor:
