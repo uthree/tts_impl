@@ -178,9 +178,9 @@ def test_nhvc_generator(
     expected_waveform_length = num_frames * frame_size
     assert output.shape == torch.Size([batch_size, 1, expected_waveform_length])
 
-    # Check hidden state tuple
-    assert isinstance(h_last, tuple)
-    assert len(h_last) == 2  # (h_enc, h_dec)
+    # Check hidden state is a single tensor (concatenated encoder and decoder states)
+    assert isinstance(h_last, torch.Tensor)
+    assert h_last.ndim == 3  # [B, n_layers*2, d_model]
 
     # Test sequential forward with minimum frames for vocoder
     # Need at least ceil(n_fft / hop_length) frames to avoid padding errors

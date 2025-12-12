@@ -230,37 +230,42 @@ class NhvcGenerator(StatefulModule):
         if n_speakers > 0 and gin_channels > 0:
             self.speaker_embedding = nn.Embedding(n_speakers, gin_channels)
 
-    def _initial_state(self, x: Tensor, *args, **kwargs) -> tuple[Tensor, Tensor]:
+    def _initial_state(self, x: Tensor, *args, **kwargs) -> Tensor:
         h_enc = self.encoder._initial_state(x, *args, **kwargs)
         h_dec = self.decoder._initial_state(x, *args, **kwargs)
-        return (h_enc, h_dec)
+        # Concatenate encoder and decoder states into a single tensor
+        # h_enc: [B, n_layers, d_model], h_dec: [B, n_layers, d_model]
+        h = torch.cat([h_enc, h_dec], dim=1)  # [B, n_layers*2, d_model]
+        return h
 
     def _parallel_forward(
         self,
         x: Tensor,
-        h: tuple[Tensor, Tensor],
+        h: Tensor,
         sid: Tensor | None = None,
         *args,
         **kwargs,
-    ) -> tuple[Tensor, tuple[Tensor, Tensor]]:
+    ) -> tuple[Tensor, Tensor]:
         """
         Args:
             x: Input acoustic features [batch_size, in_channels, n_frames]
-            h: Hidden states (h_enc, h_dec)
+            h: Hidden states [batch_size, n_layers*2, d_model]
             sid: Speaker IDs [batch_size] (optional)
 
         Returns:
             waveform: Synthesized audio [batch_size, 1, n_frames * hop_length]
-            h_last: Updated hidden states (h_enc_last, h_dec_last)
+            h_last: Updated hidden states [batch_size, n_layers*2, d_model]
         """
-        h_enc, h_dec = h
+        # Split concatenated state into encoder and decoder states
+        n_layers = h.shape[1] // 2
+        h_enc, h_dec = torch.split(h, [n_layers, n_layers], dim=1)
 
         # Encode: get phoneme embeddings, f0 probabilities, and noise gate
         x = x.transpose(1, 2)  # [B, T, C]
         encoded, h_enc_last = self.encoder._parallel_forward(x, h_enc, *args, **kwargs)
 
         # Split encoder output
-        phoneme_emb, f0_probs, noise_gate_logits = torch.split(
+        phoneme_emb, f0_probs, _ = torch.split(
             encoded,
             [self.encoder.d_phonemes, self.encoder.n_f0_classes, self.encoder.fft_bin],
             dim=-1,
@@ -289,18 +294,22 @@ class NhvcGenerator(StatefulModule):
         waveform = self.vocoder(f0=f0, env_per=env_per, env_noi=env_noi)
         waveform = waveform.unsqueeze(1)  # [B, 1, T*hop_length]
 
-        return waveform, (h_enc_last, h_dec_last)
+        # Concatenate encoder and decoder states
+        h_last = torch.cat([h_enc_last, h_dec_last], dim=1)
+        return waveform, h_last
 
     def _sequential_forward(
         self,
         x: Tensor,
-        h: tuple[Tensor, Tensor],
+        h: Tensor,
         sid: Tensor | None = None,
         *args,
         **kwargs,
-    ) -> tuple[Tensor, tuple[Tensor, Tensor]]:
+    ) -> tuple[Tensor, Tensor]:
         """Sequential forward for streaming inference"""
-        h_enc, h_dec = h
+        # Split concatenated state into encoder and decoder states
+        n_layers = h.shape[1] // 2
+        h_enc, h_dec = torch.split(h, [n_layers, n_layers], dim=1)
 
         # Encode
         x = x.transpose(1, 2)  # [B, T, C]
@@ -309,7 +318,7 @@ class NhvcGenerator(StatefulModule):
         )
 
         # Split encoder output
-        phoneme_emb, f0_probs, noise_gate_logits = torch.split(
+        phoneme_emb, f0_probs, _ = torch.split(
             encoded,
             [self.encoder.d_phonemes, self.encoder.n_f0_classes, self.encoder.fft_bin],
             dim=-1,
@@ -337,4 +346,6 @@ class NhvcGenerator(StatefulModule):
         waveform = self.vocoder(f0=f0, env_per=env_per, env_noi=env_noi)
         waveform = waveform.unsqueeze(1)
 
-        return waveform, (h_enc_last, h_dec_last)
+        # Concatenate encoder and decoder states
+        h_last = torch.cat([h_enc_last, h_dec_last], dim=1)
+        return waveform, h_last
