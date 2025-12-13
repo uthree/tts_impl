@@ -4,6 +4,7 @@ from torch import nn as nn
 from torch.nn import functional as F
 from torch.nn.utils import spectral_norm
 from torch.nn.utils.parametrizations import weight_norm
+
 from tts_impl.functional.ddsp import cross_correlation
 from tts_impl.net.base.vocoder import GanVocoderDiscriminator
 from tts_impl.utils.config import derive_config
@@ -30,7 +31,7 @@ class DiscriminatorP(nn.Module):
     ):
         super().__init__()
         self.period = period
-        norm_f = weight_norm if use_spectral_norm == False else spectral_norm
+        norm_f = weight_norm if not use_spectral_norm else spectral_norm
         self.convs = nn.ModuleList()
         self.convs.append(
             norm_f(
@@ -98,7 +99,7 @@ class DiscriminatorS(nn.Module):
         else:
             self.pool = nn.AvgPool1d(scale * 2, scale, scale)
 
-        norm_f = weight_norm if use_spectral_norm == False else nn.utils.spectral_norm
+        norm_f = weight_norm if not use_spectral_norm else nn.utils.spectral_norm
         self.convs = nn.ModuleList(
             [
                 norm_f(nn.Conv1d(1, 128, 15, 1, padding=7)),
@@ -162,7 +163,7 @@ class CombinedDiscriminator(nn.Module, GanVocoderDiscriminator):
 class MultiPeriodDiscriminator(CombinedDiscriminator):
     def __init__(
         self,
-        periods: list[int] = [2, 3, 5, 7, 11],
+        periods: list[int] = None,
         kernel_size: int = 5,
         stride: int = 3,
         use_spectral_norm: bool = False,
@@ -171,6 +172,8 @@ class MultiPeriodDiscriminator(CombinedDiscriminator):
         channels_mul: int = 4,
         num_layers: int = 4,
     ):
+        if periods is None:
+            periods = [2, 3, 5, 7, 11]
         super().__init__()
         self.discriminators = nn.ModuleList()
         for p in periods:
@@ -190,7 +193,9 @@ class MultiPeriodDiscriminator(CombinedDiscriminator):
 
 @derive_config
 class MultiScaleDiscriminator(CombinedDiscriminator):
-    def __init__(self, scales: list[int] = [1, 2, 4]):
+    def __init__(self, scales: list[int] = None):
+        if scales is None:
+            scales = [1, 2, 4]
         super().__init__()
         self.discriminators = nn.ModuleList()
         for i, s in enumerate(scales):
@@ -265,15 +270,19 @@ class DiscriminatorR(nn.Module):
 class MultiResolutionStftDiscriminator(CombinedDiscriminator):
     def __init__(
         self,
-        n_fft: list[int] = [1024, 2048, 512],
-        hop_size: list[int] = [120, 240, 50],
+        n_fft: list[int] = None,
+        hop_size: list[int] = None,
         channels: int = 32,
         num_layers: int = 4,
         pre_layernorm: bool = False,
         log_scale: bool = True,
     ):
+        if hop_size is None:
+            hop_size = [120, 240, 50]
+        if n_fft is None:
+            n_fft = [1024, 2048, 512]
         super().__init__()
-        for n, h in zip(n_fft, hop_size):
+        for n, h in zip(n_fft, hop_size, strict=False):
             self.discriminators.append(
                 DiscriminatorR(
                     n,
@@ -338,13 +347,17 @@ class DiscriminatorX(nn.Module):
 class MultiResolutionXcorrDiscriminator(CombinedDiscriminator):
     def __init__(
         self,
-        n_fft: list[int] = [1024, 2048, 512],
-        hop_size: list[int] = [120, 240, 50],
+        n_fft: list[int] = None,
+        hop_size: list[int] = None,
         channels: int = 32,
         num_layers: int = 4,
     ):
+        if hop_size is None:
+            hop_size = [120, 240, 50]
+        if n_fft is None:
+            n_fft = [1024, 2048, 512]
         super().__init__()
-        for n, h in zip(n_fft, hop_size):
+        for n, h in zip(n_fft, hop_size, strict=False):
             self.discriminators.append(
                 DiscriminatorX(
                     n,

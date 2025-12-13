@@ -1,4 +1,5 @@
 from torch import nn as nn
+
 from tts_impl.transforms import LogMelSpectrogram
 from tts_impl.utils.preprocess import (
     AudioCacheWriter,
@@ -12,7 +13,7 @@ preprocess = Preprocessor()
 
 # add Collector
 preprocess.with_collector(
-    AudioDataCollector("D:\datasets\jvs_experimental", length=65536, sample_rate=22050)
+    AudioDataCollector(r"D:\datasets\jvs_experimental", length=65536, sample_rate=22050)
 )
 
 # add extractor

@@ -58,7 +58,7 @@ class Encoder(nn.Module):
         else:
             raise RuntimeError("invalid norm type.")
 
-        for i in range(self.n_layers):
+        for _i in range(self.n_layers):
             self.attn_layers.append(
                 MultiHeadAttention(
                     hidden_channels,
@@ -163,7 +163,7 @@ class Decoder(nn.Module):
         self.norm_layers_1 = nn.ModuleList()
         self.ffn_layers = nn.ModuleList()
         self.norm_layers_2 = nn.ModuleList()
-        for i in range(self.n_layers):
+        for _i in range(self.n_layers):
             self.self_attn_layers.append(
                 MultiHeadAttention(
                     hidden_channels,
@@ -328,15 +328,15 @@ class MultiHeadAttention(nn.Module):
         value = value.view(b, self.n_heads, self.k_channels, t_s).transpose(2, 3)
 
         if self.rotary_pos_emb:
-            assert (
-                t_s == t_t
-            ), "Rotary Positional Embeddings is only available for self-attention."
+            assert t_s == t_t, (
+                "Rotary Positional Embeddings is only available for self-attention."
+            )
             query, key = self.rope_module.rotate_queries_and_keys(query, key, seq_dim=2)
         scores = torch.matmul(query / math.sqrt(self.k_channels), key.transpose(-2, -1))
         if self.window_size is not None:
-            assert (
-                t_s == t_t
-            ), "Relative attention is only available for self-attention."
+            assert t_s == t_t, (
+                "Relative attention is only available for self-attention."
+            )
             key_relative_embeddings = self._get_relative_embeddings(self.emb_rel_k, t_s)
             rel_logits = self._matmul_with_relative_keys(
                 query / math.sqrt(self.k_channels), key_relative_embeddings
@@ -351,9 +351,9 @@ class MultiHeadAttention(nn.Module):
         if mask is not None:
             scores = scores.masked_fill(mask == 0, -1e4)
             if self.block_length is not None:
-                assert (
-                    t_s == t_t
-                ), "Local attention is only available for self-attention."
+                assert t_s == t_t, (
+                    "Local attention is only available for self-attention."
+                )
                 block_mask = (
                     torch.ones_like(scores)
                     .triu(-self.block_length)

@@ -1,7 +1,8 @@
 import torch
 from torch import nn as nn
 from torch.nn import functional as F
-from tts_impl.net.base.stateful import PointwiseModule, StatefulModule
+
+from tts_impl.net.base.stateful import StatefulModule
 
 
 class LayerNorm1d(nn.Module):
@@ -136,7 +137,7 @@ class LayerNorm(nn.Module):
         if elementwise_affine:
             self.beta = nn.Parameter(torch.zeros(1, 1, d_model))
             self.gamma = nn.Parameter(torch.ones(1, 1, d_model))
-        self.dim = dim
+        self.dim = d_model
         self.eps = eps
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:

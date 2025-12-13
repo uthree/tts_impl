@@ -3,6 +3,7 @@ import numpy as np
 import torch
 from torch import nn as nn
 from torch.nn import functional as F
+
 from tts_impl.functional.forced_align import viterbi_decode
 
 

@@ -17,7 +17,8 @@ def update_typing_imports(content: str) -> str:
 
         # Remove List, Tuple, Optional, Union
         new_imports = [
-            item for item in import_list
+            item
+            for item in import_list
             if item not in ["List", "Tuple", "Optional", "Union"]
         ]
 
@@ -57,9 +58,7 @@ def update_type_annotations(content: str) -> str:
     # Nested Optional - repeat a few times to handle nesting
     for _ in range(3):
         content = re.sub(
-            r"Optional\[([^\[\]]*\[[^\]]+\][^\[\]]*)\]",
-            replace_optional,
-            content
+            r"Optional\[([^\[\]]*\[[^\]]+\][^\[\]]*)\]", replace_optional, content
         )
 
     # Replace Union[A, B] with A | B
@@ -88,7 +87,9 @@ def update_type_annotations(content: str) -> str:
 
     # Handle nested Union - repeat to handle nesting
     for _ in range(3):
-        content = re.sub(r"Union\[([^\[\]]*(?:\[[^\]]*\])?[^\[\]]*)\]", replace_union, content)
+        content = re.sub(
+            r"Union\[([^\[\]]*(?:\[[^\]]*\])?[^\[\]]*)\]", replace_union, content
+        )
 
     return content
 

@@ -1,7 +1,7 @@
 import pytest
 import torch
 from torch import nn as nn
-from torch.nn import functional as F
+
 from tts_impl.net.vc.nhvc import NhvcLightningModule
 from tts_impl.net.vc.nhvc.generator import NhvcDecoder, NhvcEncoder, NhvcGenerator
 from tts_impl.net.vocoder.ddsp import HomomorphicVocoder
@@ -36,7 +36,9 @@ def test_nhvc_encoder(
     output, h_last = encoder._parallel_forward(x, h)
 
     # Check output shape: [batch_size, num_frames, d_phonemes + n_f0_classes + fft_bin]
-    expected_output_dim = 64 + 128 + (1024 // 2 + 1)  # d_phonemes + n_f0_classes + fft_bin
+    expected_output_dim = (
+        64 + 128 + (1024 // 2 + 1)
+    )  # d_phonemes + n_f0_classes + fft_bin
     assert output.shape == torch.Size([batch_size, num_frames, expected_output_dim])
 
     # Test sequential forward
@@ -262,7 +264,9 @@ def test_nhvc_lightning_module_forward():
     # phoneme_logits: [B, T, n_phonemes]
     assert phoneme_logits.shape[0] == batch_size
     assert phoneme_logits.shape[1] == num_frames
-    assert phoneme_logits.shape[2] == module.generator.encoder.to_phoneme_prob.out_features
+    assert (
+        phoneme_logits.shape[2] == module.generator.encoder.to_phoneme_prob.out_features
+    )
 
     # Check F0 probabilities
     assert f0_probs.shape[0] == batch_size
@@ -326,7 +330,9 @@ def test_nhvc_encoder_phoneme_logits():
     # phoneme_emb: [B, T, d_phonemes] -> phoneme_logits: [B, T, n_phonemes]
     phoneme_logits = encoder.to_phoneme_prob(phoneme_emb)
 
-    assert phoneme_logits.shape == torch.Size([batch_size, num_frames, encoder.to_phoneme_prob.out_features])
+    assert phoneme_logits.shape == torch.Size(
+        [batch_size, num_frames, encoder.to_phoneme_prob.out_features]
+    )
 
 
 def test_nhvc_components_gradient_flow():

@@ -2,28 +2,31 @@ import json
 import logging
 import os
 import shutil
+from collections.abc import Generator, Mapping
 from pathlib import Path
-from typing import Any, Generator, Literal, Mapping
+from typing import Any, Literal
 
 import torch
 import torchaudio
-from rich.progress import track
 from torchaudio.functional import resample
-from tts_impl.functional import adjust_size, estimate_f0
 
-from .base import CacheWriter, DataCollector, Extractor, FunctionalExtractor
+from .base import CacheWriter, DataCollector
 
 
 class VcDataCollector(DataCollector):
     def __init__(
         self,
         target: str | os.PathLike,
-        formats: list[str] = ["wav", "mp3", "flac", "ogg"],
+        formats: list[str] = None,
         sample_rate: int | None = None,
         language: str | None = None,
-        filename_blacklist: list[str] = [],
+        filename_blacklist: list[str] = None,
         max_length: int | None = None,
     ):
+        if filename_blacklist is None:
+            filename_blacklist = []
+        if formats is None:
+            formats = ["wav", "mp3", "flac", "ogg"]
         self.target = Path(target)
         self.formats = formats
         self.sample_rate = sample_rate
@@ -31,12 +34,11 @@ class VcDataCollector(DataCollector):
         self.max_length = max_length
         self.filename_blacklist = filename_blacklist
 
-    def __iter__(self) -> Generator[Mapping[str, Any], None, None]:
+    def __iter__(self) -> Generator[Mapping[str, Any]]:
         subdirs = [d for d in self.target.iterdir() if d.is_dir()]
         for subdir in subdirs:
             generator = self._process_subdir(subdir)
-            for data in generator:
-                yield data
+            yield from generator
 
     def load_with_resample(self, path: Path) -> tuple[torch.Tensor, int]:
         wf, sr = torchaudio.load(path)
@@ -48,7 +50,7 @@ class VcDataCollector(DataCollector):
                 wf = wf[:, : self.max_length]
         return wf, sr
 
-    def _process_subdir(self, subdir: Path) -> Generator[Mapping[str, Any], None, None]:
+    def _process_subdir(self, subdir: Path) -> Generator[Mapping[str, Any]]:
         self.logger.info(f"processing subdir: {subdir}")
         speaker = subdir.name
         audio_paths = [
@@ -76,8 +78,8 @@ class VcCacheWriter(CacheWriter):
         self.root = Path(root)
         self.format = format
         self.delete_old_cache = delete_old_cache
-        self.counter = dict()
-        self.f0_stats = dict()  # Store F0 statistics per speaker
+        self.counter = {}
+        self.f0_stats = {}  # Store F0 statistics per speaker
         super().__init__()
 
     def prepare(self):
@@ -120,7 +122,7 @@ class VcCacheWriter(CacheWriter):
     def finalize(self):
         from tts_impl.functional.midi import freq2note
 
-        metadata = dict()
+        metadata = {}
         speakers = sorted(self.counter.keys())
         metadata["speakers"] = speakers
         if self.sample_rate is not None:

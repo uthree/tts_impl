@@ -6,23 +6,20 @@ readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "alias-free-torch>=0.0.6",
-    "black>=25.9.0",
     "codespell>=2.4.1",
     "hydra-core>=1.3.2",
-    "isort==5.0.0",
     "lightning==2.5.5",
     "mypy>=1.18.2",
     "numba>=0.62.1",
     "omegaconf>=2.3.0",
     "pyaudio>=0.2.14",
-    "pylint>=4.0.2",
     "pyopenjtalk-plus>=0.4.1.post4",
-    "pysen>=0.11.0",
     "pytest>=8.4.2",
     "pyworld>=0.3.5",
     "rich>=14.2.0",
     "rich-argparse>=1.7.1",
     "rotary-embedding-torch>=0.8.9",
+    "ruff>=0.8.0",
     "safetensors>=0.6.2",
     "scikit-learn>=1.7.2",
     "scipy>=1.16.2",
@@ -46,33 +43,47 @@ testpaths = ["test"]
 [tool.hatch.build.targets.wheel]
 packages = ["src/tts_impl/"]
 
-[tool.pysen]
-version = "0.11"
+[tool.ruff]
+line-length = 88
+target-version = "py313"
+src = ["src", "test", "scripts"]
+exclude = ["third_party"]
 
-[tool.pysen.lint]
-enable_black = true
-enable_flake8 = true
-enable_isort = true
-enable_mypy = true
-mypy_preset = "strict"
-isort_known_third_party = ["numpy"]
-isort_known_first_party = ["pysen"]
-mypy_ignore_packages = ["pysen.generated.*"]
+[tool.ruff.lint]
+select = [
+    "E",      # pycodestyle errors
+    "W",      # pycodestyle warnings
+    "F",      # Pyflakes
+    "I",      # isort
+    "B",      # flake8-bugbear
+    "C4",     # flake8-comprehensions
+    "UP",     # pyupgrade
+]
+ignore = [
+    "E501",   # line too long (handled by formatter)
+    "E402",   # module level import not at top of file
+    "E721",   # type comparison (common pattern in ML code)
+    "E741",   # ambiguous variable name (l, I are common in math)
+    "F401",   # imported but unused (for re-exports in __init__.py)
+    "F841",   # local variable assigned but never used (common in tests)
+    "B006",   # mutable default argument (common pattern with dataclasses)
+    "B008",   # function call in default argument
+    "B023",   # loop variable not bound (common in closures)
+    "B028",   # stacklevel in warnings
+    "B905",   # zip without strict
+    "B026",   # star-arg unpacking after keyword argument
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["tts_impl"]
+
+[tool.mypy]
+python_version = "3.13"
+strict = true
 mypy_path = ["stubs"]
-line_length = 88
-py_version = "py312"
+files = ["src/", "test/", "scripts/"]
+exclude = ["third_party/"]
 
-[[tool.pysen.lint.mypy_targets]]
-paths = ["test/", "src/", "scripts/"]
-
-[tool.pysen.lint.source]
-includes = ["."]
-include_globs = ["**/*.template"]
-excludes = ["third_party/"]
-exclude_globs = ["**/*_grpc.py"]
-
-[tool.pysen.lint.mypy_modules."pysen.scripts"]
-preset = "entry"
-
-[tool.pysen.lint.mypy_modules."numpy"]
-ignore_errors = true
+[[tool.mypy.overrides]]
+module = ["numpy.*", "torch.*", "torchaudio.*", "lightning.*", "hydra.*", "omegaconf.*", "scipy.*", "numba.*", "pyworld.*", "soundfile.*", "tqdm.*", "transformers.*", "safetensors.*", "tensorboard.*", "sklearn.*", "pyopenjtalk.*", "torchfcpe.*", "alias_free_activation.*", "rotary_embedding_torch.*", "toml.*", "torch_yin.*", "pyaudio.*", "alias_free_torch.*", "rich.*"]
+ignore_missing_imports = true

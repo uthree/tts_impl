@@ -30,7 +30,9 @@ def estimate_f0_dio(
     f0_max: float = 20000.0,
 ):
     if not PYWORLD_AVAILABLE:
-        raise "pyworld is not installed in this python environment. install pyworld if you need use this F0 estimation method."
+        raise RuntimeError(
+            "pyworld is not installed in this python environment. install pyworld if you need use this F0 estimation method."
+        )
 
     with torch.no_grad():
         if wf.ndim == 1:
@@ -62,7 +64,9 @@ def estimate_f0_harvest(
     f0_max: float = 20000.0,
 ):
     if not PYWORLD_AVAILABLE:
-        raise "pyworld is not installed in this python environment. install pyworld if you need use this F0 estimation method."
+        raise RuntimeError(
+            "pyworld is not installed in this python environment. install pyworld if you need use this F0 estimation method."
+        )
 
     with torch.no_grad():
         if wf.ndim == 1:
@@ -91,12 +95,15 @@ torchfcpe_model = {}
 
 def estimate_f0_fcpe(wf, sample_rate=24000, frame_size=480, f0_min=20, f0_max=20000):
     if not TORCHFCPE_AVAILABLE:
-        raise "torchfcpe is not installed in this python environment. install torchfcpe if you need use this F0 estimation method."
+        raise RuntimeError(
+            "torchfcpe is not installed in this python environment. install torchfcpe if you need use this F0 estimation method."
+        )
 
     with torch.no_grad():
         if wf.device not in torchfcpe_model:
             warnings.warn(
-                "When you estimate f0 with torchfcpe, the model will remain in memory. To unload it, use unload_torchfcpe()."
+                "When you estimate f0 with torchfcpe, the model will remain in memory. To unload it, use unload_torchfcpe().",
+                stacklevel=2,
             )
             torchfcpe_model[wf.device] = spawn_bundled_infer_model(wf.device)
         f0 = torchfcpe_model[wf.device].infer(wf.unsqueeze(2), sample_rate)
@@ -105,6 +112,7 @@ def estimate_f0_fcpe(wf, sample_rate=24000, frame_size=480, f0_min=20, f0_max=20
 
 
 def unload_torchfcpe(device: torch.device | None):
+    global torchfcpe_model
     if device is not None:
         del torchfcpe_model[device]
     else:

@@ -13,16 +13,16 @@ def replace_union_in_line(line: str) -> str:
         depth = 1
         i = start + 1
         while i < len(s) and depth > 0:
-            if s[i] == '[':
+            if s[i] == "[":
                 depth += 1
-            elif s[i] == ']':
+            elif s[i] == "]":
                 depth -= 1
             i += 1
         return i - 1 if depth == 0 else -1
 
     result = line
-    while 'Union[' in result:
-        match = re.search(r'Union\[', result)
+    while "Union[" in result:
+        match = re.search(r"Union\[", result)
         if not match:
             break
 
@@ -34,20 +34,20 @@ def replace_union_in_line(line: str) -> str:
             break
 
         # Extract the content between brackets
-        content = result[bracket_start + 1:bracket_end]
+        content = result[bracket_start + 1 : bracket_end]
 
         # Split by comma, but respect nested brackets
         types = []
         current = ""
         depth = 0
         for char in content:
-            if char == '[':
+            if char == "[":
                 depth += 1
                 current += char
-            elif char == ']':
+            elif char == "]":
                 depth -= 1
                 current += char
-            elif char == ',' and depth == 0:
+            elif char == "," and depth == 0:
                 types.append(current.strip())
                 current = ""
             else:
@@ -59,7 +59,7 @@ def replace_union_in_line(line: str) -> str:
         replacement = " | ".join(types)
 
         # Replace in result
-        result = result[:start] + replacement + result[bracket_end + 1:]
+        result = result[:start] + replacement + result[bracket_end + 1 :]
 
     return result
 

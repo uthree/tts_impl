@@ -3,12 +3,14 @@ import logging
 import os
 import re
 import shutil
+from collections.abc import Generator, Mapping
 from pathlib import Path
-from typing import Any, Generator, Literal, Mapping
+from typing import Any, Literal
 
 import torch
 import torchaudio
 from torchaudio.functional import resample
+
 from tts_impl.g2p import Grapheme2Phoneme
 
 from .base import CacheWriter, DataCollector, Extractor
@@ -18,15 +20,19 @@ class TTSDataCollector(DataCollector):
     def __init__(
         self,
         target: str | os.PathLike,
-        formats: list[str] = ["wav", "mp3", "flac", "ogg"],
+        formats: list[str] = None,
         sample_rate: int | None = None,
         language: str | None = None,
         transcriptions_filename: str = "transcriptions.txt",
         transcriptions_encoding: str = "utf-8",
-        filename_blacklist: list[str] = [],
+        filename_blacklist: list[str] = None,
         concatenate: bool = False,
         max_length: int | None = None,
     ):
+        if filename_blacklist is None:
+            filename_blacklist = []
+        if formats is None:
+            formats = ["wav", "mp3", "flac", "ogg"]
         self.target = Path(target)
         self.formats = formats
         self.sample_rate = sample_rate
@@ -37,15 +43,14 @@ class TTSDataCollector(DataCollector):
         self.max_length = max_length
         self.filename_blacklist = filename_blacklist
 
-    def __iter__(self) -> Generator[Mapping[str, Any], None, None]:
+    def __iter__(self) -> Generator[Mapping[str, Any]]:
         subdirs = [d for d in self.target.iterdir() if d.is_dir()]
         for subdir in subdirs:
             if self.concatenate and self.max_length is not None:
                 generator = self._process_subdir_with_concatenation(subdir)
             else:
                 generator = self._process_subdir(subdir)
-            for data in generator:
-                yield data
+            yield from generator
 
     def load_with_resample(self, path: Path) -> tuple[torch.Tensor, int]:
         wf, sr = torchaudio.load(path)
@@ -59,7 +64,7 @@ class TTSDataCollector(DataCollector):
 
     def parse_transcriptions(self, transcriptions: str) -> dict[str, dict[str]]:
         lines = transcriptions.split("\n")
-        r = dict()
+        r = {}
         for line in lines:
             m = re.match("(.+):(.+)", line)
             if m is not None:
@@ -73,8 +78,8 @@ class TTSDataCollector(DataCollector):
         self.logger.info(f"Collecting data from {subdir} ...")
         self.logger.info("Scanning transcriptions ...")
         transcriptions_paths = [subdir / self.transcriptions_filename]
-        transcriptions_paths += [d for d in subdir.rglob(self.transcriptions_filename)]
-        transcriptions = dict()
+        transcriptions_paths += list(subdir.rglob(self.transcriptions_filename))
+        transcriptions = {}
         for trns_path in transcriptions_paths:
             if trns_path.exists():
                 self.logger.info(f"  Load: {trns_path}")
@@ -82,7 +87,7 @@ class TTSDataCollector(DataCollector):
                     transcriptions |= self.parse_transcriptions(f.read())
         self.logger.info(f"Detected {len(transcriptions)} transcription(s).")
 
-        self.logger.info(f"Processing audio files ...")
+        self.logger.info("Processing audio files ...")
         audio_paths = [
             p for p in subdir.rglob("*") if p.suffix.lstrip(".") in self.formats
         ]
@@ -99,7 +104,7 @@ class TTSDataCollector(DataCollector):
 
         return audio_paths, transcriptions
 
-    def _process_subdir(self, subdir: Path) -> Generator[Mapping[str, Any], None, None]:
+    def _process_subdir(self, subdir: Path) -> Generator[Mapping[str, Any]]:
         audio_paths, transcriptions = self._collect_audio_paths_and_transcriptions(
             subdir
         )
@@ -120,7 +125,7 @@ class TTSDataCollector(DataCollector):
 
     def _process_subdir_with_concatenation(
         self, subdir: Path, buffer_size: int = 30
-    ) -> Generator[Mapping[str, Any], None, None]:
+    ) -> Generator[Mapping[str, Any]]:
         audio_paths, transcriptions = self._collect_audio_paths_and_transcriptions(
             subdir
         )
@@ -175,7 +180,7 @@ class TTSCacheWriter(CacheWriter):
         self.root = Path(root)
         self.format = format
         self.delete_old_cache = delete_old_cache
-        self.counter = dict()
+        self.counter = {}
         super().__init__()
 
     def prepare(self):
@@ -203,7 +208,7 @@ class TTSCacheWriter(CacheWriter):
         torch.save(data, subdir / f"{counter}.pt")
 
     def finalize(self):
-        metadata = dict()
+        metadata = {}
         speakers = sorted(self.counter.keys())
         metadata["speakers"] = speakers
         if self.sample_rate is not None:

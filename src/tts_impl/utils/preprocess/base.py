@@ -1,14 +1,14 @@
 import logging
 import os
 import shutil
+from collections.abc import Generator
 from logging import Logger
 from pathlib import Path
-from typing import Any, Generator
+from typing import Any
 
 import torch
 from rich.console import Console
 from rich.logging import RichHandler
-from rich.progress import Progress, track
 
 
 class DataCollector:
@@ -16,7 +16,7 @@ class DataCollector:
     Base class for collecting raw data.
     """
 
-    def __iter__(self) -> Generator[dict, None, None]:
+    def __iter__(self) -> Generator[dict]:
         pass
 
     def _prepare_logger(self, console: Console, logger: Logger):
@@ -184,12 +184,16 @@ class Preprocessor:
 
     def __init__(
         self,
-        collectors: list[DataCollector] = [],
-        extractors: list[Extractor] = [],
+        collectors: list[DataCollector] = None,
+        extractors: list[Extractor] = None,
         writer: CacheWriter | None = None,
         console: Console | None = None,
         logger: Logger | None = None,
     ):
+        if extractors is None:
+            extractors = []
+        if collectors is None:
+            collectors = []
         self.collectors = collectors
         self.extractors = extractors
         self.writer = writer
@@ -198,7 +202,6 @@ class Preprocessor:
         self.logger = logger
 
     def _prepare_logger(self, level=logging.INFO, logger_name: str = "preprocess"):
-
         if self.logger is None:
             self.logger = logging.getLogger(logger_name)
         if self.console is None:

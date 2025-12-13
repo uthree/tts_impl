@@ -4,6 +4,7 @@ from torch import nn as nn
 from torch import optim as optim
 from torch.nn import functional as F
 from torch.optim.lr_scheduler import CosineAnnealingLR
+
 from tts_impl.net.tts.vits.commons import slice_segments
 from tts_impl.net.tts.vits.losses import (
     discriminator_loss,
@@ -115,7 +116,6 @@ class NsfvitsLightningModule(L.LightningModule):
     def _generator_forward(
         self, x, x_lengths, y, y_lengths, waveform, f0, sid=None, w=None
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-
         # get frame size and segment size
         segment_size = self.generator.segment_size
         dec_frame_size = self.generator.dec.frame_size

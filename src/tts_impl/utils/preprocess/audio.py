@@ -9,6 +9,7 @@ import torch
 import torchaudio
 from rich.progress import track
 from torchaudio.functional import resample
+
 from tts_impl.functional import adjust_size, estimate_f0
 
 from .base import CacheWriter, DataCollector, Extractor, FunctionalExtractor
@@ -19,7 +20,7 @@ class AudioDataCollector(DataCollector):
         self,
         target: str | os.PathLike,
         length: int | None = None,
-        formats: list[str] = ["wav", "mp3", "flac", "ogg"],
+        formats: list[str] = None,
         sample_rate: int | None = None,
     ):
         """
@@ -31,6 +32,8 @@ class AudioDataCollector(DataCollector):
 
         Warning: You cannot load a file that is longer than the memory capacity of your computer. If the audio file is too long, please split it in advance.
         """
+        if formats is None:
+            formats = ["wav", "mp3", "flac", "ogg"]
         self.target = Path(target)
         self.length = length
         self.formats = formats
@@ -114,7 +117,7 @@ class AudioCacheWriter(CacheWriter):
             self.dir_counter += 1
 
     def finalize(self):
-        metadata = dict()
+        metadata = {}
         if self.sample_rate is not None:
             metadata["sample_rate"] = self.sample_rate
         with open(self.root / "metadata.json", mode="w+") as f:

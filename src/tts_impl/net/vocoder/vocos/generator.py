@@ -1,10 +1,9 @@
 import torch
 from torch import nn as nn
-from torch.nn import functional as F
+
 from tts_impl.net.base import GanVocoderGenerator
 from tts_impl.net.common.convnext import ConvNeXt1d
-from tts_impl.net.common.normalization import LayerNorm1d
-from tts_impl.net.common.stft import ISTFT, STFT
+from tts_impl.net.common.stft import ISTFT
 from tts_impl.utils.config import derive_config
 
 

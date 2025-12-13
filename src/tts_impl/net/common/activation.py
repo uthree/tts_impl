@@ -3,9 +3,8 @@ from typing import Literal, TypeAlias
 import torch
 from alias_free_torch import Activation1d as AliasFreeActivation1d
 from torch import nn as nn
-from torch.nn import functional as F
 
-ActivationName: TypeAlias = Literal[
+type ActivationName = Literal[
     "lrelu", "silu", "gelu", "snake", "snakebeta", "linear", "elu"
 ]
 LRELU_SLOPE = 0.1

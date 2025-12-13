@@ -1,4 +1,5 @@
 from lightning import LightningDataModule
+
 from tts_impl.net.vocoder.hifigan import HifiganLightningModule
 from tts_impl.utils.datamodule import AudioDataModule
 from tts_impl.utils.preprocess import (

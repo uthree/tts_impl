@@ -1,8 +1,7 @@
-from typing import Sequence
+from collections.abc import Sequence
 
 import torch
 from torch import nn as nn
-from torch.nn import functional as F
 
 
 class StatefulModule(nn.Module):
@@ -68,7 +67,7 @@ class StatefulModule(nn.Module):
             x: [batch_size, seq_len, d_model]
             h: [batch_size, 1, d_state]
         """
-        raise NotImplemented
+        raise NotImplementedError
 
     def _initial_state(self, x: torch.Tensor, *args, **kwargs) -> torch.Tensor:
         """
@@ -80,7 +79,7 @@ class StatefulModule(nn.Module):
         Returns:
             h: [batch_size, 1, d_state]
         """
-        raise NotImplemented
+        raise NotImplementedError
 
 
 class PointwiseModule:
@@ -110,7 +109,6 @@ class StatefulModuleSequential(StatefulModule):
     def _parallel_forward(
         self, x: torch.Tensor, h: torch.Tensor, *args, **kwargs
     ) -> tuple[torch.Tensor, torch.Tensor]:
-
         # calculate sum of all hidden state dimension if it's not already calculated.
         if self.h_dim_list is None:
             self._initial_state(x)

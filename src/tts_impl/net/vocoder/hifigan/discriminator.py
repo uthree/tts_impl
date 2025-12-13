@@ -1,6 +1,3 @@
-from dataclasses import dataclass, field
-from typing import Self
-
 from tts_impl.net.vocoder.discriminator import (
     CombinedDiscriminator,
     MultiPeriodDiscriminator,

@@ -1,12 +1,10 @@
 # HiFi-GAN from https://arxiv.org/abs/2010.05646
-from dataclasses import dataclass, field
-from typing import Literal
 
 import torch
 from torch import nn as nn
-from torch.nn import functional as F
 from torch.nn.utils import remove_weight_norm
 from torch.nn.utils.parametrizations import weight_norm
+
 from tts_impl.net.base.vocoder import GanVocoderGenerator
 from tts_impl.net.common.activation import init_activation
 from tts_impl.utils.config import derive_config
@@ -29,10 +27,12 @@ class ResBlock1(nn.Module):
         self,
         channels: int,
         kernel_size: int = 3,
-        dilations: list[int] = [1, 3, 5],
+        dilations: list[int] = None,
         activation: str = "lrelu",
         alias_free: bool = False,
     ):
+        if dilations is None:
+            dilations = [1, 3, 5]
         super().__init__()
         self.convs1 = nn.ModuleList()
         self.acts1 = nn.ModuleList()
@@ -71,7 +71,9 @@ class ResBlock1(nn.Module):
             )
 
     def forward(self, x):
-        for c1, c2, a1, a2 in zip(self.convs1, self.convs2, self.acts1, self.acts2):
+        for c1, c2, a1, a2 in zip(
+            self.convs1, self.convs2, self.acts1, self.acts2, strict=False
+        ):
             xt = a1(x)
             xt = c1(xt)
             xt = a2(xt)
@@ -80,7 +82,7 @@ class ResBlock1(nn.Module):
         return x
 
     def remove_weight_norm(self):
-        for c1, c2 in zip(self.convs1, self.convs2):
+        for c1, c2 in zip(self.convs1, self.convs2, strict=False):
             remove_weight_norm(c1)
             remove_weight_norm(c2)
 
@@ -90,10 +92,12 @@ class ResBlock2(nn.Module):
         self,
         channels: int,
         kernel_size: int = 3,
-        dilations: list[int] = [1, 3],
+        dilations: list[int] = None,
         activation: str = "lrelu",
         alias_free: bool = False,
     ):
+        if dilations is None:
+            dilations = [1, 3]
         super().__init__()
         self.convs1 = nn.ModuleList()
         self.acts1 = nn.ModuleList()
@@ -115,7 +119,7 @@ class ResBlock2(nn.Module):
             )
 
     def forward(self, x):
-        for c1, a1 in zip(self.convs1, self.acts1):
+        for c1, a1 in zip(self.convs1, self.acts1, strict=False):
             xt = a1(x)
             xt = c1(xt)
             x = x + xt
@@ -137,9 +141,9 @@ class HifiganGenerator(nn.Module, GanVocoderGenerator):
         in_channels: int = 80,
         upsample_initial_channels: int = 512,
         resblock_type: str = "1",
-        resblock_kernel_sizes: list[int] = [3, 7, 11],
-        resblock_dilations: list[list[int]] = [[1, 3, 5], [1, 3, 5], [1, 3, 5]],
-        upsample_rates: list[int] = [8, 8, 2, 2],
+        resblock_kernel_sizes: list[int] = None,
+        resblock_dilations: list[list[int]] = None,
+        upsample_rates: list[int] = None,
         out_channels: int = 1,
         tanh_post_activation: bool = True,
         gin_channels: int = 0,
@@ -147,6 +151,12 @@ class HifiganGenerator(nn.Module, GanVocoderGenerator):
         alias_free: bool = False,
         sample_rate: int = 22050,
     ):
+        if upsample_rates is None:
+            upsample_rates = [8, 8, 2, 2]
+        if resblock_dilations is None:
+            resblock_dilations = [[1, 3, 5], [1, 3, 5], [1, 3, 5]]
+        if resblock_kernel_sizes is None:
+            resblock_kernel_sizes = [3, 7, 11]
         super().__init__()
 
         self.num_kernels = len(resblock_kernel_sizes)
@@ -199,7 +209,9 @@ class HifiganGenerator(nn.Module, GanVocoderGenerator):
         self.resblocks = nn.ModuleList()
         for i in range(len(self.ups)):
             ch = upsample_initial_channels // (2 ** (i + 1))
-            for j, (k, d) in enumerate(zip(resblock_kernel_sizes, resblock_dilations)):
+            for _j, (k, d) in enumerate(
+                zip(resblock_kernel_sizes, resblock_dilations, strict=False)
+            ):
                 self.resblocks.append(resblock(ch, k, d, alias_free=alias_free))
 
         self.post_act = init_activation(activation, channels=c2, alias_free=alias_free)

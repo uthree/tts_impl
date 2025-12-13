@@ -62,11 +62,13 @@ class NhvcLightningModule(LightningModule):
         weight_phoneme: float = 10.0,
         weight_f0: float = 5.0,
         lr_decay: float = 0.999,
-        betas: list[float] = [0.8, 0.99],
+        betas: list[float] = None,
         segment_size: int = 8192,
         lr: float = 2e-4,
         metadata_path: str = "dataset_cache/metadata.json",
     ):
+        if betas is None:
+            betas = [0.8, 0.99]
         super().__init__()
         self.automatic_optimization = False
 
@@ -114,7 +116,7 @@ class NhvcLightningModule(LightningModule):
 
             metadata_file = Path(metadata_path)
             if metadata_file.exists():
-                with open(metadata_file, "r", encoding="utf-8") as f:
+                with open(metadata_file, encoding="utf-8") as f:
                     metadata = json.load(f)
                     if "speaker_avg_pitch" in metadata and "speakers" in metadata:
                         # Map speaker name to speaker ID (index)

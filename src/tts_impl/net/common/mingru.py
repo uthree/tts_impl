@@ -1,6 +1,7 @@
 import torch
 from torch import nn as nn
 from torch.nn import functional as F
+
 from tts_impl.net.base.stateful import StatefulModule
 from tts_impl.utils.config import derive_config
 
@@ -95,7 +96,7 @@ class MinGRU(StatefulModule):
         d_model: int,
         d_hidden: int | None = None,
         bias: bool = True,
-        d_cond: int | None = None
+        d_cond: int | None = None,
     ):
         """
         Unofficial implementation of [minGRU](https://arxiv.org/abs/2410.01201v1).
@@ -117,7 +118,7 @@ class MinGRU(StatefulModule):
             self.cond = nn.Linear(d_cond, d_model * 2)
 
     def _sequential_forward(
-        self, x: torch.Tensor, h_prev: torch.Tensor, cond: torch.Tensor| None=None
+        self, x: torch.Tensor, h_prev: torch.Tensor, cond: torch.Tensor | None = None
     ) -> tuple[torch.Tensor, torch.Tensor]:
         if cond is not None and self.d_cond is not None:
             mu, sigma = self.cond(cond).chunk(2, dim=2)
@@ -128,7 +129,7 @@ class MinGRU(StatefulModule):
         return h, h
 
     def _parallel_forward(
-        self, x: torch.Tensor, h_prev: torch.Tensor, cond: torch.Tensor| None=None
+        self, x: torch.Tensor, h_prev: torch.Tensor, cond: torch.Tensor | None = None
     ) -> tuple[torch.Tensor, torch.Tensor]:
         if cond is not None and self.d_cond is not None:
             mu, sigma = self.cond(cond).chunk(2, dim=2)

@@ -6,6 +6,7 @@ import torch
 import torchaudio
 from torch.utils.data import Dataset
 from torchaudio.functional import resample
+
 from tts_impl.functional.pad import adjust_size
 
 
@@ -15,7 +16,7 @@ class VcDataset(Dataset):
         root: str | os.PathLike = "dataset_cache",
         format: str = "flac",
         sample_rate: int | None = None,
-        sizes: dict[str, int | tuple[int] | list[int]] = {},
+        sizes: dict[str, int | tuple[int] | list[int]] = None,
         mix_down: bool = False,
         weights_only=True,
     ):
@@ -38,6 +39,8 @@ class VcDataset(Dataset):
 
             for example: `{"waveform": 48000, "f0": 100, "spectrogram": 100}`
         """
+        if sizes is None:
+            sizes = {}
         super().__init__()
         self.root = Path(root)
         self.audio_file_paths = []

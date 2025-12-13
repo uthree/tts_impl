@@ -1,11 +1,13 @@
 import multiprocessing
 import os
+from collections.abc import Mapping
 from pathlib import Path
-from typing import Any, Literal, Mapping
+from typing import Any, Literal
 
 import lightning
 import torch
 from torch.utils.data import DataLoader, random_split
+
 from tts_impl.utils.config import derive_config
 from tts_impl.utils.dataset.tts import TTSDataset
 

@@ -1,7 +1,6 @@
 from typing import Protocol
 
 import torch
-from lightning import LightningModule
 
 
 class GanVocoderGenerator(Protocol):

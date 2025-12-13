@@ -1,7 +1,6 @@
 import numpy as np
 import torch
 from numba import jit
-from torch.nn import functional as F
 
 
 @jit(nopython=True)
@@ -16,7 +15,9 @@ def _average_by_duration(ds, xs, text_lengths, feats_lengths):
         d_cumsum = d.cumsum()
         d_cumsum = [0] + list(d_cumsum)
         x = xs[b, :t_feats]
-        for n, (start, end) in enumerate(zip(d_cumsum[:-1], d_cumsum[1:])):
+        for n, (start, end) in enumerate(
+            zip(d_cumsum[:-1], d_cumsum[1:], strict=False)
+        ):
             if len(x[start:end]) != 0:
                 xs_avg[b, n] = x[start:end].mean()
             else:

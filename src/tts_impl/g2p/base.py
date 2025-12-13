@@ -12,7 +12,7 @@ class LanguageModule(Protocol):
 
 
 def remove_duplicates(lst):
-    return list(sorted(list(set(lst))))
+    return sorted(set(lst))
 
 
 def pad(ids: list[int], length: int = 100, pad_id: int = 0) -> list[int]:
@@ -61,7 +61,7 @@ class Grapheme2Phoneme:
         token_ids = []
         tokens_lengths = []
         language_ids = []
-        for t, l in zip(transcriptions, languages):
+        for t, l in zip(transcriptions, languages, strict=False):
             phonemes = self._p2id_single(self._g2p_single(t, l))
             tokens_length = min(len(phonemes), length)
             token_ids.append(pad(phonemes, length))

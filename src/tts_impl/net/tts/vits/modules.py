@@ -1,7 +1,6 @@
 # code from https://github.com/jaywalnut310/vits/blob/main/modules.py
 import math
 
-import numpy as np
 import torch
 from torch import nn
 from torch.nn import functional as F
@@ -163,7 +162,7 @@ class WN(torch.nn.Module):
         gin_channels=0,
         p_dropout=0,
     ):
-        super(WN, self).__init__()
+        super().__init__()
         assert kernel_size % 2 == 1
         self.hidden_channels = hidden_channels
         self.kernel_size = (kernel_size,)

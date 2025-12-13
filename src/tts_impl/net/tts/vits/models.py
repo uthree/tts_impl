@@ -4,6 +4,7 @@ from typing import Literal
 import torch
 from torch import nn
 from torch.nn import functional as F
+
 from tts_impl.functional import monotonic_align
 from tts_impl.net.base.tts import (
     Invertible,
@@ -45,7 +46,7 @@ class StochasticDurationPredictor(nn.Module):
         self.log_flow = modules.Log()
         self.flows = nn.ModuleList()
         self.flows.append(modules.ElementwiseAffine(out_channels * 2))
-        for i in range(n_flows):
+        for _i in range(n_flows):
             self.flows.append(
                 modules.ConvFlow(
                     out_channels * 2,
@@ -63,7 +64,7 @@ class StochasticDurationPredictor(nn.Module):
         )
         self.post_flows = nn.ModuleList()
         self.post_flows.append(modules.ElementwiseAffine(out_channels * 2))
-        for i in range(4):
+        for _i in range(4):
             self.post_flows.append(
                 modules.ConvFlow(
                     out_channels * 2,
@@ -301,7 +302,7 @@ class ResidualCouplingBlock(nn.Module, Invertible):
         self.gin_channels = gin_channels
 
         self.flows = nn.ModuleList()
-        for i in range(n_flows):
+        for _i in range(n_flows):
             self.flows.append(
                 modules.ResidualCouplingLayer(
                     channels,

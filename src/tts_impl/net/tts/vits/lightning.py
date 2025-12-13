@@ -4,6 +4,7 @@ from torch import nn as nn
 from torch import optim as optim
 from torch.nn import functional as F
 from torch.optim.lr_scheduler import StepLR
+
 from tts_impl.net.tts.vits.commons import slice_segments
 from tts_impl.net.tts.vits.losses import (
     discriminator_loss,
@@ -34,8 +35,10 @@ class VitsLightningModule(L.LightningModule):
         weight_adv: float = 1.0,
         lr: float = 2e-4,
         lr_decay: float = 0.9998749453,
-        betas: list[float] = [0.8, 0.99],
+        betas: list[float] = None,
     ):
+        if betas is None:
+            betas = [0.8, 0.99]
         super().__init__()
         self.automatic_optimization = False
 
@@ -102,7 +105,6 @@ class VitsLightningModule(L.LightningModule):
     def _generator_forward(
         self, x, x_lengths, y, y_lengths, waveform, sid=None, w=None
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-
         # get frame size and segment size
         segment_size = self.generator.segment_size
         dec_frame_size = self.generator.dec.frame_size

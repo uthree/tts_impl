@@ -1,6 +1,7 @@
 import timeit
 
 import torch
+
 from tts_impl.functional.monotonic_align import (
     available_mas_algorithms,
     default_mas_alogirhtm,

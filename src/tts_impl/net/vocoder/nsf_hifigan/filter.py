@@ -2,6 +2,7 @@ import numpy as np
 import torch
 from torch import nn as nn
 from torch.nn.utils.parametrizations import weight_norm
+
 from tts_impl.net.vocoder.hifigan.generator import (
     ResBlock1,
     ResBlock2,
@@ -18,9 +19,9 @@ class NsfhifiganFilter(nn.Module):
         in_channels: int = 80,
         upsample_initial_channels: int = 512,
         resblock_type: str = "1",
-        resblock_kernel_sizes: list[int] = [3, 7, 11],
-        resblock_dilations: list[list[int]] = [[1, 3, 5], [1, 3, 5], [1, 3, 5]],
-        upsample_rates: list[int] = [8, 8, 2, 2],
+        resblock_kernel_sizes: list[int] = None,
+        resblock_dilations: list[list[int]] = None,
+        upsample_rates: list[int] = None,
         out_channels: int = 1,
         tanh_post_activation: bool = True,
         activation: str = "silu",
@@ -28,6 +29,12 @@ class NsfhifiganFilter(nn.Module):
         # option for speaker conditioning in TTS task
         gin_channels: int = 0,
     ):
+        if upsample_rates is None:
+            upsample_rates = [8, 8, 2, 2]
+        if resblock_dilations is None:
+            resblock_dilations = [[1, 3, 5], [1, 3, 5], [1, 3, 5]]
+        if resblock_kernel_sizes is None:
+            resblock_kernel_sizes = [3, 7, 11]
         super().__init__()
         self.requires_f0 = True
 
@@ -49,7 +56,7 @@ class NsfhifiganFilter(nn.Module):
         elif resblock_type == "2":
             resblock = ResBlock2
         else:
-            raise "invalid resblock type"
+            raise ValueError("invalid resblock type")
 
         self.conv_pre = weight_norm(
             nn.Conv1d(in_channels, upsample_initial_channels, 7, 1, 3)
@@ -100,7 +107,9 @@ class NsfhifiganFilter(nn.Module):
         self.resblocks = nn.ModuleList()
         for i in range(len(self.ups)):
             ch = upsample_initial_channels // (2 ** (i + 1))
-            for j, (k, d) in enumerate(zip(resblock_kernel_sizes, resblock_dilations)):
+            for _j, (k, d) in enumerate(
+                zip(resblock_kernel_sizes, resblock_dilations, strict=False)
+            ):
                 self.resblocks.append(resblock(ch, k, d, alias_free=alias_free))
 
         self.post_act = init_activation(activation, channels=ch, alias_free=alias_free)

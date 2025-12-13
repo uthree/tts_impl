@@ -100,8 +100,14 @@ def maximum_path(
     if algorithm is None:
         algorithm = default_mas_alogirhtm
 
+    if algorithm not in available_mas_algorithms:
+        raise ValueError(
+            f"Algorithm '{algorithm}' is not available. "
+            f"Available algorithms: {available_mas_algorithms}"
+        )
+
     if algorithm == "naive":
-        return _mas_on_cpu(attn, attn_mask, mas_naive)
+        return _mas_on_cpu(attn, attn_mask, maximum_path_naive)
     elif algorithm == "cython":
         return _mas_on_cpu(attn, attn_mask, maximum_path_c)
     elif algorithm == "numba":

@@ -13,7 +13,7 @@ def my_function(name: str, age: int = 25, verbose: bool = False):
         verbose (bool): Enable verbose mode. Defaults to False.
     """
     if verbose:
-        print(f"Verbose mode is enabled.")
+        print("Verbose mode is enabled.")
     print(f"Name: {name}, Age: {age}")
 
 

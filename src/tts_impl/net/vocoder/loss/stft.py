@@ -1,6 +1,7 @@
 # code base from https://github.com/rishikksh20/UnivNet-pytorch/blob/master/stft_loss.py
 import torch
 from torch.nn import functional as F
+
 from tts_impl.utils.config import derive_config
 
 
@@ -32,7 +33,7 @@ class SpectralConvergengeLoss(torch.nn.Module):
 
     def __init__(self):
         """Initilize spectral convergence loss module."""
-        super(SpectralConvergengeLoss, self).__init__()
+        super().__init__()
 
     def forward(self, x_mag, y_mag):
         """Calculate forward propagation.
@@ -50,7 +51,7 @@ class LogSTFTMagnitudeLoss(torch.nn.Module):
 
     def __init__(self):
         """Initilize los STFT magnitude loss module."""
-        super(LogSTFTMagnitudeLoss, self).__init__()
+        super().__init__()
 
     def forward(self, x_mag, y_mag):
         """Calculate forward propagation.
@@ -70,7 +71,7 @@ class STFTLoss(torch.nn.Module):
         self, fft_size=1024, shift_size=120, win_length=600, window="hann_window"
     ):
         """Initialize STFT loss module."""
-        super(STFTLoss, self).__init__()
+        super().__init__()
         self.fft_size = fft_size
         self.shift_size = shift_size
         self.win_length = win_length
@@ -113,9 +114,9 @@ class MultiResolutionSTFTLoss(torch.nn.Module):
 
     def __init__(
         self,
-        fft_sizes: list[int] = [1024, 2048, 512],
-        hop_sizes: list[int] = [120, 240, 50],
-        win_lengths: list[int] = [600, 1200, 240],
+        fft_sizes: list[int] = None,
+        hop_sizes: list[int] = None,
+        win_lengths: list[int] = None,
         window: str = "hann_window",
     ):
         """Initialize Multi resolution STFT loss module.
@@ -125,10 +126,16 @@ class MultiResolutionSTFTLoss(torch.nn.Module):
             win_lengths (list): List of window lengths.
             window (str): Window function type.
         """
-        super(MultiResolutionSTFTLoss, self).__init__()
+        if win_lengths is None:
+            win_lengths = [600, 1200, 240]
+        if hop_sizes is None:
+            hop_sizes = [120, 240, 50]
+        if fft_sizes is None:
+            fft_sizes = [1024, 2048, 512]
+        super().__init__()
         assert len(fft_sizes) == len(hop_sizes) == len(win_lengths)
         self.stft_losses = torch.nn.ModuleList()
-        for fs, ss, wl in zip(fft_sizes, hop_sizes, win_lengths):
+        for fs, ss, wl in zip(fft_sizes, hop_sizes, win_lengths, strict=False):
             self.stft_losses += [STFTLoss(fs, ss, wl, window)]
 
     def forward(self, x, y):

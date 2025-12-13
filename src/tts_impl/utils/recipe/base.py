@@ -10,6 +10,7 @@ from lightning.pytorch.callbacks import ModelCheckpoint, RichProgressBar
 from omegaconf import OmegaConf
 from rich import print
 from rich_argparse import RichHelpFormatter
+
 from tts_impl.utils.config import arguments_dataclass_of
 
 
@@ -89,7 +90,7 @@ class Recipe:
         return trainer
 
     def prepare_datamodule(self) -> LightningDataModule:
-        raise NotImplemented("prepare_datamodule is not implemented!!")
+        raise NotImplementedError("prepare_datamodule is not implemented!!")
 
     def load_config(self, config_name: str = "default"):
         path = self.config_root_dir / (config_name + ".yml")
@@ -123,23 +124,21 @@ class Recipe:
         print("Training Complete!")
 
     def preprocess(self):
-        raise NotImplemented("preprocess is not implemented!!")
+        raise NotImplementedError("preprocess is not implemented!!")
 
     def infer(self):
-        raise NotImplemented("infer is not implemented!!")
+        raise NotImplementedError("infer is not implemented!!")
 
     def prepare_config_dir(self, config_name):
         config = self.TargetModule.default_config()
         model_config_dict = asdict(config)
-        datamodule_config_cls = arguments_dataclass_of(
-            getattr(self, "prepare_datamodule")
-        )
+        datamodule_config_cls = arguments_dataclass_of(self.prepare_datamodule)
         datamodule_config_dict = asdict(datamodule_config_cls())
-        trainer_config_cls = arguments_dataclass_of(getattr(self, "prepare_trainer"))
+        trainer_config_cls = arguments_dataclass_of(self.prepare_trainer)
         trainer_config_dict = asdict(trainer_config_cls())
-        preprocess_config_cls = arguments_dataclass_of(getattr(self, "preprocess"))
+        preprocess_config_cls = arguments_dataclass_of(self.preprocess)
         preprocess_config_dict = asdict(preprocess_config_cls())
-        infer_config_cls = arguments_dataclass_of(getattr(self, "infer"))
+        infer_config_cls = arguments_dataclass_of(self.infer)
         infer_config_dict = asdict(infer_config_cls())
 
         config_dict = {
