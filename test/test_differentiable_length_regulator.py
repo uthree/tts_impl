@@ -1,7 +1,7 @@
 import pytest
 import torch
 
-from tts_impl.net.tts.nh_tts.generator import DifferentiableLengthRegulator
+from tts_impl.net.tts.length_regurator import DifferentiableLengthRegulator
 
 
 @pytest.mark.parametrize("batch_size", [1, 4])

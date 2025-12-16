@@ -52,17 +52,16 @@ class HomomorphicVocoder(nn.Module):
         env_noi = F.pad(env_noi, (1, 0))
 
         # oscillate impulse and noise with energy normalization
-        with torch.no_grad():
-            imp_scale = torch.rsqrt(
-                torch.clamp_min(
-                    F.interpolate(
-                        f0.unsqueeze(1), scale_factor=self.hop_length, mode="linear"
-                    ).squeeze(1),
-                    min=20.0,
-                )
-            ) * math.sqrt(self.sample_rate)
-            imp = impulse_train(f0, self.hop_length, self.sample_rate) * imp_scale
-            noi = torch.rand_like(imp)
+        imp_scale = torch.rsqrt(
+            torch.clamp_min(
+                F.interpolate(
+                    f0.unsqueeze(1), scale_factor=self.hop_length, mode="linear"
+                ).squeeze(1),
+                min=20.0,
+            )
+        ) * math.sqrt(self.sample_rate)
+        imp = impulse_train(f0, self.hop_length, self.sample_rate) * imp_scale
+        noi = torch.rand_like(imp)
 
         # short-time fourier transform
         imp_stft = torch.stft(
