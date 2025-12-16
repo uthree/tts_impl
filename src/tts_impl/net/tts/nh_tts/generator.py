@@ -1,13 +1,12 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch import nn as nn
 
 from tts_impl.net.base.tts import LengthRegurator
 from tts_impl.utils.config import derive_config
 
 
-class DifferentiableLengthRegulator(LengthRegurator):
+class DifferentiableLengthRegulator(nn.Module, LengthRegurator):
     def __init__(self, sigma_scale=1.0, eps=1e-8):
         super().__init__()
         self.sigma_scale = nn.Parameter(

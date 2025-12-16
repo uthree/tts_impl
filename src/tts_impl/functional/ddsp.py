@@ -78,22 +78,20 @@ def impulse_train(
     Outputs:
         signal: [batch_size, length * hop_length]
     """
-    with torch.no_grad():
-        dtype = f0.dtype
-        f0 = f0.to(torch.float)
-        f0 = f0.unsqueeze(1)
-        f0 = F.interpolate(f0, scale_factor=hop_length, mode="linear")
-        if uv is not None:
-            uv = uv.to(f0.dtype)
-            uv = uv.unsqueeze(1)
-            uv = F.interpolate(uv, scale_factor=hop_length)
-            f0 = f0 * uv
-        I = torch.cumsum(f0, dim=2)
-        sawtooth = (I / sample_rate) % 1.0
-        impulse = sawtooth - sawtooth.roll(-1, dims=(2)) + (f0 / sample_rate)
-        impulse = impulse.squeeze(1)
+    dtype = f0.dtype
+    f0 = f0.to(torch.float)
+    f0 = f0.unsqueeze(1)
+    f0 = F.interpolate(f0, scale_factor=hop_length, mode="linear")
+    if uv is not None:
+        uv = uv.to(f0.dtype)
+        uv = uv.unsqueeze(1)
+        uv = F.interpolate(uv, scale_factor=hop_length)
+        f0 = f0 * uv
+    I = torch.cumsum(f0, dim=2)
+    sawtooth = (I / sample_rate) % 1.0
+    impulse = sawtooth - sawtooth.roll(-1, dims=(2)) + (f0 / sample_rate)
+    impulse = impulse.squeeze(1)
     impulse = impulse.to(dtype)
-    impulse = impulse.detach()
     return impulse
 
 
@@ -144,23 +142,21 @@ def sinusoidal_harmonics(
     outputs:
         harmonics [batch_size, num_harmonics, length * hop_length]
     """
-    with torch.no_grad():
-        device = f0.device
-        dtype = f0.dtype
-        f0 = f0.to(torch.float)
-        f0 = F.relu(f0)
-        f0 = f0.unsqueeze(1)
-        mul = (torch.arange(num_harmonics, device=device) + 1).unsqueeze(0).unsqueeze(2)
-        fs = F.interpolate(f0, scale_factor=hop_length, mode="linear") * mul
-        uv = (f0 > fmin).to(torch.float)
-        if fmax is not None:
-            uv = uv * (f0 < fmax).to(torch.float)
-        uv = F.interpolate(uv, scale_factor=hop_length, mode="linear")
-        I = torch.cumsum(fs / sample_rate, dim=2)  # integration
-        theta = 2 * torch.pi * (I % 1)  # phase
-        harmonics = (torch.sin(theta) * uv).sum(dim=1, keepdim=True)
-        harmonics = harmonics.to(dtype)
-    harmonics = harmonics.detach()
+    device = f0.device
+    dtype = f0.dtype
+    f0 = f0.to(torch.float)
+    f0 = F.relu(f0)
+    f0 = f0.unsqueeze(1)
+    mul = (torch.arange(num_harmonics, device=device) + 1).unsqueeze(0).unsqueeze(2)
+    fs = F.interpolate(f0, scale_factor=hop_length, mode="linear") * mul
+    uv = (f0 > fmin).to(torch.float)
+    if fmax is not None:
+        uv = uv * (f0 < fmax).to(torch.float)
+    uv = F.interpolate(uv, scale_factor=hop_length, mode="linear")
+    I = torch.cumsum(fs / sample_rate, dim=2)  # integration
+    theta = 2 * torch.pi * (I % 1)  # phase
+    harmonics = (torch.sin(theta) * uv).sum(dim=1, keepdim=True)
+    harmonics = harmonics.to(dtype)
     return harmonics
 
 
