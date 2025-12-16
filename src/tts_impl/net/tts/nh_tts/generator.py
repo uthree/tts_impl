@@ -7,7 +7,7 @@ from tts_impl.net.base.tts import LengthRegurator
 from tts_impl.utils.config import derive_config
 
 
-class DifferentiableLengthRegulator(nn.Module):
+class DifferentiableLengthRegulator(LengthRegurator):
     def __init__(self, sigma_scale=1.0, eps=1e-8):
         super().__init__()
         self.sigma_scale = nn.Parameter(
