@@ -69,56 +69,44 @@ class DifferentiableLengthRegulator(nn.Module, LengthRegurator):
         )
         self.eps = eps
 
-    def forward(
-        self,
-        x: torch.Tensor,
-        w: torch.Tensor,
-        x_mask: torch.Tensor | None = None,
-        y_mask: torch.Tensor | None = None,
-    ) -> torch.Tensor:
-        """
-        Args:
-            x: Batched hidden state (B, C, T_text)
-            w: Batched token duration (B, T_text) ... log domainではなく線形(正の値)であること
-        """
+    def forward(self, x, w, x_mask=None, y_mask=None):
         B, C, T_text = x.shape
-
-        # xをマスクしておく
         if x_mask is not None:
             x = x * x_mask
 
-        # 累積和によって各ガウス分布の中心位置を計算
-        center = torch.cumsum(w, dim=1) - 0.5 * w  # [B, T_text]
+        # 中心位置の計算
+        center = torch.cumsum(w, dim=1) - 0.5 * w
 
-        # 最大長の推定、y_maskがあればその長さを使用
         if y_mask is not None:
             max_len = y_mask.shape[2]
         else:
             max_len = int(w.sum(dim=1).max().item())
 
-        # 位置グリッドの生成
         pos = torch.arange(max_len, device=x.device, dtype=x.dtype).view(1, 1, -1)
+        mu = pos - center.unsqueeze(-1)
 
-        # 距離計算 (SDF equivalent)
-        # center: [B, T_text, 1] に拡張してbloadcast
-        mu = pos - center.unsqueeze(-1)  # [B, T_text, T_feat]
-
-        # sigma計算
+        # 1. sigma の下限を保証
         sigma = w.unsqueeze(-1) * self.sigma_scale.view(1, 1, 1)
+        sigma = torch.clamp(sigma, min=self.eps)
 
-        # ガウス分布を計算する
-        numerator = -0.5 * mu.square()
-        denominator = sigma.square() + self.eps
-        weights = torch.exp(numerator / denominator)  # [B, T_text, T_feat]
+        # 2. ログドメインでの計算
+        log_weights = -0.5 * (mu.square() / (sigma.square() + self.eps))
 
-        # 重みの合計が1になるように正規化
-        weights = F.softmax(weights, dim=1)
+        # 3. マスク処理 (入力トークンがない部分を Softmax から除外)
+        if x_mask is not None:
+            # x_mask: [B, 1, T_text] -> [B, T_text, 1]
+            mask = x_mask.transpose(1, 2)
+            log_weights = log_weights.masked_fill(mask == 0, -1e9)
 
-        # アップサンプリング
-        upsampled = torch.matmul(x, weights)  # [B, C, T_feat]
+        # 4. Softmax (内部で max 引かれるので安定)
+        weights = F.softmax(log_weights, dim=1)
+
+        # 5. 出力に NaN が混入するのを防ぐ最終防衛線
+        weights = torch.nan_to_num(weights)
+
+        upsampled = torch.matmul(x, weights)
 
         if y_mask is not None:
-            # マスクをかける
             upsampled = upsampled * y_mask
 
         return upsampled
