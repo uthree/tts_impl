@@ -51,21 +51,20 @@ class HarmonicNoiseOscillator(nn.Module):
         dtype = f0.dtype
         f0 = f0.to(torch.float)
 
-        with torch.no_grad():
-            # Interpolate pitch track
-            f0 = F.interpolate(f0, scale_factor=self.frame_size, mode="linear")
-            voiced_mask = F.interpolate(uv, scale_factor=self.frame_size, mode="linear")
+        # Interpolate pitch track
+        f0 = F.interpolate(f0, scale_factor=self.frame_size, mode="linear")
+        voiced_mask = F.interpolate(uv, scale_factor=self.frame_size, mode="linear")
 
-            # Calculate natural number multiple frequencies
-            mul = (
-                (torch.arange(self.num_harmonics, device=f0.device) + 1)
-                .unsqueeze(0)
-                .unsqueeze(2)
-            )
-            fs = f0 * mul
+        # Calculate natural number multiple frequencies
+        mul = (
+            (torch.arange(self.num_harmonics, device=f0.device) + 1)
+            .unsqueeze(0)
+            .unsqueeze(2)
+        )
+        fs = f0 * mul
 
-            # Numerical integration, generate sinusoidal harmonics
-            integrated = torch.cumsum(fs / self.sample_rate, dim=2)
+        # Numerical integration, generate sinusoidal harmonics
+        integrated = torch.cumsum(fs / self.sample_rate, dim=2)
 
         if self.take_condition and g is not None:
             amps = torch.exp(self.cond_proj(g).float())
@@ -116,17 +115,17 @@ class ImpulseOscillator(nn.Module):
         Output
             shape=[N, 1, L * frame_size]
         """
-        with torch.no_grad():
-            dtype = f0.dtype
-            f0 = f0.to(torch.float)
-            f0 = F.interpolate(f0, scale_factor=self.frame_size, mode="linear")
-            voiced_mask = F.interpolate(uv, scale_factor=self.frame_size)
-            rad = torch.cumsum(-f0 / self.sample_rate, dim=2)
-            sawtooth = rad % 1.0
-            impluse = sawtooth - sawtooth.roll(1, dims=(2))
-            noise = torch.randn_like(impluse) * 0.333
-            source = impluse * voiced_mask + noise * (1 - voiced_mask)
-            source = source.to(dtype)
+
+        dtype = f0.dtype
+        f0 = f0.to(torch.float)
+        f0 = F.interpolate(f0, scale_factor=self.frame_size, mode="linear")
+        voiced_mask = F.interpolate(uv, scale_factor=self.frame_size)
+        rad = torch.cumsum(-f0 / self.sample_rate, dim=2)
+        sawtooth = rad % 1.0
+        impluse = sawtooth - sawtooth.roll(1, dims=(2))
+        noise = torch.randn_like(impluse) * 0.333
+        source = impluse * voiced_mask + noise * (1 - voiced_mask)
+        source = source.to(dtype)
         return source
 
 
@@ -165,19 +164,19 @@ class CyclicNoiseOscillator(nn.Module):
         Output
             shape=[N, 1, L * frame_size]
         """
-        with torch.no_grad():
-            dtype = f0.dtype
-            f0 = f0.to(torch.float)
-            f0 = F.interpolate(f0, scale_factor=self.frame_size, mode="linear")
-            N = f0.shape[0]
-            L = f0.shape[2]
-            voiced_mask = F.interpolate(uv, scale_factor=self.frame_size)
-            rad = torch.cumsum(-f0 / self.sample_rate, dim=2)
-            sawtooth = rad % 1.0
-            impluse = sawtooth - sawtooth.roll(1, dims=(2))
-            noise = torch.randn(N, 1, L, device=f0.device)
-            impluse = F.pad(impluse, (self.pad_size, 0))
-            cyclic_noise = F.conv1d(impluse, self.kernel)
-            source = cyclic_noise * voiced_mask + (1 - voiced_mask) * noise
-            source = source.to(dtype)
+
+        dtype = f0.dtype
+        f0 = f0.to(torch.float)
+        f0 = F.interpolate(f0, scale_factor=self.frame_size, mode="linear")
+        N = f0.shape[0]
+        L = f0.shape[2]
+        voiced_mask = F.interpolate(uv, scale_factor=self.frame_size)
+        rad = torch.cumsum(-f0 / self.sample_rate, dim=2)
+        sawtooth = rad % 1.0
+        impluse = sawtooth - sawtooth.roll(1, dims=(2))
+        noise = torch.randn(N, 1, L, device=f0.device)
+        impluse = F.pad(impluse, (self.pad_size, 0))
+        cyclic_noise = F.conv1d(impluse, self.kernel)
+        source = cyclic_noise * voiced_mask + (1 - voiced_mask) * noise
+        source = source.to(dtype)
         return source

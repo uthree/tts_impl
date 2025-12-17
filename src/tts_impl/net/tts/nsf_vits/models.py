@@ -5,7 +5,10 @@ from torch import nn
 from torch.nn import functional as F
 
 from tts_impl.functional import monotonic_align
-from tts_impl.net.tts.length_regurator import DuplicateByDuration
+from tts_impl.net.tts.length_regurator import (
+    DifferentiableLengthRegulator,
+    DuplicateByDuration,
+)
 from tts_impl.net.tts.vits import (
     DurationPredictor,
     PosteriorEncoder,
@@ -47,45 +50,13 @@ class PitchPredictor(nn.Module):
             n_layers=n_layers,
             gin_channels=gin_channels,
         )
-        self.post = nn.Conv1d(hidden_channels, 2, 1)
-        with torch.no_grad():
-            self.pre.weight.zero_()
-            self.pre.bias.zero_()
-            self.post.weight.zero_()
-            self.post.weight.zero_()
+        self.post = nn.Conv1d(hidden_channels, 1, 1)
 
-    def _net(self, x, x_mask, g=None):
-        """
-        Args:
-            x: phoneme embeddings duplicated by duration, shape=(batch_size, inter_channels, feat_length)
-            x_mask: mask of x.
-            g: speaker embedding, Tensor | None, shape=(batch_size, gin_channels, 1)
-
-        Returns:
-            f0: shape=(batch_size, feat_length)
-            uv: shape=(batch_size, feat_length)
-        """
-        x = x.detach()
-        x = self.pre(x) * x_mask
-        x = self.wn(x, x_mask, g=g)
-        x = self.post(x)
-        log_f0, uv_logits = torch.split(x, [1, 1], dim=1)
-        f0 = torch.exp(log_f0).squeeze(1)
-        uv = torch.sigmoid(uv_logits).squeeze(1)
-        return f0, uv
-
-    def infer(self, x, x_mask, g=None):
-        f0, uv = self._net(x, x_mask, g=g)
-        uv = (uv >= 0.5).float()  # quantize to 0 or 1
-        return f0, uv
-
-    def forward(self, x, x_mask, f0, uv=None, g=None):
-        f0_hat, uv_hat = self._net(x, x_mask, g=g)
-        if uv is None:
-            uv = (f0 > 20.0).float()
-        l_f0 = log_f0_loss(f0_hat, f0, x_mask * uv)
-        l_uv = F.mse_loss(uv_hat, uv)
-        return l_f0, l_uv, f0_hat, uv_hat
+    def forward(self, x, x_mask, g: torch.Tensor | None = None):
+        x = x * x_mask
+        x = self.wn.forward(x, x_mask, g=g)
+        x = self.post(x).exp()
+        return x
 
 
 _default_decoder_config = NsfhifiganGenerator.Config()
@@ -106,10 +77,11 @@ class NsfvitsGenerator(nn.Module):
         n_speakers: int = 0,
         gin_channels: int = 0,
         use_dp: bool = True,
-        use_sdp: bool = True,
+        use_sdp: bool = False,
         segment_size: int = 32,
         mas_noise: float = 0.0,
         sample_rate: int = 22050,
+        use_differentiable_durator: bool = True,
     ):
         super().__init__()
         self.n_speakers = n_speakers
@@ -118,6 +90,7 @@ class NsfvitsGenerator(nn.Module):
 
         self.use_sdp = use_sdp
         self.use_dp = use_dp
+        self.use_differentiable_durator = use_differentiable_durator
 
         self.mas_noise = mas_noise
         self.sample_rate = sample_rate
@@ -127,7 +100,13 @@ class NsfvitsGenerator(nn.Module):
         self.enc_q = PosteriorEncoder(**posterior_encoder)
         self.flow = ResidualCouplingBlock(**flow)
         self.pp = PitchPredictor(**pitch_predictor)
-        self.lr = DuplicateByDuration()
+        if self.use_differentiable_durator:
+            assert not use_sdp, (
+                "The Differentiable Durator and Stochastic Duration Predictor cannot be used at the same time."
+            )
+            self.lr = DifferentiableLengthRegulator()
+        else:
+            self.lr = DuplicateByDuration()
 
         self.dec.source_module.sample_rate = self.sample_rate
 
@@ -205,35 +184,33 @@ class NsfvitsGenerator(nn.Module):
         z_p = self.flow(z, y_mask, g=g)
 
         # alignment / duration loss
-        if w is None:
-            attn = self.maximum_path(z_p, m_p, logs_p, x_mask, y_mask)
-            w = attn.sum(2)
-        loss_dur, logw, logw_hat = self.duration_predictor_loss(x, x_mask, w, g=g)
+        if self.use_differentiable_durator:
+            if w is None:
+                w = self.dp.forward(x, x_mask, g=g).exp()
+            loss_dur = 0.0
+        else:
+            if w is None:
+                attn = self.maximum_path(z_p, m_p, logs_p, x_mask, y_mask)
+                w = attn.sum(2)
+            loss_dur, _, _ = self.duration_predictor_loss(x, x_mask, w, g=g)
 
         # expand prior
         m_p = self.lr(m_p, w, x_mask, y_mask)
         logs_p = self.lr(logs_p, w, x_mask, y_mask)
 
-        # pitch estimation loss
-        uv = (f0 > 20.0).float()
-        loss_f0, loss_uv, f0_hat, uv_hat = self.pp.forward(z_p, y_mask, f0, g=g)
-
         # slice
         z_slice, ids_slice = commons.rand_slice_segments(
             z, y_lengths, self.segment_size
         )
+        f0 = self.pp.forward(z, y_mask, g=g)
         f0_slice = commons.slice_segments(
             f0.unsqueeze(1), ids_slice, self.segment_size
         ).squeeze(1)
-        uv_slice = commons.slice_segments(
-            f0.unsqueeze(1), ids_slice, self.segment_size
-        ).squeeze(1)
-        o = self.dec.forward(z_slice, f0=f0_slice, uv=uv_slice, g=g)
+        o = self.dec.forward(z_slice, f0=f0_slice, g=g)
 
         outputs = {
             "fake": o,
             "loss_dur": loss_dur,
-            "loss_f0": loss_f0,
             "ids_slice": ids_slice,
             "x_mask": x_mask,
             "y_mask": y_mask,
@@ -243,13 +220,7 @@ class NsfvitsGenerator(nn.Module):
             "logs_p": logs_p,
             "m_q": m_q,
             "logs_q": logs_q,
-            "logw": logw,
-            "logw_hat": logw_hat,
             "f0": f0,
-            "f0_hat": f0_hat,
-            "loss_uv": loss_uv,
-            "uv": uv,
-            "uv_hat": uv_hat,
         }
 
         return outputs
@@ -293,14 +264,12 @@ class NsfvitsGenerator(nn.Module):
         z_p = m_p + torch.randn_like(m_p) * torch.exp(logs_p) * noise_scale
 
         # estimate pitch
-        f0, uv = self.pp.infer(z_p, y_mask, g=g)
+        f0, uv = self.pp(z_p, y_mask, g=g)
 
         # flow
         z = self.flow(z_p, y_mask, g=g, reverse=True)
 
-        o = self.dec.forward(
-            (z * y_mask)[:, :, :max_len], f0=f0[:, :max_len], uv=uv[:, :max_len], g=g
-        )
+        o = self.dec.forward((z * y_mask)[:, :, :max_len], f0=f0[:, :max_len], g=g)
         return o
 
     def voice_conversion(self, y, y_lengths, sid_src, sid_tgt):
