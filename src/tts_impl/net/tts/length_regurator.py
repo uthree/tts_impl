@@ -1,4 +1,5 @@
 import torch
+import torch.nn.functional as F
 from torch import nn as nn
 
 from tts_impl.functional.length_regurator import (
@@ -111,7 +112,7 @@ class DifferentiableLengthRegulator(nn.Module, LengthRegurator):
         weights = torch.exp(numerator / denominator)  # [B, T_text, T_feat]
 
         # 重みの合計が1になるように正規化
-        weights = weights / (weights.sum(dim=1, keepdim=True) + self.eps)
+        weights = F.softmax(weights, dim=1)
 
         # アップサンプリング
         upsampled = torch.matmul(x, weights)  # [B, C, T_feat]

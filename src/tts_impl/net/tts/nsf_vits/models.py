@@ -186,8 +186,8 @@ class NsfvitsGenerator(nn.Module):
         # alignment / duration loss
         if self.use_differentiable_durator:
             if w is None:
-                w = self.dp.forward(x, x_mask, g=g).exp()
-            loss_dur = 0.0
+                w = self.dp.forward(x, x_mask, g=g).exp().unsqueeze(1)
+            loss_dur = torch.tensor(0.0).to(w.device)
         else:
             if w is None:
                 attn = self.maximum_path(z_p, m_p, logs_p, x_mask, y_mask)
@@ -203,9 +203,7 @@ class NsfvitsGenerator(nn.Module):
             z, y_lengths, self.segment_size
         )
         f0 = self.pp.forward(z, y_mask, g=g)
-        f0_slice = commons.slice_segments(
-            f0.unsqueeze(1), ids_slice, self.segment_size
-        ).squeeze(1)
+        f0_slice = commons.slice_segments(f0, ids_slice, self.segment_size).squeeze(1)
         o = self.dec.forward(z_slice, f0=f0_slice, g=g)
 
         outputs = {
@@ -234,7 +232,7 @@ class NsfvitsGenerator(nn.Module):
         length_scale=1.0,
         noise_scale_w=0.8,
         max_len=None,
-        use_sdp=True,
+        use_sdp=False,
         w=None,
     ):
         x, m_p, logs_p, x_mask = self.enc_p(x, x_lengths)
@@ -256,7 +254,7 @@ class NsfvitsGenerator(nn.Module):
             x_mask.dtype
         )
 
-        # expand prior
+        w = w.squeeze(1)
         m_p = self.lr(m_p, w, x_mask, y_mask)
         logs_p = self.lr(logs_p, w, x_mask, y_mask)
 
@@ -264,7 +262,7 @@ class NsfvitsGenerator(nn.Module):
         z_p = m_p + torch.randn_like(m_p) * torch.exp(logs_p) * noise_scale
 
         # estimate pitch
-        f0, uv = self.pp(z_p, y_mask, g=g)
+        f0 = self.pp(z_p, y_mask, g=g).squeeze(1)
 
         # flow
         z = self.flow(z_p, y_mask, g=g, reverse=True)
