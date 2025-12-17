@@ -141,9 +141,9 @@ class HifiganGenerator(nn.Module, GanVocoderGenerator):
         in_channels: int = 80,
         upsample_initial_channels: int = 512,
         resblock_type: str = "1",
-        resblock_kernel_sizes: list[int] = None,
-        resblock_dilations: list[list[int]] = None,
-        upsample_rates: list[int] = None,
+        resblock_kernel_sizes: list[int] = [3, 7, 11],
+        resblock_dilations: list[list[int]] = [[1, 3, 5], [1, 3, 5], [1, 3, 5]],
+        upsample_rates: list[int] = [8, 8, 2, 2],
         out_channels: int = 1,
         tanh_post_activation: bool = True,
         gin_channels: int = 0,
@@ -151,12 +151,6 @@ class HifiganGenerator(nn.Module, GanVocoderGenerator):
         alias_free: bool = False,
         sample_rate: int = 22050,
     ):
-        if upsample_rates is None:
-            upsample_rates = [8, 8, 2, 2]
-        if resblock_dilations is None:
-            resblock_dilations = [[1, 3, 5], [1, 3, 5], [1, 3, 5]]
-        if resblock_kernel_sizes is None:
-            resblock_kernel_sizes = [3, 7, 11]
         super().__init__()
 
         self.num_kernels = len(resblock_kernel_sizes)
