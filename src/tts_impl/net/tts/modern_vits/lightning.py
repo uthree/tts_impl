@@ -1,0 +1,262 @@
+import lightning as L
+import torch
+from torch import nn as nn
+from torch import optim as optim
+from torch.nn import functional as F
+from torch.optim.lr_scheduler import StepLR
+
+from tts_impl.net.tts.vits.commons import slice_segments
+from tts_impl.net.tts.vits.losses import (
+    discriminator_loss,
+    feature_loss,
+    generator_loss,
+    kl_loss,
+)
+from tts_impl.net.tts.vits.models import VitsGenerator
+from tts_impl.net.vocoder.hifigan import HifiganDiscriminator
+from tts_impl.transforms import LogMelSpectrogram
+from tts_impl.utils.config import derive_config
+
+_vits_discriminator_config = HifiganDiscriminator.Config()
+_vits_discriminator_config.msd.scales = [1]
+_vits_discriminator_config.mpd.periods = [2, 3, 5, 7, 11]
+_vits_discriminator_config.mrsd.hop_size = [120, 240, 50]
+_vits_discriminator_config.mrsd.n_fft = [1024, 2048, 512]
+
+_vits_generator_config = VitsGenerator.Config()
+_vits_generator_config.posterior_encoder.gin_channels = 192
+_vits_generator_config.text_encoder.gin_channels = 192
+_vits_generator_config.text_encoder.window_size = 0
+_vits_generator_config.text_encoder.n_heads = 6
+_vits_generator_config.text_encoder.glu = True
+_vits_generator_config.text_encoder.rotary_pos_emb = True
+_vits_generator_config.text_encoder.norm = "rmsnorm"
+_vits_generator_config.text_encoder.prenorm = True
+_vits_generator_config.text_encoder.activation = "silu"
+_vits_generator_config.text_encoder.share_relative_attn_bias = False
+_vits_generator_config.posterior_encoder.gin_channels = 192
+_vits_generator_config.decoder.activation = "snakebeta"
+_vits_generator_config.decoder.gin_channels = 192
+_vits_generator_config.duration_predictor.gin_channels = 192
+_vits_generator_config.duration_predictor.condition_backward = True
+_vits_generator_config.stochastic_duration_predictor.gin_channels = 192
+_vits_generator_config.stochastic_duration_predictor.condition_backward = True
+_vits_generator_config.flow.gin_channels = 192
+_vits_generator_config.use_dp = True
+_vits_generator_config.n_speakers = 1024
+_vits_generator_config.gin_channels = 192
+
+
+@derive_config
+class ModernvitsLightningModule(L.LightningModule):
+    def __init__(
+        self,
+        generator: VitsGenerator.Config = _vits_generator_config,
+        discriminator: HifiganDiscriminator.Config = _vits_discriminator_config,
+        mel: LogMelSpectrogram.Config = LogMelSpectrogram.Config(),
+        weight_mel: float = 45.0,
+        weight_feat: float = 1.0,
+        weight_adv: float = 1.0,
+        lr: float = 2e-4,
+        lr_decay: float = 0.9998749453,
+        betas: list[float] = [0.8, 0.99],
+        discriminator_join: int = 10000,
+    ):
+        super().__init__()
+        self.automatic_optimization = False
+
+        self.generator = VitsGenerator(**generator)
+        self.discriminator = HifiganDiscriminator(**discriminator)
+        self.spectrogram = LogMelSpectrogram(**mel)
+
+        self.weight_mel = weight_mel
+        self.weight_adv = weight_adv
+        self.weight_feat = weight_feat
+
+        self.lr_decay = lr_decay
+        self.lr = lr
+        self.betas = betas
+        self.discriminator_join = discriminator_join
+
+        self.save_hyperparameters()
+
+    def training_step(self, batch):
+        # expand batch
+        waveform = batch["waveform"]
+        if "acoustic_features" in batch:
+            y = batch["acoustic_features"]
+        else:
+            y = self.spectrogram(waveform.sum(1)).detach()
+        y_lengths = batch["acoustic_features_lengths"]
+        x = batch["phonemes"]
+        x_lengths = batch["phonemes_lengths"]
+        sid = batch.get("speaker_id", None)
+        w = batch.get("duration", None)
+
+        # generator step
+        real, fake = self._generator_training_step(
+            x, x_lengths, y, y_lengths, waveform, sid=sid, w=w
+        )
+
+        # discriminator step
+        if self.global_step >= self.discriminator_join:
+            self._discriminator_training_step(real, fake)
+
+    def _generator_training_step(
+        self, x, x_lengths, y, y_lengths, waveform, sid=None, w=None
+    ):
+        opt_g, _opt_d = self.optimizers()  # get optimizer
+
+        # forward pass
+        real, fake, loss_gen_tts = self._generator_forward(
+            x, x_lengths, y, y_lengths, waveform, sid=sid, w=w
+        )
+        loss_gen_vocoder = self._vocoder_adversarial_loss(real, fake)
+        loss_g = loss_gen_tts + loss_gen_vocoder
+
+        # logs
+        self.log("train loss/generator total", loss_g)
+        self.log("G", loss_g, prog_bar=True, logger=False)
+
+        # take generator's gradient descent
+        self.toggle_optimizer(opt_g)
+        opt_g.zero_grad(set_to_none=True)
+        self.manual_backward(loss_g)
+        self.clip_gradients(opt_g)
+        opt_g.step()
+        self.untoggle_optimizer(opt_g)
+        return real, fake
+
+    def _generator_forward(
+        self, x, x_lengths, y, y_lengths, waveform, sid=None, w=None
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        # get frame size and segment size
+        segment_size = self.generator.segment_size
+        dec_frame_size = self.generator.dec.frame_size
+
+        outputs = self.generator.forward(
+            x, x_lengths, y, y_lengths, sid=sid, w=w
+        )  # forward pass
+
+        # expand return dict.
+        z_p = outputs["z_p"]
+        logs_q = outputs["logs_q"]
+        m_p = outputs["m_p"]
+        logs_p = outputs["logs_p"]
+        z_mask = outputs["y_mask"]
+        ids_slice = outputs["ids_slice"]
+        fake = outputs["fake"]
+
+        # losses
+        loss_dur = outputs["loss_dur"]
+        loss_dur = loss_dur.mean()
+        loss_kl = kl_loss(z_p, logs_q, m_p, logs_p, z_mask)
+
+        # logs
+        self.log("train loss/KL divergence", loss_kl)
+        self.log("train loss/duration", loss_dur)
+
+        # slice real input
+        real = slice_segments(
+            waveform, ids_slice * dec_frame_size, segment_size * dec_frame_size
+        ).detach()
+
+        loss = loss_dur + loss_kl
+        return real, fake, loss
+
+    def _vocoder_adversarial_loss(
+        self, real: torch.Tensor, fake: torch.Tensor
+    ) -> torch.Tensor:
+        # spectrogram
+        spec_real = self.spectrogram(real).detach()
+        spec_fake = self.spectrogram(fake)
+        loss_mel = F.l1_loss(spec_fake, spec_real)
+        loss_g = loss_mel * self.weight_mel
+
+        if self.global_step >= self.discriminator_join:
+            # forward pass
+            logits, fmap_fake = self.discriminator(fake)
+            _, fmap_real = self.discriminator(real)
+            loss_adv, loss_adv_list = generator_loss(logits)
+            loss_feat = feature_loss(fmap_real, fmap_fake)
+
+            loss_g += +loss_feat * self.weight_feat + loss_adv * self.weight_adv
+            # logs
+            for i, l in enumerate(loss_adv_list):
+                self.log(f"generator adversarial/{i}", l)
+                self.log("train loss/feature matching", loss_feat)
+                self.log("train loss/generator adversarial", loss_adv)
+
+        self.log("train loss/mel spectrogram", loss_mel)
+        return loss_g
+
+    def _discriminator_training_step(self, real: torch.Tensor, fake: torch.Tensor):
+        _opt_g, opt_d = self.optimizers()  # get optimizer
+
+        # forward pass
+        fake = fake.detach()  # stop gradient
+        real = real.detach()
+        logits_fake, _ = self.discriminator(fake)
+        logits_real, _ = self.discriminator(real)
+        loss_d, loss_d_list_r, loss_d_list_f = discriminator_loss(
+            logits_real, logits_fake
+        )
+
+        # update parameters
+        self.toggle_optimizer(opt_d)
+        opt_d.zero_grad(set_to_none=True)
+        self.manual_backward(loss_d)
+        self.clip_gradients(opt_d)
+        opt_d.step()
+        self.untoggle_optimizer(opt_d)
+
+        # logs
+        for i, l in enumerate(loss_d_list_f):
+            self.log(f"discriminator adversarial/fake {i}", l)
+        for i, l in enumerate(loss_d_list_r):
+            self.log(f"discriminator adversarial/real {i}", l)
+        self.log("train loss/discriminator", loss_d)
+        self.log("D", loss_d, prog_bar=True, logger=False)
+
+    def configure_optimizers(self):
+        opt_g = optim.AdamW(
+            self.generator.parameters(),
+            lr=self.lr,
+            betas=self.betas,
+        )
+        sch_g = StepLR(opt_g, 1, self.lr_decay)
+        opt_d = optim.AdamW(
+            self.discriminator.parameters(),
+            lr=self.lr,
+            betas=self.betas,
+        )
+        sch_d = StepLR(opt_g, 1, self.lr_decay)
+        return [opt_g, opt_d], [sch_g, sch_d]
+
+    def on_train_epoch_end(self):
+        sch_g, sch_d = self.lr_schedulers()
+        sch_g.step()
+        sch_d.step()
+        self.log("scheduler/learning rate", sch_g.get_last_lr()[0])
+
+    @torch.no_grad
+    def validation_step(self, batch, bid):
+        reference_waveform = batch["waveform"]
+        synthesized_waveform = self.generator.infer(
+            batch["phonemes"], batch["phonemes_lengths"], batch["speaker_id"]
+        )
+        for i in range(synthesized_waveform.shape[0]):
+            r = reference_waveform[i].sum(dim=0, keepdim=True).detach().cpu()
+            f = synthesized_waveform[i].sum(dim=0, keepdim=True).detach().cpu()
+            self.logger.experiment.add_audio(
+                f"synthesized waveform/{bid}_{i}",
+                f,
+                self.current_epoch,
+                sample_rate=self.generator.sample_rate,
+            )
+            self.logger.experiment.add_audio(
+                f"reference waveform/{bid}_{i}",
+                r,
+                self.current_epoch,
+                sample_rate=self.generator.sample_rate,
+            )

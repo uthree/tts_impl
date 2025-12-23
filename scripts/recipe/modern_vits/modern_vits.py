@@ -6,12 +6,11 @@ from lightning import LightningDataModule
 
 from tts_impl.g2p import Grapheme2Phoneme
 from tts_impl.g2p.pyopenjtalk import PyopenjtalkG2P
-from tts_impl.net.tts.nsf_vits import NsfvitsLightningModule
+from tts_impl.net.tts.modern_vits import ModernvitsLightningModule
 from tts_impl.utils.datamodule import TTSDataModule
 from tts_impl.utils.preprocess import (
     G2PExtractor,
     Mixdown,
-    PitchEstimation,
     Preprocessor,
     TTSCacheWriter,
     TTSDataCollector,
@@ -20,18 +19,15 @@ from tts_impl.utils.preprocess import (
 from tts_impl.utils.recipe import Recipe
 
 
-class Nsfvits(Recipe):
+class Modernvits(Recipe):
     def __init__(self):
-        super().__init__(NsfvitsLightningModule, "nsf_vits")
+        super().__init__(ModernvitsLightningModule, "modern_vits")
 
     def preprocess(
         self,
         target_dir: str = "your_target_dir",
         sample_rate: int = 22050,
         transcriptions_filename: str = "transcripts_utf8.txt",
-        frame_size: int = 256,
-        pe_algorithm: str = "fcpe",
-        num_frames: int = 1000,
     ):
         preprocess = Preprocessor()
         g2p = Grapheme2Phoneme({"ja": PyopenjtalkG2P()})
@@ -50,37 +46,22 @@ class Nsfvits(Recipe):
         preprocess.with_extractor(
             G2PExtractor(
                 g2p,
-            ),
-        )
-        preprocess.with_extractor(
-            PitchEstimation(
-                frame_size,
-                pe_algorithm,
-                device=(
-                    torch.device("cuda")
-                    if torch.cuda.is_available
-                    else torch.device("cpu")
-                ),
             )
         )
         preprocess.with_extractor(
-            WaveformLengthExtractor(frame_size=frame_size, max_frames=num_frames)
+            WaveformLengthExtractor(frame_size=256, max_frames=1000)
         )
         preprocess.with_writer(TTSCacheWriter("dataset_cache"))
         preprocess.run()
 
     def prepare_datamodule(
-        self,
-        root_dir: str = "dataset_cache",
-        batch_size: int = 16,
-        frame_size: int = 256,
-        num_frames: int = 1000,
+        self, root_dir: str = "dataset_cache", batch_size: int = 16
     ) -> LightningDataModule:
         datamodule = TTSDataModule(
             root=root_dir,
             batch_size=batch_size,
             num_workers=1,
-            sizes={"waveform": frame_size * num_frames, "f0": num_frames},
+            sizes={"waveform": 256000},
         )
         return datamodule
 
@@ -96,4 +77,4 @@ class Nsfvits(Recipe):
 
 
 if __name__ == "__main__":
-    Nsfvits().cli()
+    Modernvits().cli()
