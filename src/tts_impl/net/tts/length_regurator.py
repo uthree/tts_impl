@@ -62,7 +62,7 @@ class GaussianUpsampling(nn.Module, LengthRegurator):
 
 
 class DifferentiableLengthRegulator(nn.Module, LengthRegurator):
-    def __init__(self, sigma_scale=1.0, eps=1e-8):
+    def __init__(self, sigma_scale=1.0, eps=1e-2):
         super().__init__()
         self.sigma_scale = nn.Parameter(
             torch.tensor([sigma_scale], dtype=torch.float32)
@@ -89,17 +89,18 @@ class DifferentiableLengthRegulator(nn.Module, LengthRegurator):
         sigma = w.unsqueeze(-1) * self.sigma_scale.view(1, 1, 1)
         sigma = torch.clamp(sigma, min=self.eps)
 
-        # 2. ログドメインでの計算
-        log_weights = -0.5 * (mu.square() / (sigma.square() + self.eps))
+        weights = (
+            torch.exp(-0.5 * (mu.square() / (sigma.square() + self.eps))) + self.eps
+        )
 
         # 3. マスク処理 (入力トークンがない部分を Softmax から除外)
         if x_mask is not None:
             # x_mask: [B, 1, T_text] -> [B, T_text, 1]
             mask = x_mask.transpose(1, 2)
-            log_weights = log_weights.masked_fill(mask == 0, -1e9)
+            weights = weights.masked_fill(mask == 0, -1e9)
 
         # 4. Softmax (内部で max 引かれるので安定)
-        weights = F.softmax(log_weights, dim=1)
+        weights = F.softmax(weights, dim=1)
 
         # 5. 出力に NaN が混入するのを防ぐ最終防衛線
         weights = torch.nan_to_num(weights)
