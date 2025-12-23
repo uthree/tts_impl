@@ -35,10 +35,8 @@ class VitsLightningModule(L.LightningModule):
         weight_adv: float = 1.0,
         lr: float = 2e-4,
         lr_decay: float = 0.9998749453,
-        betas: list[float] = None,
+        betas: list[float] = [0.8, 0.99],
     ):
-        if betas is None:
-            betas = [0.8, 0.99]
         super().__init__()
         self.automatic_optimization = False
 
