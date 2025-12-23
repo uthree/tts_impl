@@ -133,7 +133,7 @@ class PitchEstimation(Extractor):
     def __init__(
         self,
         frame_size: int,
-        algorithm: Literal["harvest", "dio", "fcpe", "yin"] = "harvest",
+        algorithm: Literal["harvest", "dio", "fcpe", "yin"] = "yin",
         device: torch.device = torch.device("cpu"),
     ):
         super().__init__()

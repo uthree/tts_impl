@@ -26,7 +26,9 @@ class DdspGenerator(nn.Module, GanVocoderGenerator):
         self.fft_bin = vocoder.n_fft // 2 + 1
         self.pre = nn.Conv1d(in_channels, d_model, 1)
         self.wn = WN(d_model, 3, 1, num_layers, gin_channels)
-        self.post = nn.Conv1d(d_model, self.fft_bin * 2, 1)
+        self.d_spectral_envelope = self.vocoder.d_spectral_envelope
+        self.d_periodicity = self.vocoder.d_periodicity
+        self.post = nn.Conv1d(d_model, self.d_periodicity + self.d_spectral_envelope, 1)
 
     def net(self, x, g=None):
         x = self.pre(x)
@@ -34,13 +36,13 @@ class DdspGenerator(nn.Module, GanVocoderGenerator):
         x = self.wn(x, x_mask, g=g)
         x = self.post(x)
         x = x.float()
-        per, noi = torch.split(x, [self.fft_bin, self.fft_bin], dim=1)
-        per = torch.exp(per)
-        noi = torch.exp(noi)
-        return per, noi
+        per, env = torch.split(x, [self.d_periodicity, self.d_spectral_envelope], dim=1)
+        per = torch.sigmoid(per)
+        env = torch.exp(env)
+        return per, env
 
     def forward(self, x, f0, g=None, uv=None):
-        per, noi = self.net(x, g=g)
-        x = self.vocoder.forward(f0, per, noi)
+        per, env = self.net(x, g=g)
+        x = self.vocoder.forward(f0, per, env)
         x = x.unsqueeze(dim=1)
         return x

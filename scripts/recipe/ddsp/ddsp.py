@@ -37,8 +37,7 @@ class NsfHifigan(Recipe):
         preprocess.with_extractor(
             PitchEstimation(
                 frame_size=frame_size,
-                algorithm="fcpe",
-                device=torch.device("cuda" if torch.cuda.is_available else "cpu"),
+                algorithm="yin",
             )
         )
         preprocess.with_writer(VcCacheWriter(dataset_cache_path))

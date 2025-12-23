@@ -19,14 +19,13 @@ from tts_impl.utils.config import derive_config
 from .generator import DdspGenerator
 
 discriminator_cfg_default = HifiganDiscriminator.Config()
-discriminator_cfg_default.msd.scales = [1]
-discriminator_cfg_default.mpd.periods = [2, 3, 5, 7, 11]
+discriminator_cfg_default.mpd.periods = [1, 2, 3, 5, 7, 11]
 discriminator_cfg_default.mpd.channels_max = 256
 discriminator_cfg_default.mpd.channels_mul = 2
 discriminator_cfg_default.mrsd.n_fft = [512, 1024, 2048]
 discriminator_cfg_default.mrsd.hop_size = [50, 120, 240]
-discriminator_cfg_default.mrxd.n_fft = [512, 1024, 2048]
-discriminator_cfg_default.mrxd.hop_size = [50, 120, 240]
+discriminator_cfg_default.mrxd.n_fft = []
+discriminator_cfg_default.mrxd.hop_size = []
 
 
 def slice_segments(x, ids_str, segment_size=8192):
@@ -71,12 +70,10 @@ class DdspVocoderLightningModule(LightningModule):
         weight_feat: float = 1.0,
         weight_adv: float = 1.0,
         lr_decay: float = 0.999,
-        betas: list[float] = None,
+        betas: list[float] = [0.8, 0.99],
         segment_size: int = 8192,
         lr: float = 2e-4,
     ):
-        if betas is None:
-            betas = [0.8, 0.99]
         super().__init__()
         self.automatic_optimization = False
 
