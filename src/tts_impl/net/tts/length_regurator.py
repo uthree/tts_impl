@@ -83,17 +83,15 @@ class DifferentiableLengthRegulator(nn.Module, LengthRegurator):
             max_len = int(w.sum(dim=1).max().item())
 
         pos = torch.arange(max_len, device=x.device, dtype=x.dtype).view(1, 1, -1)
-        mu = pos - center.unsqueeze(-1)
+        delta = pos - center.unsqueeze(-1)
+        delta = torch.clamp(delta, min=1e-4, max=1e4)  # Nan対策
+        print(w.shape, delta.shape)
+        sigma = delta * w.unsqueeze(2)
 
-        # 1. sigma の下限を保証
-        sigma = w.unsqueeze(-1) * self.sigma_scale.view(1, 1, 1)
-        sigma = torch.clamp(sigma, min=self.eps)
+        # 1. 中心地に近いと1に近い値を出す関数 (ガウス分布関数)
+        weights = torch.exp(-0.5 * sigma.square() * self.sigma_scale)
 
-        weights = (
-            torch.exp(-0.5 * (mu.square() / (sigma.square() + self.eps))) + self.eps
-        )
-
-        # 3. マスク処理 (入力トークンがない部分を Softmax から除外)
+        # 2. マスク処理 (入力トークンがない部分を Softmax から除外)
         if x_mask is not None:
             # x_mask: [B, 1, T_text] -> [B, T_text, 1]
             mask = x_mask.transpose(1, 2)
@@ -102,9 +100,7 @@ class DifferentiableLengthRegulator(nn.Module, LengthRegurator):
         # 4. Softmax (内部で max 引かれるので安定)
         weights = F.softmax(weights, dim=1)
 
-        # 5. 出力に NaN が混入するのを防ぐ最終防衛線
-        weights = torch.nan_to_num(weights)
-
+        print(x.shape, weights.shape)
         upsampled = torch.matmul(x, weights)
 
         if y_mask is not None:
