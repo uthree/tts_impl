@@ -60,7 +60,7 @@ class ModernvitsLightningModule(L.LightningModule):
         lr: float = 2e-4,
         lr_decay: float = 0.9998749453,
         betas: list[float] = [0.8, 0.99],
-        discriminator_join: int = 10000,
+        discriminator_join: int = 0,
     ):
         super().__init__()
         self.automatic_optimization = False
