@@ -15,7 +15,7 @@ from tts_impl.net.tts.vits.models import (
     StochasticDurationPredictor,
     TextEncoder,
 )
-from tts_impl.net.vocoder.nsf_hifigan.generator import NsfhifiganGenerator
+from tts_impl.net.vocoder.hifigan import HifiganGenerator
 
 
 @derive_config
@@ -24,7 +24,7 @@ class ModernvitsGenerator(nn.Module):
         self,
         posterior_encoder: PosteriorEncoder.Config = PosteriorEncoder.Config(),
         text_encoder: TextEncoder.Config = TextEncoder.Config(),
-        decoder: NsfhifiganGenerator.Config = NsfhifiganGenerator.Config(),
+        decoder: HifiganGenerator.Config = HifiganGeneratorr.Config(),
         flow: ResidualCouplingBlock.Config = ResidualCouplingBlock.Config(),
         duration_predictor: DurationPredictor.Config = DurationPredictor.Config(),
         stochastic_duration_predictor: StochasticDurationPredictor.Config = StochasticDurationPredictor.Config(),
@@ -48,13 +48,10 @@ class ModernvitsGenerator(nn.Module):
         self.sample_rate = sample_rate
 
         self.enc_p = TextEncoder(**text_encoder)
-        self.dec = NsfhifiganGenerator(**decoder)
+        self.dec = HifiganGenerator(**decoder)
         self.enc_q = PosteriorEncoder(**posterior_encoder)
         self.flow = ResidualCouplingBlock(**flow)
         self.lr = DuplicateByDuration()
-        self.pe = nn.Conv1d(
-            posterior_encoder.out_channels, 1, 1, 0, bias=False
-        )  # pitch estimator
 
         self.dec.source_module.sample_rate = self.sample_rate
 
@@ -145,8 +142,7 @@ class ModernvitsGenerator(nn.Module):
         z_slice, ids_slice = commons.rand_slice_segments(
             z, y_lengths, self.segment_size
         )
-        f0_slice = self.pe(z_slice).exp()
-        o = self.dec(z_slice, g=g, f0=f0_slice)
+        o = self.dec(z_slice, g=g)
 
         outputs = {
             "fake": o,
@@ -203,8 +199,7 @@ class ModernvitsGenerator(nn.Module):
 
         z_p = m_p + torch.randn_like(m_p) * torch.exp(logs_p) * noise_scale
         z = self.flow(z_p, y_mask, g=g, reverse=True)
-        f0 = self.pe(z).exp()
-        o = self.dec((z * y_mask)[:, :, :max_len], g=g, f0=f0)
+        o = self.dec((z * y_mask)[:, :, :max_len], g=g)
         return o
 
     def voice_conversion(self, y, y_lengths, sid_src, sid_tgt):

@@ -18,8 +18,11 @@ from tts_impl.transforms import LogMelSpectrogram
 from tts_impl.utils.config import derive_config
 
 _vits_discriminator_config = HifiganDiscriminator.Config()
-_vits_discriminator_config.msd.scales = [1]
-_vits_discriminator_config.mpd.periods = [2, 3, 5, 7, 11]
+_vits_discriminator_config.msd.scales = []
+_vits_discriminator_config.mpd.num_layers = 5
+_vits_discriminator_config.mpd.channels_mul = 2
+_vits_discriminator_config.mpd.channels_max = 256
+_vits_discriminator_config.mpd.periods = [1, 2, 3, 5, 7, 11]
 _vits_discriminator_config.mrsd.hop_size = [120, 240, 50]
 _vits_discriminator_config.mrsd.n_fft = [1024, 2048, 512]
 
