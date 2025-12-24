@@ -2,54 +2,6 @@ import torch
 from torch.nn import functional as F
 
 
-def gaussian_upsampling(
-    x: torch.Tensor,
-    w: torch.Tensor,
-    x_mask: torch.Tensor | None = None,
-    y_mask: torch.Tensor | None = None,
-    delta: float = 0.1,
-) -> torch.Tensor:
-    """
-    Gaussian upsampling with fixed temperature as in:
-    https://arxiv.org/abs/2010.04301
-
-    Args:
-        x (Tensor): Batched hidden state to be expanded (B, channels, T_text)
-        w (Tensor): Batched token duration (B, T_text)
-        x_masks (Tensor): Mask tensor (B, T_text)
-        y_masks (Tensor): Mask tensor (B, T_feats)
-        delta: (float), Temperature
-
-    Returns:
-        Tensor: Expanded hidden state (B, channels, T_feat)
-    """
-    x = x.transpose(1, 2)
-
-    B = w.size(0)
-    device = w.device
-
-    if y_mask is None:
-        T_feats = w.sum(dim=1).max().int()
-    else:
-        T_feats = y_mask.size(-1)
-    t = torch.arange(0, T_feats).unsqueeze(0).repeat(B, 1).to(device).float()
-    if y_mask is not None:
-        t = t * y_mask.float()
-
-    c = w.cumsum(dim=-1) - w / 2
-    energy = -1 * delta * (t.unsqueeze(-1) - c.unsqueeze(1)) ** 2
-    if x_mask is not None:
-        energy = energy.masked_fill(
-            ~(x_mask.unsqueeze(1).repeat(1, T_feats, 1)), -float("inf")
-        )
-
-    p_attn = torch.softmax(energy, dim=2)  # (B, T_feats, T_text)
-    x = torch.matmul(p_attn, x)
-
-    x = x.transpose(1, 2)
-    return x
-
-
 def sequence_mask(length, max_length=None):
     if max_length is None:
         max_length = length.max()
@@ -90,9 +42,9 @@ def duplicate_by_duration(
 
     Args:
         x (Tensor): Batched hidden state to be expanded (B, channels, T_text)
-        w (Tensor): Batched token duration (B, T_text)
-        x_masks (Tensor): Mask tensor (B, T_text)
-        y_masks (Tensor): Mask tensor (B, feats)
+        w (Tensor): Batched token duration (B, 1, T_text)
+        x_mask (Tensor): Mask tensor (B, 1, T_text)
+        y_mask (Tensor): Mask tensor (B, 1, feats)
 
     Returns:
         Tensor: Expanded hidden state (B, channels, T_feat)

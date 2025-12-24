@@ -6,7 +6,7 @@ from torch import nn
 from torch.nn import functional as F
 
 from tts_impl.functional import monotonic_align
-from tts_impl.net.tts.length_regurator import DuplicateByDuration
+from tts_impl.net.tts.length_regurator import DuplicateByDuration, GaussianUpsampling
 from tts_impl.net.tts.vits import commons
 from tts_impl.net.tts.vits.models import (
     DurationPredictor,
@@ -24,12 +24,10 @@ def safe_log(x):
     return torch.log(torch.clamp(x, min=1e-6))
 
 
-def f0_estimation_loss(f0_hat, f0, uv_hat, uv=None):
+def f0_estimation_loss(log_f0_hat, f0, uv_hat, uv=None):
     if uv is None:
         uv = (f0 > 20.0).float()
-    loss_f0 = ((safe_log(f0_hat) - safe_log(f0)).abs() * uv).sum() / (
-        uv.sum().clamp_min(1.0)
-    )
+    loss_f0 = ((log_f0_hat - safe_log(f0)).abs() * uv).sum() / (uv.sum().clamp_min(1.0))
     loss_uv = (uv_hat - uv).abs().mean()
     return loss_f0 + loss_uv
 
@@ -59,9 +57,9 @@ class PitchEstimator(nn.Module):
         x = self.pre(x) * x_mask
         x = self.wn.forward(x, x_mask, g=g)
         x_0, x_1 = self.post(x).chunk(2, dim=1)
-        f0 = torch.exp(x_0)
+        log_f0 = x_0
         uv = F.sigmoid(x_1)
-        return f0, uv
+        return log_f0, uv
 
 
 @derive_config
@@ -99,7 +97,7 @@ class ModernvitsGenerator(nn.Module):
         self.enc_q = PosteriorEncoder(**posterior_encoder)
         self.flow = ResidualCouplingBlock(**flow)
         self.pe = PitchEstimator(**pitch_estimator)
-        self.lr = DuplicateByDuration()
+        self.lr = GaussianUpsampling()
 
         self.dec.source_module.sample_rate = self.sample_rate
 
@@ -142,7 +140,6 @@ class ModernvitsGenerator(nn.Module):
         return attn
 
     def duration_predictor_loss(self, x, x_mask, w, g=None):
-        w = w.unsqueeze(1)
         l_length_all = 0
         logw_hat = None
         logw = torch.log(w + 1e-6) * x_mask
@@ -172,25 +169,32 @@ class ModernvitsGenerator(nn.Module):
         # encode prior
         x, m_p, logs_p, x_mask = self.enc_p(x, x_lengths, g=g)
 
+        # estimate phonemewise pitch
+        log_f0_hat, uv_hat = self.pe(x, x_mask, g=g)
+
         # encode posterior
         z, m_q, logs_q, y_mask = self.enc_q(y, y_lengths, g=g)
 
         # flow
         z_p = self.flow(z, y_mask, g=g)
 
-        # estimate f0
-        f0_hat, uv_hat = self.pe(z_p, y_mask)
-        loss_f0 = f0_estimation_loss(f0_hat, f0.unsqueeze(1), uv_hat.unsqueeze(1))
-
         # alignment / duration loss
         if w is None:
             attn = self.maximum_path(z_p, m_p, logs_p, x_mask, y_mask)
-            w = attn.sum(2)
+            w = attn.sum(2).unsqueeze(1)
+
         loss_dur, logw, logw_hat = self.duration_predictor_loss(x, x_mask, w, g=g)
 
         # expand prior
         m_p = self.lr(m_p, w, x_mask, y_mask)
         logs_p = self.lr(logs_p, w, x_mask, y_mask)
+
+        # expand log_f0 and uv
+        log_f0_hat = self.lr(log_f0_hat, w, x_mask, y_mask)
+        uv_hat = self.lr(uv_hat, w, x_mask, y_mask)
+
+        # f0 estimation loss
+        loss_f0 = f0_estimation_loss(log_f0_hat, f0, uv_hat)
 
         # slice
         z_slice, ids_slice = commons.rand_slice_segments(
@@ -232,37 +236,48 @@ class ModernvitsGenerator(nn.Module):
         use_sdp=True,
         w=None,
     ):
-        x, m_p, logs_p, x_mask = self.enc_p(x, x_lengths)
+        # speaker embedding
         if self.n_speakers > 0:
             g = self.emb_g(sid).unsqueeze(-1)  # [b, h, 1]
         else:
             g = None
 
+        # encode text
+        x, m_p, logs_p, x_mask = self.enc_p(x, x_lengths)
+
+        # predict duration
         if w is None:
             if use_sdp:
-                logw = self.sdp(x, x_mask, g=g, reverse=True, noise_scale=noise_scale_w)
+                logw = self.sdp(
+                    x, x_mask, g=g, reverse=True, noise_scale=noise_scale_w
+                ).squeeze(1)
             else:
                 logw = self.dp(x, x_mask, g=g)
             w = torch.exp(logw) * x_mask * length_scale
-
         w_ceil = torch.ceil(w)
+
+        # create mask based on max sequence length
         y_lengths = torch.clamp_min(torch.sum(w_ceil, [1, 2]), 1).long()
         y_mask = torch.unsqueeze(commons.sequence_mask(y_lengths, None), 1).to(
             x_mask.dtype
         )
 
+        # estimate phonemewise f0
+        log_f0, uv = self.pe(x, x_mask, g=g)
+
         # expand prior
         m_p = self.lr(m_p, w, x_mask, y_mask)
         logs_p = self.lr(logs_p, w, x_mask, y_mask)
 
-        # sample from gaussian distribution.
+        # expand f0 and uv, apply exp. to f0
+        f0 = self.lr(log_f0, w, x_mask, y_mask).exp()
+        uv = self.lr(uv, w, x_mask, y_mask)
+
+        # re-sample from gaussian distribution.
         z_p = m_p + torch.randn_like(m_p) * torch.exp(logs_p) * noise_scale
 
-        # estimate f0
-        f0, uv = self.pe(z_p, y_mask)
-        f0[uv > 0.5] = 0.0  # set zero if estimated "unvoiced"
-
         # flow
+        print(z_p.shape)
         z = self.flow(z_p, y_mask, g=g, reverse=True)
 
         # synthesize
