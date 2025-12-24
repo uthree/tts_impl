@@ -66,7 +66,7 @@ class Nhvc(Recipe):
         preprocess.with_extractor(
             PitchEstimation(
                 frame_size=frame_size,
-                algorithm="yin",
+                algorithm="fcpe",
             )
         )
 

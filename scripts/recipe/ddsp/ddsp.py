@@ -37,7 +37,7 @@ class NsfHifigan(Recipe):
         preprocess.with_extractor(
             PitchEstimation(
                 frame_size=frame_size,
-                algorithm="yin",
+                algorithm="fcpe",
             )
         )
         preprocess.with_writer(VcCacheWriter(dataset_cache_path))

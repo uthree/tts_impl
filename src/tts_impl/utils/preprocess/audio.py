@@ -133,13 +133,20 @@ class PitchEstimation(Extractor):
     def __init__(
         self,
         frame_size: int,
-        algorithm: Literal["harvest", "dio", "fcpe", "yin"] = "yin",
-        device: torch.device = torch.device("cpu"),
+        algorithm: Literal["harvest", "dio", "fcpe", "yin"] = "fcpe",
+        device: torch.device | None = None,
     ):
         super().__init__()
         self.algorithm = algorithm
         self.frame_size = frame_size
-        self.device = device
+        if device is None:
+            self.device = (
+                torch.device("cuda")
+                if torch.cuda.is_available()
+                else torch.device("cpu")
+            )
+        else:
+            self.device = device
 
     def extract(self, data: dict[str, Any]) -> dict[str, Any]:
         wf = data["waveform"]

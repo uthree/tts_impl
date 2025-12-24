@@ -101,17 +101,17 @@ class HomomorphicVocoder(nn.Module):
             return_complex=True,
         )
 
-        # expand band periodicity and spectral envelope
-        per = self.expand_periodicity(periodicity)
-        env = self.expand_spectral_envelope(spectral_envelope)
-
-        per = per * (F.pad(f0[:, None, :], (1, 0)) > 20.0).to(
+        periodicity = periodicity * (F.pad(f0[:, None, :], (1, 0)) > 20.0).to(
             torch.float
         )  # set periodicity=0 if unvoiced.
 
-        voi_stft = (
-            imp_stft * estimate_minimum_phase(per * env) + noi_stft * (1 - per) * env
-        )
+        # expand band periodicity and spectral envelope
+        per = self.expand_periodicity(periodicity)
+        ap = self.expand_periodicity(1 - periodicity)
+        env = self.expand_spectral_envelope(spectral_envelope)
+
+        # apply framewise FIR filter
+        voi_stft = imp_stft * estimate_minimum_phase(per * env) + noi_stft * ap * env
 
         # inverse STFT
         voi = torch.istft(
