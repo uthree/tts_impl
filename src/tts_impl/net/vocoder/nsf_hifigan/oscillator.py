@@ -77,6 +77,7 @@ class HarmonicNoiseOscillator(nn.Module):
         )
 
         harmonics = torch.sin(rad) * voiced_mask + noise * self.noise_scale
+        harmonics = harmonics.detach()
 
         # switch v/uv.
         voiced_part = harmonics + noise * self.noise_scale

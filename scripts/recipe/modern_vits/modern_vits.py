@@ -11,6 +11,7 @@ from tts_impl.utils.datamodule import TTSDataModule
 from tts_impl.utils.preprocess import (
     G2PExtractor,
     Mixdown,
+    PitchEstimation,
     Preprocessor,
     TTSCacheWriter,
     TTSDataCollector,
@@ -27,6 +28,7 @@ class Modernvits(Recipe):
         self,
         target_dir: str = "your_target_dir",
         sample_rate: int = 22050,
+        frame_size: int = 256,
         transcriptions_filename: str = "transcripts_utf8.txt",
     ):
         preprocess = Preprocessor()
@@ -48,9 +50,8 @@ class Modernvits(Recipe):
                 g2p,
             )
         )
-        preprocess.with_extractor(
-            WaveformLengthExtractor(frame_size=256, max_frames=1000)
-        )
+        preprocess.with_extractor(PitchEstimation(frame_size, algorithm="fcpe"))
+        preprocess.with_extractor(WaveformLengthExtractor(frame_size, max_frames=1000))
         preprocess.with_writer(TTSCacheWriter("dataset_cache"))
         preprocess.run()
 
@@ -61,7 +62,7 @@ class Modernvits(Recipe):
             root=root_dir,
             batch_size=batch_size,
             num_workers=1,
-            sizes={"waveform": 256000},
+            sizes={"waveform": 256000, "f0": 1000},
         )
         return datamodule
 

@@ -15,7 +15,53 @@ from tts_impl.net.tts.vits.models import (
     StochasticDurationPredictor,
     TextEncoder,
 )
-from tts_impl.net.vocoder.hifigan import HifiganGenerator
+from tts_impl.net.tts.vits.modules import WN
+from tts_impl.net.vocoder.nsf_hifigan import NsfhifiganGenerator
+from tts_impl.utils.config import derive_config
+
+
+def safe_log(x):
+    return torch.log(torch.clamp(x, min=1e-6))
+
+
+def f0_estimation_loss(f0_hat, f0, uv_hat, uv=None):
+    if uv is None:
+        uv = (f0 > 20.0).float()
+    loss_f0 = ((safe_log(f0_hat) - safe_log(f0)).abs() * uv).sum() / (
+        uv.sum().clamp_min(1.0)
+    )
+    loss_uv = (uv_hat - uv).abs().mean()
+    return loss_f0 + loss_uv
+
+
+@derive_config
+class PitchEstimator(nn.Module):
+    def __init__(
+        self,
+        in_channels: int = 192,
+        hidden_channels: int = 192,
+        n_layers: int = 4,
+        gin_channels: int = 0,
+        kernel_size: int = 5,
+    ):
+        super().__init__()
+        self.pre = nn.Conv1d(in_channels, hidden_channels, 1)
+        self.wn = WN(
+            hidden_channels,
+            kernel_size=kernel_size,
+            dilation_rate=1,
+            n_layers=n_layers,
+            gin_channels=gin_channels,
+        )
+        self.post = nn.Conv1d(hidden_channels, 2, 1)
+
+    def forward(self, x, x_mask, g=None):
+        x = self.pre(x) * x_mask
+        x = self.wn.forward(x, x_mask, g=g)
+        x_0, x_1 = self.post(x).chunk(2, dim=1)
+        f0 = torch.exp(x_0)
+        uv = F.sigmoid(x_1)
+        return f0, uv
 
 
 @derive_config
@@ -24,10 +70,11 @@ class ModernvitsGenerator(nn.Module):
         self,
         posterior_encoder: PosteriorEncoder.Config = PosteriorEncoder.Config(),
         text_encoder: TextEncoder.Config = TextEncoder.Config(),
-        decoder: HifiganGenerator.Config = HifiganGeneratorr.Config(),
+        decoder: NsfhifiganGenerator.Config = NsfhifiganGenerator.Config(),
         flow: ResidualCouplingBlock.Config = ResidualCouplingBlock.Config(),
         duration_predictor: DurationPredictor.Config = DurationPredictor.Config(),
         stochastic_duration_predictor: StochasticDurationPredictor.Config = StochasticDurationPredictor.Config(),
+        pitch_estimator: PitchEstimator.Config = PitchEstimator.Config(),
         n_speakers: int = 0,
         gin_channels: int = 0,
         use_dp: bool = False,
@@ -48,9 +95,10 @@ class ModernvitsGenerator(nn.Module):
         self.sample_rate = sample_rate
 
         self.enc_p = TextEncoder(**text_encoder)
-        self.dec = HifiganGenerator(**decoder)
+        self.dec = NsfhifiganGenerator(**decoder)
         self.enc_q = PosteriorEncoder(**posterior_encoder)
         self.flow = ResidualCouplingBlock(**flow)
+        self.pe = PitchEstimator(**pitch_estimator)
         self.lr = DuplicateByDuration()
 
         self.dec.source_module.sample_rate = self.sample_rate
@@ -114,7 +162,7 @@ class ModernvitsGenerator(nn.Module):
         return l_length_all, logw, logw_hat
 
     def forward(
-        self, x, x_lengths, y, y_lengths, sid=None, w=None
+        self, x, x_lengths, y, y_lengths, f0, sid=None, w=None
     ) -> dict[str, torch.Tensor]:
         if self.n_speakers > 0:
             g = self.emb_g(sid).unsqueeze(-1)  # [b, h, 1]
@@ -124,9 +172,15 @@ class ModernvitsGenerator(nn.Module):
         # encode prior
         x, m_p, logs_p, x_mask = self.enc_p(x, x_lengths, g=g)
 
-        # encode posterior, flow
+        # encode posterior
         z, m_q, logs_q, y_mask = self.enc_q(y, y_lengths, g=g)
+
+        # flow
         z_p = self.flow(z, y_mask, g=g)
+
+        # estimate f0
+        f0_hat, uv_hat = self.pe(z_p, y_mask)
+        loss_f0 = f0_estimation_loss(f0_hat, f0.unsqueeze(1), uv_hat.unsqueeze(1))
 
         # alignment / duration loss
         if w is None:
@@ -142,12 +196,16 @@ class ModernvitsGenerator(nn.Module):
         z_slice, ids_slice = commons.rand_slice_segments(
             z, y_lengths, self.segment_size
         )
-        o = self.dec(z_slice, g=g)
+        f0_slice = commons.slice_segments(
+            f0.unsqueeze(1), ids_slice, self.segment_size
+        ).squeeze(1)
+        o = self.dec(z_slice, f0=f0_slice, g=g)
 
         outputs = {
             "fake": o,
             "loss_dur": loss_dur,
             "ids_slice": ids_slice,
+            "loss_f0": loss_f0,
             "x_mask": x_mask,
             "y_mask": y_mask,
             "z": z,
@@ -197,9 +255,18 @@ class ModernvitsGenerator(nn.Module):
         m_p = self.lr(m_p, w, x_mask, y_mask)
         logs_p = self.lr(logs_p, w, x_mask, y_mask)
 
+        # sample from gaussian distribution.
         z_p = m_p + torch.randn_like(m_p) * torch.exp(logs_p) * noise_scale
+
+        # estimate f0
+        f0, uv = self.pe(z_p, y_mask)
+        f0[uv > 0.5] = 0.0  # set zero if estimated "unvoiced"
+
+        # flow
         z = self.flow(z_p, y_mask, g=g, reverse=True)
-        o = self.dec((z * y_mask)[:, :, :max_len], g=g)
+
+        # synthesize
+        o = self.dec((z * y_mask)[:, :, :max_len], f0=f0.squeeze(1), g=g)
         return o
 
     def voice_conversion(self, y, y_lengths, sid_src, sid_tgt):
