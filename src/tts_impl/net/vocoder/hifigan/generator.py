@@ -27,12 +27,10 @@ class ResBlock1(nn.Module):
         self,
         channels: int,
         kernel_size: int = 3,
-        dilations: list[int] = None,
+        dilations: list[int] = [1, 3, 5],
         activation: str = "lrelu",
         alias_free: bool = False,
     ):
-        if dilations is None:
-            dilations = [1, 3, 5]
         super().__init__()
         self.convs1 = nn.ModuleList()
         self.acts1 = nn.ModuleList()
@@ -92,12 +90,10 @@ class ResBlock2(nn.Module):
         self,
         channels: int,
         kernel_size: int = 3,
-        dilations: list[int] = None,
+        dilations: list[int] = [1, 3],
         activation: str = "lrelu",
         alias_free: bool = False,
     ):
-        if dilations is None:
-            dilations = [1, 3]
         super().__init__()
         self.convs1 = nn.ModuleList()
         self.acts1 = nn.ModuleList()

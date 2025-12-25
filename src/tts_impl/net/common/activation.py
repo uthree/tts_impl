@@ -5,7 +5,7 @@ from alias_free_torch import Activation1d as AliasFreeActivation1d
 from torch import nn as nn
 
 type ActivationName = Literal[
-    "lrelu", "silu", "gelu", "snake", "snakebeta", "linear", "elu"
+    "relu", "lrelu", "silu", "gelu", "snake", "snakebeta", "linear", "elu"
 ]
 LRELU_SLOPE = 0.1
 

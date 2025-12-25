@@ -17,10 +17,10 @@ from .models import ModernvitsGenerator
 
 _vits_discriminator_config = HifiganDiscriminator.Config()
 _vits_discriminator_config.msd.scales = []
-_vits_discriminator_config.mpd.num_layers = 5
+_vits_discriminator_config.mpd.num_layers = 4
 _vits_discriminator_config.mpd.channels_mul = 2
 _vits_discriminator_config.mpd.channels_max = 256
-_vits_discriminator_config.mpd.periods = [1, 2, 3, 5, 7, 11]
+_vits_discriminator_config.mpd.periods = [1, 2, 3, 5, 7, 11, 13]
 _vits_discriminator_config.mrsd.hop_size = [120, 240, 50]
 _vits_discriminator_config.mrsd.n_fft = [1024, 2048, 512]
 
@@ -43,10 +43,7 @@ _vits_generator_config.decoder.filter_module.in_channels = 192
 _vits_generator_config.decoder.source_module.gin_channels = 192
 _vits_generator_config.decoder.source_module.num_harmonics = 8
 _vits_generator_config.duration_predictor.gin_channels = 192
-_vits_generator_config.duration_predictor.input_backward = True
-_vits_generator_config.duration_predictor.condition_backward = True
 _vits_generator_config.stochastic_duration_predictor.gin_channels = 192
-_vits_generator_config.stochastic_duration_predictor.condition_backward = True
 _vits_generator_config.pitch_estimator.gin_channels = 192
 _vits_generator_config.flow.gin_channels = 192
 _vits_generator_config.use_dp = True
@@ -67,7 +64,6 @@ def discriminator_loss(disc_real_outputs, disc_generated_outputs):
         loss += r_loss + g_loss
         r_losses.append(r_loss.item())
         g_losses.append(g_loss.item())
-    loss = loss / len(r_losses)
     return loss, r_losses, g_losses
 
 
@@ -80,7 +76,6 @@ def generator_loss(disc_outputs):
         l = torch.mean(-dg + 1.0)
         gen_losses.append(l)
         loss += l
-    loss = loss / len(gen_losses)
     return loss, gen_losses
 
 

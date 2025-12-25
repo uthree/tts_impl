@@ -56,6 +56,7 @@ class PitchEstimator(nn.Module):
         self.post = nn.Conv1d(hidden_channels, 2, 1)
 
     def forward(self, x, x_mask, g=None):
+        x = x.detach()
         x = self.pre(x) * x_mask
         x = self.wn.forward(x, x_mask, g=g)
         x_0, x_1 = self.post(x).chunk(2, dim=1)
@@ -79,7 +80,7 @@ class ModernvitsGenerator(nn.Module):
         gin_channels: int = 0,
         use_dp: bool = False,
         use_sdp: bool = True,
-        segment_size: int = 32,
+        segment_size: int = 128,
         mas_noise: float = 0.0,
         sample_rate: int = 22050,
     ):
