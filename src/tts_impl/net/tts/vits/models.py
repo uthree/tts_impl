@@ -159,7 +159,7 @@ class DurationPredictor(nn.Module):
         kernel_size: int = 5,
         p_dropout: float = 0.1,
         gin_channels: int = 0,
-        input_badkward: bool = False,
+        input_backward: bool = False,
         condition_backward: bool = False,
         out_channels: int = 1,
     ):
@@ -170,7 +170,7 @@ class DurationPredictor(nn.Module):
         self.kernel_size = kernel_size
         self.p_dropout = p_dropout
         self.gin_channels = gin_channels
-        self.input_backward = input_badkward
+        self.input_backward = input_backward
         self.condition_backward = condition_backward
 
         self.drop = nn.Dropout(p_dropout)

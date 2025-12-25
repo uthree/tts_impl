@@ -43,6 +43,7 @@ _vits_generator_config.decoder.filter_module.in_channels = 192
 _vits_generator_config.decoder.source_module.gin_channels = 192
 _vits_generator_config.decoder.source_module.num_harmonics = 8
 _vits_generator_config.duration_predictor.gin_channels = 192
+_vits_generator_config.duration_predictor.input_backward = True
 _vits_generator_config.duration_predictor.condition_backward = True
 _vits_generator_config.stochastic_duration_predictor.gin_channels = 192
 _vits_generator_config.stochastic_duration_predictor.condition_backward = True

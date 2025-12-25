@@ -32,7 +32,7 @@ class DuplicateByDuration(nn.Module, LengthRegurator):
 
 
 class GaussianUpsampling(nn.Module, LengthRegurator):
-    def __init__(self, sigma_scale=1.0, eps=1e-2):
+    def __init__(self, sigma_scale=0.2, eps=1e-2):
         super().__init__()
         self.sigma_scale = nn.Parameter(
             torch.tensor([sigma_scale], dtype=torch.float32)
@@ -67,10 +67,10 @@ class GaussianUpsampling(nn.Module, LengthRegurator):
 
         delta = pos - center  # [B, T_text, T_feat]
         delta = torch.clamp(delta, min=1e-4, max=1e4)  # Nan対策
-        sigma = delta * w
+        delta = delta / torch.clamp(w, min=1e-4)
 
         # 1. 中心地に近いと1に近い値を出す関数 (ガウス分布関数)
-        weights = torch.exp(-0.5 * sigma.square() * self.sigma_scale)
+        weights = torch.exp(-0.5 * delta.square())
 
         # 2. マスク処理 (入力トークンがない部分を Softmax から除外)
         if x_mask is not None:
