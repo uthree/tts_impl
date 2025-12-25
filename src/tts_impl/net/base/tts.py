@@ -14,9 +14,9 @@ class LengthRegurator(Protocol):
         """
         Args:
             x: Batched hidden state to be expanded (B, channels, T_text)
-            w: Batched token duration (B, T_text)
-            x_masks: Mask tensor (B, T_text)
-            y_masks: Mask tensor (B, T_feat)
+            w: Batched token duration (B, 1, T_text)
+            x_masks: Mask tensor (B, 1, T_text)
+            y_masks: Mask tensor (B, 1, T_feat)
         Returns:
             x: Expanded hidden state (B, channels, T_feat)
         """

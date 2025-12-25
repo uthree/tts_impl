@@ -7,7 +7,6 @@ from torch.optim.lr_scheduler import StepLR
 
 from tts_impl.net.tts.vits.commons import slice_segments
 from tts_impl.net.tts.vits.losses import (
-    feature_loss,
     kl_loss,
 )
 from tts_impl.net.vocoder.hifigan import HifiganDiscriminator
@@ -42,7 +41,7 @@ _vits_generator_config.decoder.filter_module.activation = "silu"
 _vits_generator_config.decoder.filter_module.gin_channels = 192
 _vits_generator_config.decoder.filter_module.in_channels = 192
 _vits_generator_config.decoder.source_module.gin_channels = 192
-_vits_generator_config.decoder.source_module.num_harmonics = 1
+_vits_generator_config.decoder.source_module.num_harmonics = 8
 _vits_generator_config.duration_predictor.gin_channels = 192
 _vits_generator_config.duration_predictor.condition_backward = True
 _vits_generator_config.stochastic_duration_predictor.gin_channels = 192
@@ -67,6 +66,7 @@ def discriminator_loss(disc_real_outputs, disc_generated_outputs):
         loss += r_loss + g_loss
         r_losses.append(r_loss.item())
         g_losses.append(g_loss.item())
+    loss = loss / len(r_losses)
     return loss, r_losses, g_losses
 
 
@@ -76,11 +76,22 @@ def generator_loss(disc_outputs):
     gen_losses = []
     for dg in disc_outputs:
         dg = dg.float()
-        l = torch.mean(F.relu(-dg + 1.0))
+        l = torch.mean(-dg + 1.0)
         gen_losses.append(l)
         loss += l
-
+    loss = loss / len(gen_losses)
     return loss, gen_losses
+
+
+def feature_loss(fmap_r, fmap_g):
+    loss = 0
+    n_losses = 0
+    for dr, dg in zip(fmap_r, fmap_g, strict=False):
+        dr = dr.float().detach()
+        dg = dg.float()
+        loss += torch.mean(torch.abs(dr - dg))
+        n_losses += 1
+    return loss / max(n_losses, 1)
 
 
 @derive_config
