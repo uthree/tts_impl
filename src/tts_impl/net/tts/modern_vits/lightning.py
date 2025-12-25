@@ -86,13 +86,11 @@ def generator_loss(disc_outputs):
 
 def feature_loss(fmap_r, fmap_g):
     loss = 0
-    n_losses = 0
     for dr, dg in zip(fmap_r, fmap_g, strict=False):
         dr = dr.float().detach()
         dg = dg.float()
         loss += torch.mean(torch.abs(dr - dg))
-        n_losses += 1
-    return loss / max(n_losses, 1)
+    return loss
 
 
 @derive_config
