@@ -1,7 +1,6 @@
-from typing import Literal, TypeAlias
+from typing import Literal
 
 import torch
-from alias_free_torch import Activation1d as AliasFreeActivation1d
 from torch import nn as nn
 
 type ActivationName = Literal[
@@ -72,13 +71,7 @@ class SnakeBeta(nn.Module):
         return x
 
 
-def init_activation(
-    name: ActivationName = "lrelu", channels: int = 0, alias_free: bool = False
-) -> nn.Module:
-    if alias_free:
-        act = init_activation(name, channels=channels, alias_free=False)
-        act = AliasFreeActivation1d(act)
-        return act
+def init_activation(name: ActivationName = "lrelu", channels: int = 0) -> nn.Module:
     if name == "relu":
         return nn.ReLU()
     elif name == "lrelu":

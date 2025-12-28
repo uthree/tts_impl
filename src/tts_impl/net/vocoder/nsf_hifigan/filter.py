@@ -25,7 +25,6 @@ class NsfhifiganFilter(nn.Module):
         out_channels: int = 1,
         tanh_post_activation: bool = True,
         activation: str = "silu",
-        alias_free: bool = False,
         # option for speaker conditioning in TTS task
         gin_channels: int = 0,
     ):
@@ -86,9 +85,7 @@ class NsfhifiganFilter(nn.Module):
             c2 = upsample_initial_channels // (2 ** (i + 1))
             pad = u // 2
             k = u * 2
-            self.up_acts.append(
-                init_activation(activation, channels=c1, alias_free=alias_free)
-            )
+            self.up_acts.append(init_activation(activation, channels=c1))
             self.ups.append(weight_norm(nn.ConvTranspose1d(c1, c2, k, u, pad)))
             prod = int(np.prod(upsample_rates[(i + 1) :]))
             if prod != 1:
@@ -104,9 +101,18 @@ class NsfhifiganFilter(nn.Module):
             for _j, (k, d) in enumerate(
                 zip(resblock_kernel_sizes, resblock_dilations, strict=False)
             ):
-                self.resblocks.append(resblock(ch, k, d, alias_free=alias_free))
+                self.resblocks.append(
+                    resblock(
+                        ch,
+                        k,
+                        d,
+                    )
+                )
 
-        self.post_act = init_activation(activation, channels=ch, alias_free=alias_free)
+        self.post_act = init_activation(
+            activation,
+            channels=ch,
+        )
         self.conv_post = weight_norm(nn.Conv1d(ch, out_channels, 7, 1, padding=3))
 
         self.apply(init_weights)

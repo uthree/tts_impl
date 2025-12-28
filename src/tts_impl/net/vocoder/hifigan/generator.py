@@ -29,7 +29,6 @@ class ResBlock1(nn.Module):
         kernel_size: int = 3,
         dilations: list[int] = [1, 3, 5],
         activation: str = "lrelu",
-        alias_free: bool = False,
     ):
         super().__init__()
         self.convs1 = nn.ModuleList()
@@ -49,9 +48,7 @@ class ResBlock1(nn.Module):
                     )
                 )
             )
-            self.acts1.append(
-                init_activation(activation, channels, alias_free=alias_free)
-            )
+            self.acts1.append(init_activation(activation, channels))
             self.convs2.append(
                 weight_norm(
                     nn.Conv1d(
@@ -64,9 +61,7 @@ class ResBlock1(nn.Module):
                     )
                 )
             )
-            self.acts2.append(
-                init_activation(activation, channels, alias_free=alias_free)
-            )
+            self.acts2.append(init_activation(activation, channels))
 
     def forward(self, x):
         for c1, c2, a1, a2 in zip(
@@ -92,7 +87,6 @@ class ResBlock2(nn.Module):
         kernel_size: int = 3,
         dilations: list[int] = [1, 3],
         activation: str = "lrelu",
-        alias_free: bool = False,
     ):
         super().__init__()
         self.convs1 = nn.ModuleList()
@@ -110,9 +104,7 @@ class ResBlock2(nn.Module):
                     )
                 )
             )
-            self.acts1.append(
-                init_activation(activation, channels, alias_free=alias_free)
-            )
+            self.acts1.append(init_activation(activation, channels))
 
     def forward(self, x):
         for c1, a1 in zip(self.convs1, self.acts1, strict=False):
@@ -144,7 +136,6 @@ class HifiganGenerator(nn.Module, GanVocoderGenerator):
         tanh_post_activation: bool = True,
         gin_channels: int = 0,
         activation: str = "lrelu",
-        alias_free: bool = False,
         sample_rate: int = 22050,
     ):
         super().__init__()
@@ -190,9 +181,7 @@ class HifiganGenerator(nn.Module, GanVocoderGenerator):
             c2 = upsample_initial_channels // (2 ** (i + 1))
             p = u // 2
             k = u * 2
-            self.up_acts.append(
-                init_activation(activation, channels=c1, alias_free=alias_free)
-            )
+            self.up_acts.append(init_activation(activation, channels=c1))
             self.ups.append(weight_norm(nn.ConvTranspose1d(c1, c2, k, u, p)))
             self.frame_size *= u
 
@@ -202,9 +191,12 @@ class HifiganGenerator(nn.Module, GanVocoderGenerator):
             for _j, (k, d) in enumerate(
                 zip(resblock_kernel_sizes, resblock_dilations, strict=False)
             ):
-                self.resblocks.append(resblock(ch, k, d, alias_free=alias_free))
+                self.resblocks.append(resblock(ch, k, d))
 
-        self.post_act = init_activation(activation, channels=c2, alias_free=alias_free)
+        self.post_act = init_activation(
+            activation,
+            channels=c2,
+        )
         self.conv_post = weight_norm(nn.Conv1d(ch, out_channels, 7, 1, padding=3))
 
         self.apply(init_weights)
