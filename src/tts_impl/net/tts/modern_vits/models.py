@@ -56,7 +56,6 @@ class PitchEstimator(nn.Module):
         self.post = nn.Conv1d(hidden_channels, 2, 1)
 
     def forward(self, x, x_mask, g=None):
-        x = x.detach()
         x = self.pre(x) * x_mask
         x = self.wn.forward(x, x_mask, g=g)
         x_0, x_1 = self.post(x).chunk(2, dim=1)
@@ -175,6 +174,10 @@ class ModernvitsGenerator(nn.Module):
         # encode posterior
         z, m_q, logs_q, y_mask = self.enc_q(y, y_lengths, g=g)
 
+        # f0 estimation
+        f0_hat, uv_hat = self.pe(z, y_mask, g=g)
+        loss_f0 = f0_estimation_loss(f0_hat, f0, uv_hat)
+
         # flow
         z_p = self.flow(z, y_mask, g=g)
 
@@ -187,11 +190,6 @@ class ModernvitsGenerator(nn.Module):
         # expand prior
         m_p = self.lr(m_p, w, x_mask, y_mask)
         logs_p = self.lr(logs_p, w, x_mask, y_mask)
-        x_ = self.lr(x, w, x_mask, y_mask)
-
-        # f0 estimation
-        f0_hat, uv_hat = self.pe(x_, y_mask, g=g)
-        loss_f0 = f0_estimation_loss(f0_hat, f0, uv_hat)
 
         # slice
         z_slice, ids_slice = commons.rand_slice_segments(
@@ -262,27 +260,25 @@ class ModernvitsGenerator(nn.Module):
         # expand prior
         m_p = self.lr(m_p, w, x_mask, y_mask)
         logs_p = self.lr(logs_p, w, x_mask, y_mask)
-        x_ = self.lr(x, w, x_mask, y_mask)
-
-        # estimate pitch
-        f0, uv = self.pe(x_, y_mask, g=g)
-
         # re-sample from gaussian distribution.
         z_p = m_p + torch.randn_like(m_p) * torch.exp(logs_p) * noise_scale
 
         # flow
         z = self.flow(z_p, y_mask, g=g, reverse=True)
 
+        # estimate pitch
+        f0, uv = self.pe(z, y_mask, g=g)
+
         # synthesize
         o = self.dec((z * y_mask)[:, :, :max_len], f0=f0, uv=uv, g=g)
         return o
 
-    def voice_conversion(self, y, y_lengths, sid_src, sid_tgt):
-        assert self.n_speakers > 0, "n_speakers have to be larger than 0."
-        g_src = self.emb_g(sid_src).unsqueeze(-1)
-        g_tgt = self.emb_g(sid_tgt).unsqueeze(-1)
-        z, m_q, logs_q, y_mask = self.enc_q(y, y_lengths, g=g_src)
-        z_p = self.flow(z, y_mask, g=g_src)
-        z_hat = self.flow(z_p, y_mask, g=g_tgt, reverse=True)
-        o_hat = self.dec(z_hat * y_mask, g=g_tgt)
-        return o_hat, y_mask, (z, z_p, z_hat)
+    # def voice_conversion(self, y, y_lengths, sid_src, sid_tgt):
+    #    assert self.n_speakers > 0, "n_speakers have to be larger than 0."
+    #    g_src = self.emb_g(sid_src).unsqueeze(-1)
+    #    g_tgt = self.emb_g(sid_tgt).unsqueeze(-1)
+    #    z, m_q, logs_q, y_mask = self.enc_q(y, y_lengths, g=g_src)
+    #    z_p = self.flow(z, y_mask, g=g_src)
+    #    z_hat = self.flow(z_p, y_mask, g=g_tgt, reverse=True)
+    #    o_hat = self.dec(z_hat * y_mask, g=g_tgt)
+    #    return o_hat, y_mask, (z, z_p, z_hat)
