@@ -17,7 +17,6 @@ dependencies = [
     "pyworld>=0.3.5",
     "rich>=14.2.0",
     "rich-argparse>=1.7.1",
-    "rotary-embedding-torch>=0.8.9",
     "ruff>=0.8.0",
     "safetensors>=0.6.2",
     "scikit-learn>=1.7.2",

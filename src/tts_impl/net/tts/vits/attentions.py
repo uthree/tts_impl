@@ -3,7 +3,6 @@ import math
 from typing import Literal
 
 import torch
-from rotary_embedding_torch import RotaryEmbedding
 from torch import nn
 from torch.nn import functional as F
 
@@ -246,6 +245,31 @@ class Decoder(nn.Module):
         return x
 
 
+class RotaryPositionalEncoding(nn.Module):
+    def __init__(self, channels: int, n_heads: int, max_period: int = 10000):
+        super().__init__()
+        assert channels % n_heads == 0
+        self.d_head = channels // n_heads
+        assert self.d_head % 2 == 0
+        t = torch.arange(max_period)[None, None, :, None]
+        i = torch.arange(self.d_head // 2)[None, None, None, :]
+        theta = t * i / max_period
+        self.register_buffer("sin", theta.sin())
+        self.register_buffer("cos", theta.cos())
+
+    def forward(self, x):
+        # x: [b, n_h, t, d_kv]
+        d = self.d_head // 2
+        t = x.shape[2]
+        x1, x2 = x[..., :d], x[..., d:]
+        sin = self.sin[:, :, :t, :]
+        cos = self.cos[:, :, :t, :]
+        y1 = x1 * cos + x2 * sin
+        y2 = x1 * (-sin) + x2 * cos
+        y = torch.cat([y1, y2], dim=3)
+        return y
+
+
 class MultiHeadAttention(nn.Module):
     def __init__(
         self,
@@ -308,7 +332,7 @@ class MultiHeadAttention(nn.Module):
                 self.conv_k.bias.copy_(self.conv_q.bias)
 
         if self.rotary_pos_emb:
-            self.rope_module = RotaryEmbedding(channels // n_heads, use_xpos=True)
+            self.rope_module = RotaryPositionalEncoding(channels, n_heads)
 
     def forward(self, x, c, attn_mask=None):
         q = self.conv_q(x)
@@ -331,7 +355,8 @@ class MultiHeadAttention(nn.Module):
             assert t_s == t_t, (
                 "Rotary Positional Embeddings is only available for self-attention."
             )
-            query, key = self.rope_module.rotate_queries_and_keys(query, key, seq_dim=2)
+            query = self.rope_module(query)
+            key = self.rope_module(key)
         scores = torch.matmul(query / math.sqrt(self.k_channels), key.transpose(-2, -1))
         if self.window_size is not None:
             assert t_s == t_t, (
