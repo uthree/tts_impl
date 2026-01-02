@@ -30,6 +30,7 @@ class Modernvits(Recipe):
         sample_rate: int = 22050,
         frame_size: int = 256,
         transcriptions_filename: str = "transcripts_utf8.txt",
+        max_frames: int = 1000,
     ):
         preprocess = Preprocessor()
         g2p = Grapheme2Phoneme({"ja": PyopenjtalkG2P()})
@@ -40,7 +41,7 @@ class Modernvits(Recipe):
                 language="ja",
                 transcriptions_filename=transcriptions_filename,
                 concatenate=True,
-                max_length=256000,
+                max_length=max_frames * frame_size,
                 filename_blacklist=["falset", "whisper"],
             )
         )
@@ -50,19 +51,26 @@ class Modernvits(Recipe):
                 g2p,
             )
         )
-        preprocess.with_extractor(PitchEstimation(frame_size, algorithm="fcpe"))
-        preprocess.with_extractor(WaveformLengthExtractor(frame_size, max_frames=1000))
+        preprocess.with_extractor(
+            WaveformLengthExtractor(frame_size, max_frames=max_frames)
+        )
         preprocess.with_writer(TTSCacheWriter("dataset_cache"))
         preprocess.run()
 
     def prepare_datamodule(
-        self, root_dir: str = "dataset_cache", batch_size: int = 16
+        self,
+        root_dir: str = "dataset_cache",
+        batch_size: int = 16,
+        frame_size: int = 256,
+        max_frames: int = 1000,
     ) -> LightningDataModule:
         datamodule = TTSDataModule(
             root=root_dir,
             batch_size=batch_size,
             num_workers=1,
-            sizes={"waveform": 256000, "f0": 1000},
+            sizes={
+                "waveform": frame_size * max_frames,
+            },
         )
         return datamodule
 
