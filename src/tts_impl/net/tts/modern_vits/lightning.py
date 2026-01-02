@@ -1,5 +1,6 @@
 import lightning as L
 import torch
+from sympy.logic import false
 from torch import nn as nn
 from torch import optim as optim
 from torch.nn import functional as F
@@ -7,6 +8,9 @@ from torch.optim.lr_scheduler import StepLR
 
 from tts_impl.net.tts.vits.commons import slice_segments
 from tts_impl.net.tts.vits.losses import (
+    discriminator_loss,
+    feature_loss,
+    generator_loss,
     kl_loss,
 )
 from tts_impl.net.vocoder.hifigan import HifiganDiscriminator
@@ -23,7 +27,6 @@ _vits_discriminator_config.mpd.channels_max = 256
 _vits_discriminator_config.mpd.periods = [1, 2, 3, 5, 7, 11, 13]
 _vits_discriminator_config.mrsd.hop_size = [120, 240, 50]
 _vits_discriminator_config.mrsd.n_fft = [1024, 2048, 512]
-
 _vits_generator_config = ModernvitsGenerator.Config()
 _vits_generator_config.posterior_encoder.gin_channels = 192
 _vits_generator_config.text_encoder.gin_channels = 192
@@ -42,51 +45,14 @@ _vits_generator_config.decoder.gin_channels = 192
 _vits_generator_config.decoder.in_channels = 192
 _vits_generator_config.decoder.gin_channels = 192
 _vits_generator_config.duration_predictor.gin_channels = 192
-_vits_generator_config.duration_predictor.input_backward = True
-_vits_generator_config.duration_predictor.condition_backward = True
+_vits_generator_config.duration_predictor.input_backward = False
+_vits_generator_config.duration_predictor.condition_backward = False
 _vits_generator_config.stochastic_duration_predictor.gin_channels = 192
-_vits_generator_config.stochastic_duration_predictor.condition_backward = True
+_vits_generator_config.stochastic_duration_predictor.condition_backward = False
 _vits_generator_config.flow.gin_channels = 192
 _vits_generator_config.use_dp = True
 _vits_generator_config.n_speakers = 1024
 _vits_generator_config.gin_channels = 192
-
-
-# Hinge loss
-def discriminator_loss(disc_real_outputs, disc_generated_outputs):
-    loss = 0
-    r_losses = []
-    g_losses = []
-    for dr, dg in zip(disc_real_outputs, disc_generated_outputs, strict=False):
-        dr = dr.float()
-        dg = dg.float()
-        r_loss = torch.mean(F.relu(-dr + 1.0))
-        g_loss = torch.mean(F.relu(dg + 1.0))
-        loss += r_loss + g_loss
-        r_losses.append(r_loss.item())
-        g_losses.append(g_loss.item())
-    return loss, r_losses, g_losses
-
-
-# Hinge loss
-def generator_loss(disc_outputs):
-    loss = 0
-    gen_losses = []
-    for dg in disc_outputs:
-        dg = dg.float()
-        l = torch.mean(-dg)
-        gen_losses.append(l)
-        loss += l
-    return loss, gen_losses
-
-
-def feature_loss(fmap_r, fmap_g):
-    loss = 0
-    for dr, dg in zip(fmap_r, fmap_g, strict=False):
-        dr = dr.float().detach()
-        dg = dg.float()
-        loss += torch.mean(torch.abs(dr - dg))
-    return loss
 
 
 @derive_config

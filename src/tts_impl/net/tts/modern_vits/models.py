@@ -19,20 +19,6 @@ from tts_impl.net.vocoder.hifigan import HifiganGenerator
 from tts_impl.utils.config import derive_config
 
 
-def safe_log(x):
-    return torch.log(torch.clamp(x, min=1e-6))
-
-
-def f0_estimation_loss(f0_hat, f0, uv_hat, uv=None):
-    if uv is None:
-        uv = (f0 > 20.0).float()
-    loss_f0 = ((safe_log(f0_hat) - safe_log(f0)).abs() * uv).sum() / (
-        uv.sum().clamp_min(1.0)
-    )
-    loss_uv = (uv_hat - uv).abs().mean()
-    return loss_f0 + loss_uv
-
-
 @derive_config
 class ModernvitsGenerator(nn.Module):
     def __init__(
