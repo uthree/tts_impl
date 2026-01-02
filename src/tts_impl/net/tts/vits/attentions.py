@@ -251,9 +251,10 @@ class RotaryPositionalEncoding(nn.Module):
         assert channels % n_heads == 0
         self.d_head = channels // n_heads
         assert self.d_head % 2 == 0
+        d_half = self.d_head // 2
         t = torch.arange(max_period)[None, None, :, None]
-        i = torch.arange(self.d_head // 2)[None, None, None, :]
-        theta = t * i / max_period
+        i = torch.arange(d_half)[None, None, None, :]
+        theta = t / (max_period ** (i / d_half))
         self.register_buffer("sin", theta.sin())
         self.register_buffer("cos", theta.cos())
 
