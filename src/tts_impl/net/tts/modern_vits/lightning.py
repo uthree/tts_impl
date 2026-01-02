@@ -76,7 +76,7 @@ def generator_loss(disc_outputs):
     gen_losses = []
     for dg in disc_outputs:
         dg = dg.float()
-        l = torch.mean(-dg + 1.0)
+        l = torch.mean(-dg)
         gen_losses.append(l)
         loss += l
     return loss, gen_losses
