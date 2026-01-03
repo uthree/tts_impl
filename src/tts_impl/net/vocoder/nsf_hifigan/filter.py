@@ -88,10 +88,10 @@ class NsfhifiganFilter(nn.Module):
             c2 = upsample_initial_channels // (2 ** (i + 1))
             pad = u // 2
             k = u * 2
-            lpf = LowPassFilter(c1) if lowpass_filter else nn.Identity()
-            self.up_lpfs.append(lpf)
             self.up_acts.append(init_activation(activation, channels=c1))
             self.ups.append(weight_norm(nn.ConvTranspose1d(c1, c2, k, u, pad)))
+            lpf = LowPassFilter(c1) if lowpass_filter else nn.Identity()
+            self.up_lpfs.append(lpf)
             prod = int(np.prod(upsample_rates[(i + 1) :]))
             if prod != 1:
                 self.source_convs.append(
@@ -143,9 +143,9 @@ class NsfhifiganFilter(nn.Module):
         x = x + self.source_convs[0](s)
 
         for i in range(self.num_upsamples):
-            x = self.up_lpfs[i](x)
             x = self.up_acts[i](x)
             x = self.ups[i](x)
+            x = self.up_lpfs[i](x)
             x = x + self.source_convs[i + 1](s)
             xs = None
             for j in range(self.num_kernels):

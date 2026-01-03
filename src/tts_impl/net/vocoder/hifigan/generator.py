@@ -242,10 +242,10 @@ class HifiganGenerator(nn.Module, GanVocoderGenerator):
             c2 = upsample_initial_channels // (2 ** (i + 1))
             p = u // 2
             k = u * 2
-            lpf = LowPassFilter(c1) if lowpass_filter else nn.Identity()
-            self.up_lpfs.append(lpf)
             self.up_acts.append(init_activation(activation, channels=c1))
             self.ups.append(weight_norm(nn.ConvTranspose1d(c1, c2, k, u, p)))
+            lpf = LowPassFilter(c2) if lowpass_filter else nn.Identity()
+            self.up_lpfs.append(lpf)
             self.frame_size *= u
 
         self.resblocks = nn.ModuleList()
@@ -281,9 +281,9 @@ class HifiganGenerator(nn.Module, GanVocoderGenerator):
         if g is not None:
             x = x + self.conv_cond(g)
         for i in range(self.num_upsamples):
-            x = self.up_lpfs[i](x)
             x = self.up_acts[i](x)
             x = self.ups[i](x)
+            x = self.up_lpfs[i](x)
             xs = None
             for j in range(self.num_kernels):
                 if xs is None:
