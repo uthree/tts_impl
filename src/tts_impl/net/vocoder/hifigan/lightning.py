@@ -29,11 +29,9 @@ class HifiganLightningModule(L.LightningModule):
         weight_feat: float = 1.0,
         weight_adv: float = 1.0,
         lr_decay: float = 0.999,
-        betas: list[float] = None,
+        betas: list[float] = [0.8, 0.99],
         lr: float = 2e-4,
     ):
-        if betas is None:
-            betas = [0.8, 0.99]
         super().__init__()
 
         self.automatic_optimization = False

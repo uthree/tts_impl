@@ -31,7 +31,7 @@ class LowPassFilter(nn.Module):
         kernel_size: int = 7,
     ):
         """
-        cutoff: 遮断周波数 (サンプリング周波数に対する比率 0.0 ~ 0.5)
+        cutoff: 遮断周波数 (サンプリング周波数に対する比率 0.0 ~ 1.0)
         kernel_size: カーネルサイズ (奇数を推奨)
         channels: 入力チャンネル数
         """
@@ -40,16 +40,8 @@ class LowPassFilter(nn.Module):
         if kernel_size % 2 == 0:
             kernel_size += 1  # 奇数に補正
 
-        # 時間軸の作成
-        t = torch.arange(-(kernel_size // 2), kernel_size // 2 + 1, dtype=torch.float32)
-
-        # Sinc関数の計算: 2 * fc * sinc(2 * fc * t)
-        # torch.sinc(x) は sin(pi * x) / (pi * x) を計算します
-        sinc_wave = 2 * cutoff * torch.sinc(2 * cutoff * t)
-
-        # 窓関数の適用 (Hamming窓)
-        window = torch.hamming_window(kernel_size)
-        kernel = sinc_wave * window
+        t = torch.linspace(-(kernel_size // 2), (kernel_size // 2), kernel_size)
+        kernel = torch.sinc(cutoff * t)
 
         # ゲインを1に正規化
         kernel = kernel / kernel.sum()
@@ -249,11 +241,7 @@ class HifiganGenerator(nn.Module, GanVocoderGenerator):
             k = u * 2
             self.up_acts.append(init_activation(activation, channels=c1))
             self.ups.append(weight_norm(nn.ConvTranspose1d(c1, c2, k, u, p)))
-            lpf = (
-                LowPassFilter(c2, cutoff=(1.0 / u), kernel_size=k + 1)
-                if lowpass_filter
-                else nn.Identity()
-            )
+            lpf = LowPassFilter(c2) if lowpass_filter else nn.Identity()
             self.up_lpfs.append(lpf)
             self.frame_size *= u
 
