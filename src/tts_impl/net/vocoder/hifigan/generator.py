@@ -28,7 +28,7 @@ class LowPassFilter(nn.Module):
         self,
         channels: int,
         cutoff: float = 0.25,
-        kernel_size: int = 11,
+        kernel_size: int = 7,
     ):
         """
         cutoff: 遮断周波数 (サンプリング周波数に対する比率 0.0 ~ 0.5)
