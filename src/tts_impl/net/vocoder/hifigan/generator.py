@@ -27,7 +27,7 @@ class LowPassFilter(nn.Module):
     def __init__(
         self,
         channels: int,
-        cutoff: float = 0.25,
+        cutoff: float = 0.5,
         kernel_size: int = 7,
     ):
         """
@@ -65,7 +65,12 @@ class LowPassFilter(nn.Module):
         # x shape: (batch_size, channels, length)
         # パディングしてサイズが変わらないようにする
         padding = self.kernel_size // 2
-        return F.conv1d(x, self.weight, padding=padding, groups=self.channels)
+        x = F.pad(x, (padding, padding), mode="replicate")
+        return F.conv1d(
+            x,
+            self.weight,
+            groups=self.channels,
+        )
 
 
 class ResBlock1(nn.Module):
@@ -244,7 +249,11 @@ class HifiganGenerator(nn.Module, GanVocoderGenerator):
             k = u * 2
             self.up_acts.append(init_activation(activation, channels=c1))
             self.ups.append(weight_norm(nn.ConvTranspose1d(c1, c2, k, u, p)))
-            lpf = LowPassFilter(c2) if lowpass_filter else nn.Identity()
+            lpf = (
+                LowPassFilter(c2, cutoff=(1.0 / u), kernel_size=k + 1)
+                if lowpass_filter
+                else nn.Identity()
+            )
             self.up_lpfs.append(lpf)
             self.frame_size *= u
 
