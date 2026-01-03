@@ -90,7 +90,11 @@ class NsfhifiganFilter(nn.Module):
             k = u * 2
             self.up_acts.append(init_activation(activation, channels=c1))
             self.ups.append(weight_norm(nn.ConvTranspose1d(c1, c2, k, u, pad)))
-            lpf = LowPassFilter(c2) if lowpass_filter else nn.Identity()
+            lpf = (
+                LowPassFilter(c2, cutoff=(0.5 / u), kernel_size=k)
+                if lowpass_filter
+                else nn.Identity()
+            )
             self.up_lpfs.append(lpf)
             prod = int(np.prod(upsample_rates[(i + 1) :]))
             if prod != 1:
@@ -117,6 +121,7 @@ class NsfhifiganFilter(nn.Module):
             channels=ch,
         )
         self.conv_post = weight_norm(nn.Conv1d(ch, out_channels, 7, 1, padding=3))
+        self.lpf_post = LowPassFilter(ch) if lowpass_filter else nn.Identity()
 
         self.apply(init_weights)
 
@@ -154,6 +159,7 @@ class NsfhifiganFilter(nn.Module):
                 else:
                     xs += self.resblocks[i * self.num_kernels + j](x)
             x = xs / self.num_kernels
+        x = self.lpf_post(x)
         x = self.post_act(x)
         x = self.conv_post(x)
         if self.tanh_post_activation:

@@ -241,7 +241,11 @@ class HifiganGenerator(nn.Module, GanVocoderGenerator):
             k = u * 2
             self.up_acts.append(init_activation(activation, channels=c1))
             self.ups.append(weight_norm(nn.ConvTranspose1d(c1, c2, k, u, p)))
-            lpf = LowPassFilter(c2) if lowpass_filter else nn.Identity()
+            lpf = (
+                LowPassFilter(c2, cutoff=(0.5 / u), kernel_size=k)
+                if lowpass_filter
+                else nn.Identity()
+            )
             self.up_lpfs.append(lpf)
             self.frame_size *= u
 
@@ -262,7 +266,7 @@ class HifiganGenerator(nn.Module, GanVocoderGenerator):
             channels=c2,
         )
         self.conv_post = weight_norm(nn.Conv1d(ch, out_channels, 7, 1, padding=3))
-
+        self.lpf_post = LowPassFilter(ch) if lowpass_filter else nn.Identity()
         self.apply(init_weights)
 
     def forward(self, x: torch.Tensor, g: torch.Tensor | None = None, *args, **kwargs):
@@ -288,6 +292,7 @@ class HifiganGenerator(nn.Module, GanVocoderGenerator):
                 else:
                     xs += self.resblocks[i * self.num_kernels + j](x)
             x = xs / self.num_kernels
+        x = self.lpf_post(x)
         x = self.post_act(x)
         x = self.conv_post(x)
         if self.tanh_post_activation:
