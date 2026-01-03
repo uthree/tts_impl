@@ -1,6 +1,7 @@
 # HiFi-GAN from https://arxiv.org/abs/2010.05646
 
 import torch
+import torch.nn.functional as F
 from torch import nn as nn
 from torch.nn.utils import remove_weight_norm
 from torch.nn.utils.parametrizations import weight_norm
@@ -22,6 +23,51 @@ def init_weights(m, mean=0.0, std=0.01):
         m.weight.data.normal_(mean, std)
 
 
+class LowPassFilter(nn.Module):
+    def __init__(
+        self,
+        channels: int,
+        cutoff: float = 0.25,
+        kernel_size: int = 11,
+    ):
+        """
+        cutoff: 遮断周波数 (サンプリング周波数に対する比率 0.0 ~ 0.5)
+        kernel_size: カーネルサイズ (奇数を推奨)
+        channels: 入力チャンネル数
+        """
+        super().__init__()
+
+        if kernel_size % 2 == 0:
+            kernel_size += 1  # 奇数に補正
+
+        # 時間軸の作成
+        t = torch.arange(-(kernel_size // 2), kernel_size // 2 + 1, dtype=torch.float32)
+
+        # Sinc関数の計算: 2 * fc * sinc(2 * fc * t)
+        # torch.sinc(x) は sin(pi * x) / (pi * x) を計算します
+        sinc_wave = 2 * cutoff * torch.sinc(2 * cutoff * t)
+
+        # 窓関数の適用 (Hamming窓)
+        window = torch.hamming_window(kernel_size)
+        kernel = sinc_wave * window
+
+        # ゲインを1に正規化
+        kernel = kernel / kernel.sum()
+
+        # Conv1d用に形状変更: (out_channels, in_channels/groups, kernel_size)
+        # depthwise convolutionを行うため、shapeは (channels, 1, kernel_size)
+        self.register_buffer("weight", kernel.view(1, 1, -1).repeat(channels, 1, 1))
+
+        self.kernel_size = kernel_size
+        self.channels = channels
+
+    def forward(self, x):
+        # x shape: (batch_size, channels, length)
+        # パディングしてサイズが変わらないようにする
+        padding = self.kernel_size // 2
+        return F.conv1d(x, self.weight, padding=padding, groups=self.channels)
+
+
 class ResBlock1(nn.Module):
     def __init__(
         self,
@@ -29,12 +75,17 @@ class ResBlock1(nn.Module):
         kernel_size: int = 3,
         dilations: list[int] = [1, 3, 5],
         activation: str = "lrelu",
+        lowpass_filter: bool = False,
     ):
         super().__init__()
         self.convs1 = nn.ModuleList()
         self.acts1 = nn.ModuleList()
         self.convs2 = nn.ModuleList()
         self.acts2 = nn.ModuleList()
+        if lowpass_filter:
+            self.lowpass_filter = LowPassFilter(channels)
+        else:
+            self.lowpass_filter = nn.Identity()
         for d in dilations:
             self.convs1.append(
                 weight_norm(
@@ -67,8 +118,10 @@ class ResBlock1(nn.Module):
         for c1, c2, a1, a2 in zip(
             self.convs1, self.convs2, self.acts1, self.acts2, strict=False
         ):
-            xt = a1(x)
+            xt = self.lowpass_filter(x)
+            xt = a1(xt)
             xt = c1(xt)
+            xt = self.lowpass_filter(x)
             xt = a2(xt)
             xt = c2(xt)
             x = x + xt
@@ -87,10 +140,15 @@ class ResBlock2(nn.Module):
         kernel_size: int = 3,
         dilations: list[int] = [1, 3],
         activation: str = "lrelu",
+        lowpass_filter: bool = False,
     ):
         super().__init__()
         self.convs1 = nn.ModuleList()
         self.acts1 = nn.ModuleList()
+        if lowpass_filter:
+            self.lowpass_filter = LowPassFilter(channels)
+        else:
+            self.lowpass_filter = nn.Identity()
         for d in dilations:
             self.convs1.append(
                 weight_norm(
@@ -108,7 +166,8 @@ class ResBlock2(nn.Module):
 
     def forward(self, x):
         for c1, a1 in zip(self.convs1, self.acts1, strict=False):
-            xt = a1(x)
+            xt = self.lowpass_filter(xt)
+            xt = a1(xt)
             xt = c1(xt)
             x = x + xt
         return x
@@ -132,6 +191,7 @@ class HifiganGenerator(nn.Module, GanVocoderGenerator):
         resblock_kernel_sizes: list[int] = [3, 7, 11],
         resblock_dilations: list[list[int]] = [[1, 3, 5], [1, 3, 5], [1, 3, 5]],
         upsample_rates: list[int] = [8, 8, 2, 2],
+        lowpass_filter: bool = False,
         out_channels: int = 1,
         tanh_post_activation: bool = True,
         gin_channels: int = 0,
@@ -175,12 +235,15 @@ class HifiganGenerator(nn.Module, GanVocoderGenerator):
             self.conv_cond = None
 
         self.ups = nn.ModuleList()
+        self.up_lpfs = nn.ModuleList()
         self.up_acts = nn.ModuleList()
         for i, u in enumerate(upsample_rates):
             c1 = upsample_initial_channels // (2**i)
             c2 = upsample_initial_channels // (2 ** (i + 1))
             p = u // 2
             k = u * 2
+            lpf = LowPassFilter(c1) if lowpass_filter else nn.Identity()
+            self.up_lpfs.append(lpf)
             self.up_acts.append(init_activation(activation, channels=c1))
             self.ups.append(weight_norm(nn.ConvTranspose1d(c1, c2, k, u, p)))
             self.frame_size *= u
@@ -191,7 +254,11 @@ class HifiganGenerator(nn.Module, GanVocoderGenerator):
             for _j, (k, d) in enumerate(
                 zip(resblock_kernel_sizes, resblock_dilations, strict=False)
             ):
-                self.resblocks.append(resblock(ch, k, d))
+                self.resblocks.append(
+                    resblock(
+                        ch, k, d, activation=activation, lowpass_filter=lowpass_filter
+                    )
+                )
 
         self.post_act = init_activation(
             activation,
@@ -214,6 +281,7 @@ class HifiganGenerator(nn.Module, GanVocoderGenerator):
         if g is not None:
             x = x + self.conv_cond(g)
         for i in range(self.num_upsamples):
+            x = self.up_lpfs[i](x)
             x = self.up_acts[i](x)
             x = self.ups[i](x)
             xs = None

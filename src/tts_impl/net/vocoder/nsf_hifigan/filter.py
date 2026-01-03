@@ -4,6 +4,7 @@ from torch import nn as nn
 from torch.nn.utils.parametrizations import weight_norm
 
 from tts_impl.net.vocoder.hifigan.generator import (
+    LowPassFilter,
     ResBlock1,
     ResBlock2,
     init_activation,
@@ -22,6 +23,7 @@ class NsfhifiganFilter(nn.Module):
         resblock_kernel_sizes: list[int] = [3, 7, 11],
         resblock_dilations: list[list[int]] = [[1, 3, 5], [1, 3, 5], [1, 3, 5]],
         upsample_rates: list[int] = [8, 8, 2, 2],
+        lowpass_filter: bool = True,
         out_channels: int = 1,
         tanh_post_activation: bool = True,
         activation: str = "silu",
@@ -66,6 +68,7 @@ class NsfhifiganFilter(nn.Module):
         self.frame_size = int(np.prod(upsample_rates))
 
         self.ups = nn.ModuleList()
+        self.up_lpfs = nn.ModuleList()
         self.up_acts = nn.ModuleList()
         self.source_convs = nn.ModuleList()
         self.source_convs.append(
@@ -85,6 +88,8 @@ class NsfhifiganFilter(nn.Module):
             c2 = upsample_initial_channels // (2 ** (i + 1))
             pad = u // 2
             k = u * 2
+            lpf = LowPassFilter(c1) if lowpass_filter else nn.Identity()
+            self.up_lpfs.append(lpf)
             self.up_acts.append(init_activation(activation, channels=c1))
             self.ups.append(weight_norm(nn.ConvTranspose1d(c1, c2, k, u, pad)))
             prod = int(np.prod(upsample_rates[(i + 1) :]))
@@ -103,9 +108,7 @@ class NsfhifiganFilter(nn.Module):
             ):
                 self.resblocks.append(
                     resblock(
-                        ch,
-                        k,
-                        d,
+                        ch, k, d, activation=activation, lowpass_filter=lowpass_filter
                     )
                 )
 
@@ -140,6 +143,7 @@ class NsfhifiganFilter(nn.Module):
         x = x + self.source_convs[0](s)
 
         for i in range(self.num_upsamples):
+            x = self.up_lpfs[i](x)
             x = self.up_acts[i](x)
             x = self.ups[i](x)
             x = x + self.source_convs[i + 1](s)
