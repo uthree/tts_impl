@@ -111,7 +111,7 @@ class HomomorphicVocoder(nn.Module):
         env = self.expand_spectral_envelope(spectral_envelope)
 
         # apply framewise FIR filter
-        voi_stft = imp_stft * estimate_minimum_phase(per * env) + noi_stft * ap * env
+        voi_stft = imp_stft * per * env + noi_stft * ap * env
 
         # inverse STFT
         voi = torch.istft(
