@@ -91,7 +91,7 @@ class NsfhifiganFilter(nn.Module):
             self.up_acts.append(init_activation(activation, channels=c1))
             self.ups.append(weight_norm(nn.ConvTranspose1d(c1, c2, k, u, pad)))
             lpf = (
-                LowPassFilter(c2, cutoff=(0.5 / u), kernel_size=k)
+                LowPassFilter(c2, cutoff=(1.0 / u), kernel_size=k)
                 if lowpass_filter
                 else nn.Identity()
             )

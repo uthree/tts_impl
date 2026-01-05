@@ -44,7 +44,7 @@ class LowPassFilter(nn.Module):
         kernel = torch.sinc(cutoff * t)
 
         # ゲインを1に正規化
-        kernel = kernel / kernel.sum()
+        kernel = kernel / (kernel.square().sum() + 1e-8).sqrt()
 
         # Conv1d用に形状変更: (out_channels, in_channels/groups, kernel_size)
         # depthwise convolutionを行うため、shapeは (channels, 1, kernel_size)
@@ -242,7 +242,7 @@ class HifiganGenerator(nn.Module, GanVocoderGenerator):
             self.up_acts.append(init_activation(activation, channels=c1))
             self.ups.append(weight_norm(nn.ConvTranspose1d(c1, c2, k, u, p)))
             lpf = (
-                LowPassFilter(c2, cutoff=(0.5 / u), kernel_size=k)
+                LowPassFilter(c2, cutoff=(1.0 / u), kernel_size=k)
                 if lowpass_filter
                 else nn.Identity()
             )
