@@ -108,7 +108,9 @@ class Recipe:
         if ckpt_path.exists():
             print(f"Ckeckpoint {ckpt_path} found, loading ckeckpoint")
             model = self.TargetModule.load_from_checkpoint(
-                ckpt_path, map_location="cpu"
+                ckpt_path,
+                map_location="cpu",
+                **model_config,
             )
         else:
             print(f"Ckeckpoint {ckpt_path} is not found. initializing model")
