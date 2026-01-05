@@ -27,7 +27,7 @@ class LowPassFilter(nn.Module):
     def __init__(
         self,
         channels: int,
-        cutoff: float = 0.5,
+        cutoff: float = 0.25,
         kernel_size: int = 7,
     ):
         """
@@ -163,7 +163,7 @@ class ResBlock2(nn.Module):
 
     def forward(self, x):
         for c1, a1 in zip(self.convs1, self.acts1, strict=False):
-            xt = self.lowpass_filter(xt)
+            xt = self.lowpass_filter(x)
             xt = a1(xt)
             xt = c1(xt)
             x = x + xt
@@ -241,11 +241,7 @@ class HifiganGenerator(nn.Module, GanVocoderGenerator):
             k = u * 2
             self.up_acts.append(init_activation(activation, channels=c1))
             self.ups.append(weight_norm(nn.ConvTranspose1d(c1, c2, k, u, p)))
-            lpf = (
-                LowPassFilter(c2, cutoff=(1.0 / u), kernel_size=k)
-                if lowpass_filter
-                else nn.Identity()
-            )
+            lpf = LowPassFilter(c2) if lowpass_filter else nn.Identity()
             self.up_lpfs.append(lpf)
             self.frame_size *= u
 

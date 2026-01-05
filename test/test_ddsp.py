@@ -15,14 +15,16 @@ from tts_impl.net.vocoder.ddsp import HomomorphicVocoder
 
 @pytest.mark.parametrize("batch_size", [1, 4])
 @pytest.mark.parametrize("num_frames", [100, 200])
-@pytest.mark.parametrize("post_filter_length", [0, 2048, 1024])
 @pytest.mark.parametrize("n_fft", [1024])
+@pytest.mark.parametrize("d_periodicity", [16])
+@pytest.mark.parametrize("d_spectral_envelope", [80])
 @pytest.mark.parametrize("hop_length", [256])
 def test_subtractive_vocoder(
     batch_size: int,
     num_frames: int,
-    post_filter_length: int,
     n_fft: int,
+    d_periodicity: int,
+    d_spectral_envelope: int,
     hop_length: int,
 ):
     sample_rate = 24000
@@ -31,14 +33,11 @@ def test_subtractive_vocoder(
         n_fft=n_fft,
         hop_length=hop_length,
     )
-    fft_bin = n_fft // 2 + 1
+
     f0 = torch.ones(batch_size, num_frames) * 440.0
-    per = torch.rand(batch_size, fft_bin, num_frames)
-    noi = torch.rand(batch_size, fft_bin, num_frames)
-    pf = (
-        torch.randn(batch_size, post_filter_length) if post_filter_length != 0 else None
-    )
-    o = vocoder.forward(f0, per, noi, rev=pf)
+    per = torch.rand(batch_size, d_periodicity, num_frames)
+    env = torch.rand(batch_size, d_spectral_envelope, num_frames)
+    o = vocoder.forward(f0, per, env)
     assert o.shape[0] == batch_size
     assert o.shape[1] == num_frames * hop_length
 

@@ -15,11 +15,13 @@ from tts_impl.net.vocoder.hifigan.lightning import (
 
 
 @pytest.mark.parametrize("activation", ["lrelu", "silu", "gelu", "snake", "snakebeta"])
-@pytest.mark.parametrize("alias_free", [True, False])
+@pytest.mark.parametrize("lowpass_filter", [True, False])
 @pytest.mark.parametrize("resblock_type", ["1", "2"])
-def test_hifigan_generator(activation, alias_free, resblock_type):
+def test_hifigan_generator(activation, lowpass_filter, resblock_type):
     G = HifiganGenerator(
-        activation=activation, alias_free=alias_free, resblock_type=resblock_type
+        activation=activation,
+        lowpass_filter=lowpass_filter,
+        resblock_type=resblock_type,
     )
     mel = torch.randn(2, 80, 32)
     wf = G(mel)

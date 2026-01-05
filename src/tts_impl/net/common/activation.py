@@ -23,7 +23,7 @@ class Snake(nn.Module):
         self.eps = eps
 
         if logscale:
-            self.alpha = nn.Parameter(torch.zeros(channels) + alpha)
+            self.alpha = nn.Parameter(torch.zeros(channels))
         else:
             self.alpha = nn.Parameter(torch.ones(channels) * alpha)
 
@@ -52,8 +52,8 @@ class SnakeBeta(nn.Module):
         self.eps = eps
 
         if logscale:
-            self.alpha = nn.Parameter(torch.zeros(channels) + alpha)
-            self.beta = nn.Parameter(torch.zeros(channels) + beta)
+            self.alpha = nn.Parameter(torch.zeros(channels))
+            self.beta = nn.Parameter(torch.zeros(channels))
         else:
             self.alpha = nn.Parameter(torch.ones(channels) * alpha)
             self.beta = nn.Parameter(torch.ones(channels) * beta)

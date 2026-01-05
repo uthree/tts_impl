@@ -21,10 +21,10 @@ from .models import ModernvitsGenerator
 
 _vits_discriminator_config = HifiganDiscriminator.Config()
 _vits_discriminator_config.msd.scales = []
-_vits_discriminator_config.mpd.num_layers = 4
+_vits_discriminator_config.mpd.num_layers = 5
 _vits_discriminator_config.mpd.channels_mul = 2
 _vits_discriminator_config.mpd.channels_max = 256
-_vits_discriminator_config.mpd.periods = [1, 2, 3, 5, 7, 11, 13]
+_vits_discriminator_config.mpd.periods = [1, 2, 3, 5, 7, 11]
 _vits_discriminator_config.mrsd.hop_size = [120, 240, 50]
 _vits_discriminator_config.mrsd.n_fft = [1024, 2048, 512]
 _vits_generator_config = ModernvitsGenerator.Config()
@@ -41,10 +41,10 @@ _vits_generator_config.text_encoder.activation = "silu"
 _vits_generator_config.text_encoder.share_relative_attn_bias = False
 _vits_generator_config.posterior_encoder.gin_channels = 192
 _vits_generator_config.posterior_encoder.n_layers = 8
-_vits_generator_config.decoder.activation = "snakebeta"
+_vits_generator_config.decoder.activation = "silu"
 _vits_generator_config.decoder.gin_channels = 192
 _vits_generator_config.decoder.in_channels = 192
-_vits_generator_config.decoder.lowpass_filter = False
+_vits_generator_config.decoder.lowpass_filter = True
 _vits_generator_config.duration_predictor.gin_channels = 192
 _vits_generator_config.duration_predictor.input_backward = False
 _vits_generator_config.duration_predictor.condition_backward = False

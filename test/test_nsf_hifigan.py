@@ -6,18 +6,18 @@ from tts_impl.net.vocoder.nsf_hifigan import NsfhifiganGenerator
 
 
 @pytest.mark.parametrize("activation", ["lrelu", "silu", "gelu", "snake", "snakebeta"])
-@pytest.mark.parametrize("alias_free", [True, False])
+@pytest.mark.parametrize("lowpass_filter", [True, False])
 @pytest.mark.parametrize("batch_size", [1, 4])
 @pytest.mark.parametrize("in_channels", [40, 80])
 @pytest.mark.parametrize("num_frames", [32, 16])
 def test_nsf_hifigan_generator(
-    activation, alias_free, batch_size, in_channels, num_frames
+    activation, lowpass_filter, batch_size, in_channels, num_frames
 ):
     frame_size = 256
     G = NsfhifiganGenerator(
         filter_module={
             "activation": activation,
-            "alias_free": alias_free,
+            "lowpass_filter": lowpass_filter,
             "in_channels": in_channels,
         }
     )
