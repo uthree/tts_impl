@@ -23,7 +23,7 @@ class NsfhifiganFilter(nn.Module):
         resblock_kernel_sizes: list[int] = [3, 7, 11],
         resblock_dilations: list[list[int]] = [[1, 3, 5], [1, 3, 5], [1, 3, 5]],
         upsample_rates: list[int] = [8, 8, 2, 2],
-        lowpass_filter: bool = True,
+        lowpass_filter: bool = False,
         out_channels: int = 1,
         tanh_post_activation: bool = True,
         activation: str = "silu",

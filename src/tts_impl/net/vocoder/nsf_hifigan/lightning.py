@@ -26,12 +26,22 @@ def normalize(x: torch.Tensor):
     return x
 
 
+_discriminator_config = HifiganDiscriminator.Config()
+_discriminator_config.msd.scales = []
+_discriminator_config.mpd.num_layers = 5
+_discriminator_config.mpd.channels_mul = 2
+_discriminator_config.mpd.channels_max = 256
+_discriminator_config.mpd.periods = [1, 2, 3, 5, 7, 11]
+_discriminator_config.mrsd.hop_size = [120, 240, 50]
+_discriminator_config.mrsd.n_fft = [1024, 2048, 512]
+
+
 @derive_config
 class NsfhifiganLightningModule(LightningModule):
     def __init__(
         self,
         generator: NsfhifiganGenerator.Config = NsfhifiganGenerator.Config(),
-        discriminator: HifiganDiscriminator.Config = HifiganDiscriminator.Config(),
+        discriminator: HifiganDiscriminator.Config = _discriminator_config,
         mel: LogMelSpectrogram.Config = LogMelSpectrogram.Config(),
         use_acoustic_features: bool = False,
         weight_mel: float = 45.0,
@@ -119,9 +129,9 @@ class NsfhifiganLightningModule(LightningModule):
         else:
             acoustic_features = self.spectrogram(waveform.sum(1)).detach()
 
-        spec_real = self.spectrogram(waveform.sum(1)).detach()
+        spec_real = self.spectrogram(waveform.sum(1)).detach().flip(1)
         fake = self.generator(acoustic_features, f0=f0, uv=uv)
-        spec_fake = self.spectrogram(fake.sum(1))
+        spec_fake = self.spectrogram(fake.sum(1)).flip(1)
         loss_mel = F.l1_loss(spec_fake, spec_real)
         self.log("validation loss/mel spectrogram", loss_mel)
 

@@ -20,23 +20,36 @@ class NsfHifigan(Recipe):
         self,
         target_dir: str = "your_target_dir",
         sample_rate: int = 22050,
-        length: int = 8192,
+        frame_size: int = 256,
+        transcriptions_filename: str = "transcripts_utf8.txt",
+        num_frames: int = 32,
     ):
         preprocess = Preprocessor()
         preprocess.with_collector(
-            AudioDataCollector(target_dir, sample_rate=sample_rate, length=length)
+            AudioDataCollector(
+                target_dir, sample_rate=sample_rate, length=frame_size * num_frames
+            )
         )
         # mixdown
         preprocess.with_extractor(Mixdown())
-        preprocess.with_extractor(PitchEstimation(frame_size=256, algorithm="fcpe"))
+        preprocess.with_extractor(
+            PitchEstimation(frame_size=frame_size, algorithm="fcpe")
+        )
         preprocess.with_writer(AudioCacheWriter("dataset_cache"))
         preprocess.run()
 
     def prepare_datamodule(
-        self, root_dir: str = "dataset_cache", batch_size: int = 16
+        self,
+        root_dir: str = "dataset_cache",
+        batch_size: int = 16,
+        frame_size: int = 256,
+        num_frames: int = 32,
     ) -> LightningDataModule:
         datamodule = AudioDataModule(
-            root=root_dir, batch_size=batch_size, num_workers=1
+            root=root_dir,
+            batch_size=batch_size,
+            num_workers=1,
+            sizes={"waveform": frame_size * num_frames, "f0": num_frames},
         )
         return datamodule
 
