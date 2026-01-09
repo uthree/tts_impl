@@ -4,7 +4,6 @@ from torch import nn as nn
 from torch.nn.utils.parametrizations import weight_norm
 
 from tts_impl.net.vocoder.hifigan.generator import (
-    LowPassFilter,
     ResBlock1,
     ResBlock2,
     init_activation,
@@ -68,7 +67,6 @@ class NsfhifiganFilter(nn.Module):
         self.frame_size = int(np.prod(upsample_rates))
 
         self.ups = nn.ModuleList()
-        self.up_lpfs = nn.ModuleList()
         self.up_acts = nn.ModuleList()
         self.source_convs = nn.ModuleList()
         self.source_convs.append(
@@ -90,8 +88,6 @@ class NsfhifiganFilter(nn.Module):
             k = u * 2
             self.up_acts.append(init_activation(activation, channels=c1))
             self.ups.append(weight_norm(nn.ConvTranspose1d(c1, c2, k, u, pad)))
-            lpf = LowPassFilter(c2) if lowpass_filter else nn.Identity()
-            self.up_lpfs.append(lpf)
             prod = int(np.prod(upsample_rates[(i + 1) :]))
             if prod != 1:
                 self.source_convs.append(
@@ -103,7 +99,7 @@ class NsfhifiganFilter(nn.Module):
         self.resblocks = nn.ModuleList()
         for i in range(len(self.ups)):
             ch = upsample_initial_channels // (2 ** (i + 1))
-            for _j, (k, d) in enumerate(
+            for j, (k, d) in enumerate(
                 zip(resblock_kernel_sizes, resblock_dilations, strict=False)
             ):
                 self.resblocks.append(
@@ -117,7 +113,6 @@ class NsfhifiganFilter(nn.Module):
             channels=ch,
         )
         self.conv_post = weight_norm(nn.Conv1d(ch, out_channels, 7, 1, padding=3))
-        self.lpf_post = LowPassFilter(ch) if lowpass_filter else nn.Identity()
 
         self.apply(init_weights)
 
@@ -146,7 +141,6 @@ class NsfhifiganFilter(nn.Module):
         for i in range(self.num_upsamples):
             x = self.up_acts[i](x)
             x = self.ups[i](x)
-            x = self.up_lpfs[i](x)
             x = x + self.source_convs[i + 1](s)
             xs = None
             for j in range(self.num_kernels):
@@ -155,7 +149,6 @@ class NsfhifiganFilter(nn.Module):
                 else:
                     xs += self.resblocks[i * self.num_kernels + j](x)
             x = xs / self.num_kernels
-        x = self.lpf_post(x)
         x = self.post_act(x)
         x = self.conv_post(x)
         if self.tanh_post_activation:

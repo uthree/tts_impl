@@ -23,48 +23,6 @@ def init_weights(m, mean=0.0, std=0.01):
         m.weight.data.normal_(mean, std)
 
 
-class LowPassFilter(nn.Module):
-    def __init__(
-        self,
-        channels: int,
-        cutoff: float = 0.25,
-        kernel_size: int = 7,
-    ):
-        """
-        cutoff: 遮断周波数 (サンプリング周波数に対する比率 0.0 ~ 1.0)
-        kernel_size: カーネルサイズ (奇数を推奨)
-        channels: 入力チャンネル数
-        """
-        super().__init__()
-
-        if kernel_size % 2 == 0:
-            kernel_size += 1  # 奇数に補正
-
-        t = torch.linspace(-(kernel_size // 2), (kernel_size // 2), kernel_size)
-        kernel = torch.sinc(cutoff * t)
-
-        # ゲインを1に正規化
-        kernel = kernel / (kernel.square().sum() + 1e-8).sqrt()
-
-        # Conv1d用に形状変更: (out_channels, in_channels/groups, kernel_size)
-        # depthwise convolutionを行うため、shapeは (channels, 1, kernel_size)
-        self.register_buffer("weight", kernel.view(1, 1, -1).repeat(channels, 1, 1))
-
-        self.kernel_size = kernel_size
-        self.channels = channels
-
-    def forward(self, x):
-        # x shape: (batch_size, channels, length)
-        # パディングしてサイズが変わらないようにする
-        padding = self.kernel_size // 2
-        x = F.pad(x, (padding, padding), mode="replicate")
-        return F.conv1d(
-            x,
-            self.weight,
-            groups=self.channels,
-        )
-
-
 class ResBlock1(nn.Module):
     def __init__(
         self,
@@ -79,10 +37,6 @@ class ResBlock1(nn.Module):
         self.acts1 = nn.ModuleList()
         self.convs2 = nn.ModuleList()
         self.acts2 = nn.ModuleList()
-        if lowpass_filter:
-            self.lowpass_filter = LowPassFilter(channels)
-        else:
-            self.lowpass_filter = nn.Identity()
         for d in dilations:
             self.convs1.append(
                 weight_norm(
@@ -115,10 +69,8 @@ class ResBlock1(nn.Module):
         for c1, c2, a1, a2 in zip(
             self.convs1, self.convs2, self.acts1, self.acts2, strict=False
         ):
-            xt = self.lowpass_filter(x)
-            xt = a1(xt)
+            xt = a1(x)
             xt = c1(xt)
-            xt = self.lowpass_filter(x)
             xt = a2(xt)
             xt = c2(xt)
             x = x + xt
@@ -142,10 +94,6 @@ class ResBlock2(nn.Module):
         super().__init__()
         self.convs1 = nn.ModuleList()
         self.acts1 = nn.ModuleList()
-        if lowpass_filter:
-            self.lowpass_filter = LowPassFilter(channels)
-        else:
-            self.lowpass_filter = nn.Identity()
         for d in dilations:
             self.convs1.append(
                 weight_norm(
@@ -163,8 +111,7 @@ class ResBlock2(nn.Module):
 
     def forward(self, x):
         for c1, a1 in zip(self.convs1, self.acts1, strict=False):
-            xt = self.lowpass_filter(x)
-            xt = a1(xt)
+            xt = a1(x)
             xt = c1(xt)
             x = x + xt
         return x
@@ -232,7 +179,6 @@ class HifiganGenerator(nn.Module, GanVocoderGenerator):
             self.conv_cond = None
 
         self.ups = nn.ModuleList()
-        self.up_lpfs = nn.ModuleList()
         self.up_acts = nn.ModuleList()
         for i, u in enumerate(upsample_rates):
             c1 = upsample_initial_channels // (2**i)
@@ -241,8 +187,6 @@ class HifiganGenerator(nn.Module, GanVocoderGenerator):
             k = u * 2
             self.up_acts.append(init_activation(activation, channels=c1))
             self.ups.append(weight_norm(nn.ConvTranspose1d(c1, c2, k, u, p)))
-            lpf = LowPassFilter(c2) if lowpass_filter else nn.Identity()
-            self.up_lpfs.append(lpf)
             self.frame_size *= u
 
         self.resblocks = nn.ModuleList()
@@ -262,7 +206,6 @@ class HifiganGenerator(nn.Module, GanVocoderGenerator):
             channels=c2,
         )
         self.conv_post = weight_norm(nn.Conv1d(ch, out_channels, 7, 1, padding=3))
-        self.lpf_post = LowPassFilter(ch) if lowpass_filter else nn.Identity()
         self.apply(init_weights)
 
     def forward(self, x: torch.Tensor, g: torch.Tensor | None = None, *args, **kwargs):
@@ -280,7 +223,6 @@ class HifiganGenerator(nn.Module, GanVocoderGenerator):
         for i in range(self.num_upsamples):
             x = self.up_acts[i](x)
             x = self.ups[i](x)
-            x = self.up_lpfs[i](x)
             xs = None
             for j in range(self.num_kernels):
                 if xs is None:
@@ -288,7 +230,6 @@ class HifiganGenerator(nn.Module, GanVocoderGenerator):
                 else:
                     xs += self.resblocks[i * self.num_kernels + j](x)
             x = xs / self.num_kernels
-        x = self.lpf_post(x)
         x = self.post_act(x)
         x = self.conv_post(x)
         if self.tanh_post_activation:
