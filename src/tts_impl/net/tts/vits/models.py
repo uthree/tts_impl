@@ -217,7 +217,7 @@ class TextEncoder(nn.Module, VariationalTextEncoder):
         n_heads: int = 2,
         n_layers: int = 6,
         kernel_size: int = 3,
-        p_dropout: int = 0.1,
+        p_dropout: float = 0.1,
         window_size: int | None = 4,
         glu: bool = False,
         rotary_pos_emb: bool = False,
@@ -415,7 +415,7 @@ class VitsGenerator(nn.Module):
         if use_dp:
             self.dp = DurationPredictor(**duration_predictor)
 
-        if n_speakers > 1:
+        if n_speakers > 0:
             self.emb_g = nn.Embedding(n_speakers, gin_channels)
 
     def maximum_path(self, z_p, m_p, logs_p, x_mask, y_mask):

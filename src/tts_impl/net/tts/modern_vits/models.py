@@ -59,7 +59,7 @@ class ModernvitsGenerator(nn.Module):
         if use_dp:
             self.dp = DurationPredictor(**duration_predictor)
 
-        if n_speakers > 1:
+        if n_speakers > 0:
             self.emb_g = nn.Embedding(n_speakers, gin_channels)
 
     def maximum_path(self, z_p, m_p, logs_p, x_mask, y_mask):
