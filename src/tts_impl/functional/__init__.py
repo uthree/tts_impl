@@ -10,6 +10,7 @@ from .ddsp import (
 )
 from .energy_estimation import estimate_energy
 from .f0_estimation import estimate_f0
+from .f0_interpolation import interpolate_f0
 from .length_regurator import duplicate_by_duration
 from .monotonic_align import maximum_path as monotonic_alignment_search
 from .pad import adjust_size, adjust_size_1d, adjust_size_2d, adjust_size_3d
