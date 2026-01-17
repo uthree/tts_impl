@@ -10,7 +10,7 @@ import torchaudio
 from rich.progress import track
 from torchaudio.functional import resample
 
-from tts_impl.functional import adjust_size, estimate_f0
+from tts_impl.functional import adjust_size, estimate_f0, interpolate_f0
 
 from .base import CacheWriter, DataCollector, Extractor, FunctionalExtractor
 
@@ -164,4 +164,19 @@ class PitchEstimation(Extractor):
         )
         data["f0"] = f0
 
+        return data
+
+
+class PitchInterpolation(Extractor):
+    def __init__(
+        self,
+        f0_min: float = 20.0,
+    ):
+        super().__init__()
+        self.f0_min = f0_min
+
+    def extract(self, data: dict[str, Any]) -> dict[str, Any]:
+        f0 = data["f0"]
+        f0_interpolated = interpolate_f0(f0, self.f0_min)
+        data["f0"] = f0_interpolated
         return data
