@@ -27,14 +27,13 @@ class DdspGenerator(nn.Module, GanVocoderGenerator):
         self.d_periodicity = vocoder.d_periodicity
         self.d_spectral_envelope = vocoder.d_spectral_envelope
         out_channels = self.d_periodicity + self.d_spectral_envelope
-        self.convnext = ConvNeXt1d(
+        self.convnext = ConvNeXt1d(  # 実はこれ、フレームごとのNHVパラメータ推定ならただのMLPで事足りるのでは？
             in_channels,
             out_channels,
             d_model,
             n_layers=n_layers,
             grn=True,
             glu=True,
-            kernel_size=1,
         )
 
     def net(self, x, g=None):
