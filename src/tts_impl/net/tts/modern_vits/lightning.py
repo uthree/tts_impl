@@ -1,6 +1,5 @@
 import lightning as L
 import torch
-from sympy.logic import false
 from torch import nn as nn
 from torch import optim as optim
 from torch.nn import functional as F

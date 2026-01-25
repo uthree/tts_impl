@@ -2,7 +2,7 @@ import torch
 from torch import nn as nn
 
 from tts_impl.net.base.vocoder import GanVocoderGenerator
-from tts_impl.net.tts.vits.modules import WN
+from tts_impl.net.common.convnext import ConvNeXt1d
 from tts_impl.utils.config import derive_config
 
 from .vocoder import HomomorphicVocoder
@@ -14,7 +14,7 @@ class DdspGenerator(nn.Module, GanVocoderGenerator):
         self,
         in_channels: int = 80,
         d_model: int = 256,
-        num_layers: int = 3,
+        n_layers: int = 3,
         gin_channels: int = 0,
         vocoder: HomomorphicVocoder.Config = HomomorphicVocoder.Config(),
     ):
@@ -24,18 +24,21 @@ class DdspGenerator(nn.Module, GanVocoderGenerator):
         self.gin_channels = gin_channels
         self.sample_rate = vocoder.sample_rate
         self.fft_bin = vocoder.n_fft // 2 + 1
-        self.pre = nn.Conv1d(in_channels, d_model, 1)
-        self.wn = WN(d_model, 3, 1, num_layers, gin_channels)
-        self.d_spectral_envelope = self.vocoder.d_spectral_envelope
-        self.d_periodicity = self.vocoder.d_periodicity
-        self.post = nn.Conv1d(d_model, self.d_periodicity + self.d_spectral_envelope, 1)
+        self.d_periodicity = vocoder.d_periodicity
+        self.d_spectral_envelope = vocoder.d_spectral_envelope
+        out_channels = self.d_periodicity + self.d_spectral_envelope
+        self.convnext = ConvNeXt1d(
+            in_channels,
+            out_channels,
+            d_model,
+            n_layers=n_layers,
+            grn=True,
+            glu=True,
+            kernel_size=1,
+        )
 
     def net(self, x, g=None):
-        x = self.pre(x)
-        x_mask = torch.ones(x.shape[0], 1, x.shape[2], device=x.device)
-        x = self.wn(x, x_mask, g=g)
-        x = self.post(x)
-        x = x.float()
+        x = self.convnext(x)
         per, env = torch.split(x, [self.d_periodicity, self.d_spectral_envelope], dim=1)
         per = torch.sigmoid(per)
         env = torch.exp(env)

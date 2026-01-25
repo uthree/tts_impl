@@ -1,8 +1,8 @@
 import pytest
 import torch
 
-from tts_impl.net.common.mamba import Mamba, complex_parallel_scan, complex_step
 from tts_impl.net.base.stateful import sanity_check_stateful_module
+from tts_impl.net.common.mamba import MambaLayer, complex_parallel_scan, complex_step
 
 
 class TestComplexParallelScan:
@@ -51,7 +51,7 @@ class TestMamba:
     @pytest.mark.parametrize("d_state", [None, 16, 32])
     def test_output_shape(self, d_model: int, d_state: int | None):
         """Test that output shape matches input shape."""
-        model = Mamba(d_model=d_model, d_state=d_state)
+        model = MambaLayer(d_model=d_model, d_state=d_state)
         model.eval()
 
         batch, seq = 2, 16
@@ -67,7 +67,7 @@ class TestMamba:
     @pytest.mark.parametrize("d_state", [None, 32])
     def test_parallel_sequential_consistency(self, d_model: int, d_state: int | None):
         """Test that parallel and sequential forward give same results."""
-        model = Mamba(d_model=d_model, d_state=d_state)
+        model = MambaLayer(d_model=d_model, d_state=d_state)
         model.eval()
 
         x = torch.randn(2, 16, d_model)
@@ -76,7 +76,7 @@ class TestMamba:
 
     def test_stateful_streaming(self):
         """Test that stateful streaming works correctly."""
-        model = Mamba(d_model=32, d_state=16)
+        model = MambaLayer(d_model=32, d_state=16)
         model.eval()
 
         batch, seq = 2, 10
@@ -100,7 +100,7 @@ class TestMamba:
 
     def test_state_decay(self):
         """Test that state decays with zero input."""
-        model = Mamba(d_model=32, d_state=16)
+        model = MambaLayer(d_model=32, d_state=16)
         model.eval()
 
         # Initialize with non-zero input
@@ -122,7 +122,7 @@ class TestMamba:
 
     def test_initial_state_zeros(self):
         """Test that initial state is zeros."""
-        model = Mamba(d_model=32, d_state=16)
+        model = MambaLayer(d_model=32, d_state=16)
         x = torch.randn(2, 1, 32)
 
         h0 = model._initial_state(x)
@@ -132,7 +132,7 @@ class TestMamba:
 
     def test_preserves_device(self):
         """Test that output is on the same device as input."""
-        model = Mamba(d_model=32)
+        model = MambaLayer(d_model=32)
         x = torch.randn(1, 8, 32)
 
         y, h = model(x)
@@ -142,7 +142,7 @@ class TestMamba:
 
     def test_preserves_dtype(self):
         """Test that output has same dtype as input."""
-        model = Mamba(d_model=32).double()
+        model = MambaLayer(d_model=32).double()
         x = torch.randn(1, 8, 32, dtype=torch.float64)
 
         y, h = model(x)
@@ -153,7 +153,7 @@ class TestMamba:
     def test_different_dt_rank(self):
         """Test with different dt_rank values."""
         for dt_rank in [4, 8, 16]:
-            model = Mamba(d_model=32, dt_rank=dt_rank)
+            model = MambaLayer(d_model=32, dt_rank=dt_rank)
             x = torch.randn(1, 8, 32)
 
             y, h = model(x)
@@ -162,15 +162,15 @@ class TestMamba:
 
     def test_custom_initial_period(self):
         """Test with custom initial_period."""
-        model1 = Mamba(d_model=32, initial_period=1000)
-        model2 = Mamba(d_model=32, initial_period=100000)
+        model1 = MambaLayer(d_model=32, initial_period=1000)
+        model2 = MambaLayer(d_model=32, initial_period=100000)
 
         # Phase frequencies should be different
         assert not torch.allclose(model1.phase_A, model2.phase_A)
 
     def test_gradient_flow(self):
         """Test that gradients flow through the model."""
-        model = Mamba(d_model=32, d_state=16)
+        model = MambaLayer(d_model=32, d_state=16)
         x = torch.randn(2, 8, 32, requires_grad=True)
 
         y, h = model(x)
@@ -186,7 +186,7 @@ class TestMamba:
 
     def test_batch_independence(self):
         """Test that batches are processed independently."""
-        model = Mamba(d_model=32, d_state=16)
+        model = MambaLayer(d_model=32, d_state=16)
         model.eval()
 
         x1 = torch.randn(1, 8, 32)
@@ -203,7 +203,7 @@ class TestMamba:
 
     def test_long_sequence(self):
         """Test with longer sequences."""
-        model = Mamba(d_model=32, d_state=16)
+        model = MambaLayer(d_model=32, d_state=16)
         model.eval()
 
         x = torch.randn(1, 256, 32)
@@ -217,7 +217,7 @@ class TestMamba:
 
     def test_numerical_stability(self):
         """Test numerical stability with extreme inputs."""
-        model = Mamba(d_model=32, d_state=16)
+        model = MambaLayer(d_model=32, d_state=16)
         model.eval()
 
         # Test with large inputs

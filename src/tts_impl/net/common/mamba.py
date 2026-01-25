@@ -126,7 +126,7 @@ def complex_step(
 
 
 @derive_config
-class Mamba(StatefulModule):
+class MambaLayer(StatefulModule):
     """
     Mamba-3 (https://openreview.net/forum?id=HwCvaJOiCj) unofficial implementation.
 

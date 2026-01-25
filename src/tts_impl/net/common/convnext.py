@@ -122,7 +122,7 @@ class ConvNeXt1d(nn.Module):
         inter_channels: int = 512,
         ffn_channels: int = 1536,
         kernel_size: int = 7,
-        num_layers: int = 6,
+        n_layers: int = 6,
         grn: bool = False,
         glu: bool = False,
         norm: str = "layernorm",
@@ -136,7 +136,7 @@ class ConvNeXt1d(nn.Module):
             inter_channels: number of internal channels
             ffn_channels: number of feed-forward network's internal channels
             kernel_size: length of kernel
-            num_layers: number of layers
+            n_layers: number of layers
             grn: if True is given, use Global Response Normalization, purposed at [ConvNeXt V2](https://arxiv.org/abs/2301.00808)
             glu: if true is given, use Gated Linear Units, purposed at [GLU Variants Improve Transformers](https://arxiv.org/abs/2002.05202)
             norm: "layernorm", "tanh" or "none", if "tanh" given, use [DynamicTanh](https://arxiv.org/abs/2503.10622)., default is "layernorm".
@@ -156,7 +156,7 @@ class ConvNeXt1d(nn.Module):
                     causal,
                     activation,
                 )
-                for _ in range(num_layers)
+                for _ in range(n_layers)
             ]
         )
         self.post_norm = init_norm(norm, inter_channels)

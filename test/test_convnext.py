@@ -50,7 +50,7 @@ def test_convnext(
         inter_channels=inter_channels,
         ffn_channels=ffn_channels,
         kernel_size=kernel_size,
-        num_layers=num_layers,
+        n_layers=num_layers,
         grn=grn,
         glu=glu,
         norm=norm,
