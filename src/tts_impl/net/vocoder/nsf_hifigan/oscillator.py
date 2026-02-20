@@ -100,13 +100,12 @@ class HarmonicNoiseOscillator(nn.Module):
 @derive_config
 class ImpulseOscillator(nn.Module):
     def __init__(
-        self,
-        sample_rate: int = 22050,
-        frame_size: int = 256,
+        self, sample_rate: int = 22050, frame_size: int = 256, noise_gain: float = 0.03
     ):
         super().__init__()
         self.sample_rate = sample_rate
         self.frame_size = frame_size
+        self.noise_gain = noise_gain
 
     def forward(self, f0, uv, **kwargs):
         """
@@ -124,7 +123,7 @@ class ImpulseOscillator(nn.Module):
         rad = torch.cumsum(-f0 / self.sample_rate, dim=2)
         sawtooth = rad % 1.0
         impluse = sawtooth - sawtooth.roll(1, dims=(2))
-        noise = torch.randn_like(impluse) * 0.333
+        noise = torch.randn_like(impluse) * self.noise_gain
         source = impluse * voiced_mask + noise * (1 - voiced_mask)
         source = source.to(dtype)
         return source

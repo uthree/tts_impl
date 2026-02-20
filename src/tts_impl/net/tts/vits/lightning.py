@@ -95,7 +95,7 @@ class VitsLightningModule(L.LightningModule):
         self.toggle_optimizer(opt_g)
         opt_g.zero_grad(set_to_none=True)
         self.manual_backward(loss_g)
-        self.clip_gradients(opt_g)
+        self.clip_gradients(opt_g, 1.0)
         opt_g.step()
         self.untoggle_optimizer(opt_g)
         return real, fake
@@ -180,7 +180,7 @@ class VitsLightningModule(L.LightningModule):
         self.toggle_optimizer(opt_d)
         opt_d.zero_grad(set_to_none=True)
         self.manual_backward(loss_d)
-        self.clip_gradients(opt_d)
+        self.clip_gradients(opt_d, 1.0)
         opt_d.step()
         self.untoggle_optimizer(opt_d)
 

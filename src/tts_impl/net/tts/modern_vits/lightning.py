@@ -40,7 +40,7 @@ _vits_generator_config.text_encoder.activation = "silu"
 _vits_generator_config.text_encoder.share_relative_attn_bias = False
 _vits_generator_config.posterior_encoder.gin_channels = 192
 _vits_generator_config.posterior_encoder.n_layers = 8
-_vits_generator_config.decoder.activation = "silu"
+_vits_generator_config.decoder.activation = "snakebeta"
 _vits_generator_config.decoder.gin_channels = 192
 _vits_generator_config.decoder.in_channels = 192
 _vits_generator_config.decoder.lowpass_filter = False
@@ -136,7 +136,7 @@ class ModernvitsLightningModule(L.LightningModule):
         self.toggle_optimizer(opt_g)
         opt_g.zero_grad(set_to_none=True)
         self.manual_backward(loss_g)
-        self.clip_gradients(opt_g)
+        self.clip_gradients(opt_g, 1.0)
         opt_g.step()
         self.untoggle_optimizer(opt_g)
         return real, fake
@@ -220,7 +220,7 @@ class ModernvitsLightningModule(L.LightningModule):
         self.toggle_optimizer(opt_d)
         opt_d.zero_grad(set_to_none=True)
         self.manual_backward(loss_d)
-        self.clip_gradients(opt_d)
+        self.clip_gradients(opt_d, 1.0)
         opt_d.step()
         self.untoggle_optimizer(opt_d)
 
