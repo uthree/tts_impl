@@ -14,7 +14,7 @@ class HarmonicNoiseOscillator(nn.Module):
         self,
         sample_rate: int = 22050,
         frame_size: int = 256,
-        num_harmonics: int = 8,
+        num_harmonics: int = 1,
         noise_scale: float = 0.003,
         gin_channels: int = 0,
         normalize_amps: bool = True,

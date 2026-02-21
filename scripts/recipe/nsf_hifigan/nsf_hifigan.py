@@ -21,7 +21,6 @@ class NsfHifigan(Recipe):
         target_dir: str = "your_target_dir",
         sample_rate: int = 22050,
         frame_size: int = 256,
-        transcriptions_filename: str = "transcripts_utf8.txt",
         num_frames: int = 32,
     ):
         preprocess = Preprocessor()

@@ -30,7 +30,6 @@ class ResBlock1(nn.Module):
         kernel_size: int = 3,
         dilations: list[int] = [1, 3, 5],
         activation: str = "lrelu",
-        lowpass_filter: bool = False,
     ):
         super().__init__()
         self.convs1 = nn.ModuleList()
@@ -89,7 +88,6 @@ class ResBlock2(nn.Module):
         kernel_size: int = 3,
         dilations: list[int] = [1, 3],
         activation: str = "lrelu",
-        lowpass_filter: bool = False,
     ):
         super().__init__()
         self.convs1 = nn.ModuleList()
@@ -135,7 +133,6 @@ class HifiganGenerator(nn.Module, GanVocoderGenerator):
         resblock_kernel_sizes: list[int] = [3, 7, 11],
         resblock_dilations: list[list[int]] = [[1, 3, 5], [1, 3, 5], [1, 3, 5]],
         upsample_rates: list[int] = [8, 8, 2, 2],
-        lowpass_filter: bool = False,
         out_channels: int = 1,
         tanh_post_activation: bool = True,
         gin_channels: int = 0,
@@ -195,11 +192,7 @@ class HifiganGenerator(nn.Module, GanVocoderGenerator):
             for _j, (k, d) in enumerate(
                 zip(resblock_kernel_sizes, resblock_dilations, strict=False)
             ):
-                self.resblocks.append(
-                    resblock(
-                        ch, k, d, activation=activation, lowpass_filter=lowpass_filter
-                    )
-                )
+                self.resblocks.append(resblock(ch, k, d, activation=activation))
 
         self.post_act = init_activation(
             activation,
