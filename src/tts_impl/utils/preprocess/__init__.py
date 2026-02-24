@@ -1,4 +1,10 @@
-from .audio import AudioCacheWriter, AudioDataCollector, Mixdown, PitchEstimation
+from .audio import (
+    AudioCacheWriter,
+    AudioDataCollector,
+    Mixdown,
+    PitchEstimation,
+    PitchInterpolation,
+)
 from .base import (
     CacheWriter,
     CombinedExtractor,

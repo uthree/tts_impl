@@ -54,6 +54,11 @@ class Modernvits(Recipe):
         preprocess.with_extractor(
             WaveformLengthExtractor(frame_size, max_frames=max_frames)
         )
+        preprocess.with_extractor(
+            PitchEstimation(
+                frame_size,
+            )
+        )
         preprocess.with_writer(TTSCacheWriter("dataset_cache"))
         preprocess.run()
 
@@ -68,9 +73,7 @@ class Modernvits(Recipe):
             root=root_dir,
             batch_size=batch_size,
             num_workers=1,
-            sizes={
-                "waveform": frame_size * max_frames,
-            },
+            sizes={"waveform": frame_size * max_frames, "f0": max_frames},
         )
         return datamodule
 

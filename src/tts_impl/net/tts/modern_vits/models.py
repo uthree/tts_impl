@@ -15,8 +15,37 @@ from tts_impl.net.tts.vits.models import (
     StochasticDurationPredictor,
     TextEncoder,
 )
-from tts_impl.net.vocoder.hifigan import HifiganGenerator
+from tts_impl.net.vocoder.nsf_hifigan import NsfhifiganGenerator
 from tts_impl.utils.config import derive_config
+
+
+class PitchEstimator(nn.Module):
+    def __init__(self, in_channels: int):
+        super().__init__()
+        self.conv = nn.Conv1d(in_channels, 2, 1)
+
+    def forward(self, x) -> tuple[torch.Tensor, torch.Tensor]:
+        x = self.conv(x)
+        log_f0, uv = torch.split(x, [1, 1], dim=1)
+        f0 = torch.exp(log_f0)
+        return f0.squeeze(1), uv.squeeze(1)
+
+    def infer(self, x):
+        f0, uv = self.forward(x)
+        f0 = f0 * (uv > 0.5).float()
+        return f0
+
+
+def safe_log(x):
+    return torch.log(torch.clamp(x, min=1e-4))
+
+
+def f0_loss(f0_hat, uv_hat, f0, x_mask):
+    uv = (f0 > 20.0).float()
+    loss_uv = (uv_hat - f0_hat).abs().mean()
+    uv = uv * x_mask.squeeze(1)
+    loss_f0 = ((safe_log(f0_hat) - safe_log(f0)).abs() * uv).sum() / uv.sum()
+    return loss_f0 + loss_uv
 
 
 @derive_config
@@ -25,7 +54,7 @@ class ModernvitsGenerator(nn.Module):
         self,
         posterior_encoder: PosteriorEncoder.Config = PosteriorEncoder.Config(),
         text_encoder: TextEncoder.Config = TextEncoder.Config(),
-        decoder: HifiganGenerator.Config = HifiganGenerator.Config(),
+        decoder: NsfhifiganGenerator.Config = NsfhifiganGenerator.Config(),
         flow: ResidualCouplingBlock.Config = ResidualCouplingBlock.Config(),
         duration_predictor: DurationPredictor.Config = DurationPredictor.Config(),
         stochastic_duration_predictor: StochasticDurationPredictor.Config = StochasticDurationPredictor.Config(),
@@ -49,9 +78,10 @@ class ModernvitsGenerator(nn.Module):
         self.sample_rate = sample_rate
 
         self.enc_p = TextEncoder(**text_encoder)
-        self.dec = HifiganGenerator(**decoder)
+        self.dec = NsfhifiganGenerator(**decoder)
         self.enc_q = PosteriorEncoder(**posterior_encoder)
         self.flow = ResidualCouplingBlock(**flow)
+        self.pe = PitchEstimator(decoder.filter_module.in_channels)
         self.lr = DuplicateByDuration()
 
         if use_sdp:
@@ -112,7 +142,7 @@ class ModernvitsGenerator(nn.Module):
         return l_length_all, logw, logw_hat
 
     def forward(
-        self, x, x_lengths, y, y_lengths, sid=None, w=None
+        self, x, x_lengths, y, y_lengths, f0, sid=None, w=None
     ) -> dict[str, torch.Tensor]:
         if self.n_speakers > 0:
             g = self.emb_g(sid).unsqueeze(-1)  # [b, h, 1]
@@ -134,6 +164,10 @@ class ModernvitsGenerator(nn.Module):
             w = attn.sum(2).unsqueeze(1)
         loss_dur, logw, logw_hat = self.duration_predictor_loss(x, x_mask, w, g=g)
 
+        # f0 estimation loss
+        f0_hat, uv_hat = self.pe(z)
+        loss_f0 = f0_loss(f0_hat, uv_hat, f0, y_mask)
+
         # expand prior
         m_p = self.lr(m_p, w, x_mask, y_mask)
         logs_p = self.lr(logs_p, w, x_mask, y_mask)
@@ -142,11 +176,16 @@ class ModernvitsGenerator(nn.Module):
         z_slice, ids_slice = commons.rand_slice_segments(
             z, y_lengths, self.segment_size
         )
-        o = self.dec(z_slice, g=g)
+
+        f0_slice = commons.slice_segments(
+            f0.unsqueeze(1), ids_slice, self.segment_size
+        ).squeeze(1)
+        o = self.dec(z_slice, f0=f0_slice, g=g)
 
         outputs = {
             "fake": o,
             "loss_dur": loss_dur,
+            "loss_f0": loss_f0,
             "ids_slice": ids_slice,
             "x_mask": x_mask,
             "y_mask": y_mask,
@@ -210,7 +249,8 @@ class ModernvitsGenerator(nn.Module):
         z = self.flow(z_p, y_mask, g=g, reverse=True)
 
         # synthesize
-        o = self.dec((z * y_mask)[:, :, :max_len], g=g)
+        f0 = self.pe.infer((z * y_mask)[:, :, :max_len])
+        o = self.dec((z * y_mask)[:, :, :max_len], f0=f0, g=g)
         return o
 
     def voice_conversion(self, y, y_lengths, sid_src, sid_tgt):

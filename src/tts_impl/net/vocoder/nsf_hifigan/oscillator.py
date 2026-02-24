@@ -100,7 +100,7 @@ class HarmonicNoiseOscillator(nn.Module):
 @derive_config
 class ImpulseOscillator(nn.Module):
     def __init__(
-        self, sample_rate: int = 22050, frame_size: int = 256, noise_gain: float = 0.03
+        self, sample_rate: int = 22050, frame_size: int = 256, noise_gain: float = 0.005
     ):
         super().__init__()
         self.sample_rate = sample_rate
