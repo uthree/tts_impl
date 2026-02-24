@@ -2,6 +2,7 @@ import math
 from typing import Literal
 
 import torch
+from mpmath.libmp.gammazeta import gamma_stirling_cache
 from torch import nn
 from torch.nn import functional as F
 
@@ -15,23 +16,39 @@ from tts_impl.net.tts.vits.models import (
     StochasticDurationPredictor,
     TextEncoder,
 )
+from tts_impl.net.tts.vits.modules import WN
 from tts_impl.net.vocoder.nsf_hifigan import NsfhifiganGenerator
 from tts_impl.utils.config import derive_config
 
 
+@derive_config
 class PitchEstimator(nn.Module):
-    def __init__(self, in_channels: int):
+    def __init__(
+        self,
+        in_channels: int = 192,
+        hidden_channels: int = 192,
+        kernel_size: int = 3,
+        n_layers: int = 4,
+        gin_channels: int = 0,
+    ):
         super().__init__()
-        self.conv = nn.Conv1d(in_channels, 2, 1)
+        self.pre = nn.Conv1d(in_channels, hidden_channels, 1)
+        self.wn = WN(
+            hidden_channels, kernel_size, 1, n_layers, gin_channels=gin_channels
+        )
+        self.post = nn.Conv1d(hidden_channels, 2, 1)
 
-    def forward(self, x) -> tuple[torch.Tensor, torch.Tensor]:
-        x = self.conv(x)
+    def forward(self, x, x_mask, g=None) -> tuple[torch.Tensor, torch.Tensor]:
+        x = self.pre(x)
+        x = self.wn(x, x_mask, g=g)
+        x = self.post(x)
         log_f0, uv = torch.split(x, [1, 1], dim=1)
+        uv = torch.sigmoid(uv)
         f0 = torch.exp(log_f0)
         return f0.squeeze(1), uv.squeeze(1)
 
-    def infer(self, x):
-        f0, uv = self.forward(x)
+    def infer(self, x, x_mask, g=None):
+        f0, uv = self.forward(x, x_mask, g=g)
         f0 = f0 * (uv > 0.5).float()
         return f0
 
@@ -40,11 +57,10 @@ def safe_log(x):
     return torch.log(torch.clamp(x, min=1e-4))
 
 
-def f0_loss(f0_hat, uv_hat, f0, x_mask):
+def f0_loss(f0_hat, uv_hat, f0):
     uv = (f0 > 20.0).float()
     loss_uv = (uv_hat - f0_hat).abs().mean()
-    uv = uv * x_mask.squeeze(1)
-    loss_f0 = ((safe_log(f0_hat) - safe_log(f0)).abs() * uv).sum() / uv.sum()
+    loss_f0 = ((safe_log(f0_hat) - safe_log(f0)).abs() * uv).sum() / (uv.sum() + 1e-4)
     return loss_f0 + loss_uv
 
 
@@ -58,6 +74,7 @@ class ModernvitsGenerator(nn.Module):
         flow: ResidualCouplingBlock.Config = ResidualCouplingBlock.Config(),
         duration_predictor: DurationPredictor.Config = DurationPredictor.Config(),
         stochastic_duration_predictor: StochasticDurationPredictor.Config = StochasticDurationPredictor.Config(),
+        pitch_estimator: PitchEstimator.Config = PitchEstimator.Config(),
         n_speakers: int = 0,
         gin_channels: int = 0,
         use_dp: bool = False,
@@ -81,7 +98,7 @@ class ModernvitsGenerator(nn.Module):
         self.dec = NsfhifiganGenerator(**decoder)
         self.enc_q = PosteriorEncoder(**posterior_encoder)
         self.flow = ResidualCouplingBlock(**flow)
-        self.pe = PitchEstimator(decoder.filter_module.in_channels)
+        self.pe = PitchEstimator(**pitch_estimator)
         self.lr = DuplicateByDuration()
 
         if use_sdp:
@@ -165,8 +182,12 @@ class ModernvitsGenerator(nn.Module):
         loss_dur, logw, logw_hat = self.duration_predictor_loss(x, x_mask, w, g=g)
 
         # f0 estimation loss
-        f0_hat, uv_hat = self.pe(z)
-        loss_f0 = f0_loss(f0_hat, uv_hat, f0, y_mask)
+        f0_hat, uv_hat = self.pe(z, y_mask, g=g)
+        loss_f0 = f0_loss(
+            f0_hat,
+            uv_hat,
+            f0,
+        )
 
         # expand prior
         m_p = self.lr(m_p, w, x_mask, y_mask)
@@ -249,7 +270,7 @@ class ModernvitsGenerator(nn.Module):
         z = self.flow(z_p, y_mask, g=g, reverse=True)
 
         # synthesize
-        f0 = self.pe.infer((z * y_mask)[:, :, :max_len])
+        f0 = self.pe.infer((z * y_mask)[:, :, :max_len], y_mask, g=g)
         o = self.dec((z * y_mask)[:, :, :max_len], f0=f0, g=g)
         return o
 
