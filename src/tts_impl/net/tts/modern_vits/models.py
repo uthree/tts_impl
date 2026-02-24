@@ -59,7 +59,7 @@ def safe_log(x):
 
 def f0_loss(f0_hat, uv_hat, f0):
     uv = (f0 > 20.0).float()
-    loss_uv = (uv_hat - f0_hat).abs().mean()
+    loss_uv = (uv_hat - uv).abs().mean()
     loss_f0 = ((safe_log(f0_hat) - safe_log(f0)).abs() * uv).sum() / (uv.sum() + 1e-4)
     return loss_f0 + loss_uv
 
