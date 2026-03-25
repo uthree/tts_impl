@@ -11,6 +11,7 @@ from tts_impl.utils.datamodule import TTSDataModule
 from tts_impl.utils.preprocess import (
     G2PExtractor,
     Mixdown,
+    PitchEstimation,
     Preprocessor,
     TTSCacheWriter,
     TTSDataCollector,
@@ -19,7 +20,7 @@ from tts_impl.utils.preprocess import (
 from tts_impl.utils.recipe import Recipe
 
 
-class Vits(Recipe):
+class Modernvits(Recipe):
     def __init__(self):
         super().__init__(VitsLightningModule, "vits")
 
@@ -27,7 +28,9 @@ class Vits(Recipe):
         self,
         target_dir: str = "your_target_dir",
         sample_rate: int = 22050,
+        frame_size: int = 256,
         transcriptions_filename: str = "transcripts_utf8.txt",
+        max_frames: int = 1000,
     ):
         preprocess = Preprocessor()
         g2p = Grapheme2Phoneme({"ja": PyopenjtalkG2P()})
@@ -38,7 +41,7 @@ class Vits(Recipe):
                 language="ja",
                 transcriptions_filename=transcriptions_filename,
                 concatenate=True,
-                max_length=256000,
+                max_length=max_frames * frame_size,
                 filename_blacklist=["falset", "whisper"],
             )
         )
@@ -49,19 +52,28 @@ class Vits(Recipe):
             )
         )
         preprocess.with_extractor(
-            WaveformLengthExtractor(frame_size=256, max_frames=1000)
+            WaveformLengthExtractor(frame_size, max_frames=max_frames)
+        )
+        preprocess.with_extractor(
+            PitchEstimation(
+                frame_size,
+            )
         )
         preprocess.with_writer(TTSCacheWriter("dataset_cache"))
         preprocess.run()
 
     def prepare_datamodule(
-        self, root_dir: str = "dataset_cache", batch_size: int = 16
+        self,
+        root_dir: str = "dataset_cache",
+        batch_size: int = 16,
+        frame_size: int = 256,
+        max_frames: int = 1000,
     ) -> LightningDataModule:
         datamodule = TTSDataModule(
             root=root_dir,
             batch_size=batch_size,
             num_workers=1,
-            sizes={"waveform": 256000},
+            sizes={"waveform": frame_size * max_frames},
         )
         return datamodule
 
@@ -77,4 +89,4 @@ class Vits(Recipe):
 
 
 if __name__ == "__main__":
-    Vits().cli()
+    Modernvits().cli()

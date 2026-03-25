@@ -1,1 +1,1 @@
-from . import modern_vits, vits
+from . import vits
