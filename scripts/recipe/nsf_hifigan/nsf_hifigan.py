@@ -31,9 +31,6 @@ class NsfHifigan(Recipe):
         )
         # mixdown
         preprocess.with_extractor(Mixdown())
-        preprocess.with_extractor(
-            PitchEstimation(frame_size=frame_size, algorithm="fcpe")
-        )
         preprocess.with_writer(AudioCacheWriter("dataset_cache"))
         preprocess.run()
 
@@ -48,7 +45,7 @@ class NsfHifigan(Recipe):
             root=root_dir,
             batch_size=batch_size,
             num_workers=1,
-            sizes={"waveform": frame_size * num_frames, "f0": num_frames},
+            sizes={"waveform": frame_size * num_frames},
         )
         return datamodule
 

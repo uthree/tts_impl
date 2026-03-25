@@ -27,8 +27,6 @@ _vits_discriminator_config.mpd.periods = [1, 2, 3, 5, 7, 11]
 _vits_discriminator_config.mrsd.hop_size = [120, 240, 50]
 _vits_discriminator_config.mrsd.n_fft = [1024, 2048, 512]
 _vits_generator_config = ModernvitsGenerator.Config()
-_vits_generator_config.pitch_estimator.gin_channels = 192
-_vits_generator_config.pitch_estimator.in_channels = 192
 _vits_generator_config.posterior_encoder.gin_channels = 192
 _vits_generator_config.text_encoder.gin_channels = 192
 _vits_generator_config.text_encoder.window_size = 0
@@ -42,9 +40,9 @@ _vits_generator_config.text_encoder.activation = "silu"
 _vits_generator_config.text_encoder.share_relative_attn_bias = False
 _vits_generator_config.posterior_encoder.gin_channels = 192
 _vits_generator_config.posterior_encoder.n_layers = 8
-_vits_generator_config.decoder.filter_module.activation = "silu"
-_vits_generator_config.decoder.filter_module.gin_channels = 192
-_vits_generator_config.decoder.filter_module.in_channels = 192
+_vits_generator_config.decoder.activation = "snakebeta"
+_vits_generator_config.decoder.gin_channels = 192
+_vits_generator_config.decoder.in_channels = 192
 _vits_generator_config.duration_predictor.gin_channels = 192
 _vits_generator_config.duration_predictor.input_backward = True
 _vits_generator_config.duration_predictor.condition_backward = True
@@ -99,7 +97,6 @@ class ModernvitsLightningModule(L.LightningModule):
         y_lengths = batch["acoustic_features_lengths"]
         x = batch["phonemes"]
         x_lengths = batch["phonemes_lengths"]
-        f0 = batch["f0"]
         sid = batch.get("speaker_id", None)
         w = batch.get("duration", None)
 
@@ -110,7 +107,6 @@ class ModernvitsLightningModule(L.LightningModule):
             y,
             y_lengths,
             waveform,
-            f0,
             sid=sid,
             w=w,
         )
@@ -120,13 +116,13 @@ class ModernvitsLightningModule(L.LightningModule):
             self._discriminator_training_step(real, fake)
 
     def _generator_training_step(
-        self, x, x_lengths, y, y_lengths, waveform, f0, sid=None, w=None
+        self, x, x_lengths, y, y_lengths, waveform, sid=None, w=None
     ):
         opt_g, _opt_d = self.optimizers()  # get optimizer
 
         # forward pass
         real, fake, loss_gen_tts = self._generator_forward(
-            x, x_lengths, y, y_lengths, waveform, f0, sid=sid, w=w
+            x, x_lengths, y, y_lengths, waveform, sid=sid, w=w
         )
         loss_gen_vocoder = self._vocoder_adversarial_loss(real, fake)
         loss_g = loss_gen_tts + loss_gen_vocoder
@@ -145,14 +141,14 @@ class ModernvitsLightningModule(L.LightningModule):
         return real, fake
 
     def _generator_forward(
-        self, x, x_lengths, y, y_lengths, waveform, f0, sid=None, w=None
+        self, x, x_lengths, y, y_lengths, waveform, sid=None, w=None
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         # get frame size and segment size
         segment_size = self.generator.segment_size
         dec_frame_size = self.generator.dec.frame_size
 
         outputs = self.generator.forward(
-            x, x_lengths, y, y_lengths, f0, sid=sid, w=w
+            x, x_lengths, y, y_lengths, sid=sid, w=w
         )  # forward pass
 
         # expand return dict.
@@ -166,13 +162,11 @@ class ModernvitsLightningModule(L.LightningModule):
 
         # losses
         loss_dur = outputs["loss_dur"]
-        loss_f0 = outputs["loss_f0"]
         loss_dur = loss_dur.mean()
         loss_kl = kl_loss(z_p, logs_q, m_p, logs_p, z_mask)
 
         # logs
         self.log("train loss/KL divergence", loss_kl)
-        self.log("train loss/pitch estimation", loss_f0)
         self.log("train loss/duration", loss_dur)
 
         # slice real input
@@ -180,7 +174,7 @@ class ModernvitsLightningModule(L.LightningModule):
             waveform, ids_slice * dec_frame_size, segment_size * dec_frame_size
         ).detach()
 
-        loss = loss_dur + loss_f0 + loss_kl
+        loss = loss_dur + loss_kl
         return real, fake, loss
 
     def _vocoder_adversarial_loss(
