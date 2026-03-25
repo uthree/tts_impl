@@ -14,7 +14,7 @@ class IstftSynthesis(nn.Module):
         self.upscale_factor = upscale_factor
         self.n_fft = upscale_factor * 4
         self.hop_length = upscale_factor
-        self.window = nn.Parameter(torch.hann_window(self.n_fft))
+        self.register_buffer("window", torch.hann_window(self.n_fft))
         self.proj = nn.Conv1d(in_channels, self.n_fft + 2, 1, 1, 0)
 
     def forward(self, x: Tensor) -> Tensor:
