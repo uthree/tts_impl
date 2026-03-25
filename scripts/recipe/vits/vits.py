@@ -54,11 +54,6 @@ class Modernvits(Recipe):
         preprocess.with_extractor(
             WaveformLengthExtractor(frame_size, max_frames=max_frames)
         )
-        preprocess.with_extractor(
-            PitchEstimation(
-                frame_size,
-            )
-        )
         preprocess.with_writer(TTSCacheWriter("dataset_cache"))
         preprocess.run()
 

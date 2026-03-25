@@ -10,6 +10,8 @@ from tts_impl.net.base.vocoder import GanVocoderGenerator
 from tts_impl.net.common.activation import init_activation
 from tts_impl.utils.config import derive_config
 
+from .post_module import init_post_module
+
 LRELU_SLOPE = 0.1
 
 
@@ -137,6 +139,8 @@ class HifiganGenerator(nn.Module, GanVocoderGenerator):
         tanh_post_activation: bool = True,
         gin_channels: int = 0,
         activation: str = "lrelu",
+        post_upscale_factor: int = 1,
+        post_module_type: str = "conv",
         sample_rate: int = 22050,
     ):
         super().__init__()
@@ -198,7 +202,10 @@ class HifiganGenerator(nn.Module, GanVocoderGenerator):
             activation,
             channels=c2,
         )
-        self.conv_post = weight_norm(nn.Conv1d(ch, out_channels, 7, 1, padding=3))
+        self.conv_post = init_post_module(
+            ch, out_channels, post_upscale_factor, post_module_type
+        )
+        self.frame_size *= post_upscale_factor
         self.apply(init_weights)
 
     def forward(self, x: torch.Tensor, g: torch.Tensor | None = None, *args, **kwargs):
