@@ -6,7 +6,7 @@ from torch import nn as nn
 from torch.nn import functional as F
 
 
-class STFT(nn.Module):
+class Stft(nn.Module):
     """
     An implementation of short time fourier transform using `torch.nn.functional.conv1d` for onnx compatibility.
     """
@@ -63,7 +63,7 @@ class STFT(nn.Module):
         return real, imag
 
 
-class ISTFT(nn.Module):
+class Istft(nn.Module):
     """
     An implementation of inverse short time fourier transform using `torch.nn.functional.conv_transpose1d` for onnx compatibility.
     """

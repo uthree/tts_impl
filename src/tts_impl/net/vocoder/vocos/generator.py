@@ -3,7 +3,7 @@ from torch import nn as nn
 
 from tts_impl.net.base import GanVocoderGenerator
 from tts_impl.net.common.convnext import ConvNeXt1d
-from tts_impl.net.common.stft import ISTFT
+from tts_impl.net.common.stft import Istft
 from tts_impl.utils.config import derive_config
 
 
@@ -43,7 +43,7 @@ class VocosGenerator(nn.Module, GanVocoderGenerator):
             norm,
             activation,
         )
-        self.istft = ISTFT(n_fft, hop_length)
+        self.istft = Istft(n_fft, hop_length)
 
     def forward(self, x):
         x = self.convnext(x)

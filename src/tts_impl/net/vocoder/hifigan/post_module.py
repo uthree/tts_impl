@@ -7,6 +7,8 @@ from _pytest.config.argparsing import ArgumentError
 from torch import Tensor
 from torch.nn.utils.parametrizations import weight_norm
 
+from tts_impl.net.common.stft import Istft
+
 
 class IstftSynthesis(nn.Module):
     def __init__(self, in_channels: int, upscale_factor: int = 4):
@@ -14,8 +16,8 @@ class IstftSynthesis(nn.Module):
         self.upscale_factor = upscale_factor
         self.n_fft = upscale_factor * 4
         self.hop_length = upscale_factor
-        self.register_buffer("window", torch.hann_window(self.n_fft))
-        self.proj = nn.Conv1d(in_channels, self.n_fft + 2, 1, 1, 0)
+        self.istft = Istft(self.n_fft, self.hop_length, window="hann", padding="center")
+        self.proj = weight_norm(nn.Conv1d(in_channels, self.n_fft + 2, 1, 1, 0))
 
     def forward(self, x: Tensor) -> Tensor:
         x = self.proj(x)
@@ -24,11 +26,7 @@ class IstftSynthesis(nn.Module):
         amp = torch.exp(mag)
         real = amp * torch.cos(phase)
         imag = amp * torch.sin(phase)
-        z = torch.complex(real, imag)
-        waveform = torch.istft(
-            z, n_fft=self.n_fft, hop_length=self.hop_length, window=self.window
-        )
-        waveform = waveform.unsqueeze(1)
+        waveform = self.istft(real, imag)
         waveform = F.pad(waveform, (self.upscale_factor // 2, self.upscale_factor // 2))
         return waveform
 
