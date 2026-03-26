@@ -20,6 +20,7 @@ class IstftSynthesis(nn.Module):
     def forward(self, x: Tensor) -> Tensor:
         x = self.proj(x)
         mag, phase = torch.chunk(x, 2, dim=1)
+        mag = torch.clamp_max(mag, 4.0)
         amp = torch.exp(mag)
         real = amp * torch.cos(phase)
         imag = amp * torch.sin(phase)
