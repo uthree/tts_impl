@@ -31,8 +31,8 @@ class LayerNorm1d(nn.Module):
         """
         dtype = x.dtype
         x = x.to(torch.float)
-        mu = x.mean(dim=(1, 2), keepdim=True)
-        sigma = x.std(dim=(1, 2), keepdim=True) + self.eps
+        mu = x.mean(dim=1, keepdim=True)
+        sigma = x.std(dim=1, keepdim=True) + self.eps
         x = (x - mu) / sigma
         if self.elementwise_affine:
             x = x * self.gamma + self.beta
@@ -65,7 +65,7 @@ class RMSNorm1d(nn.Module):
         """
         dtype = x.dtype
         x = x.to(torch.float)
-        rms = torch.sqrt(self.eps + torch.std(x, dim=(1, 2)))
+        rms = torch.sqrt(self.eps + torch.std(x, dim=(1)))
         x = x / rms
         if self.elementwise_scale:
             x = x * self.gamma
