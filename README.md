@@ -14,11 +14,10 @@ work in progress: 🚧
 - Vocoders
     - HiFi-GAN ✅
     - NSF-HiFi-GAN ✅
-    - ISTFTNet
+    - ISTFTNet ✅
     - WaveNeXt 🚧
     - Vocos 🚧
     - DDSP (Subtractive / Additive)
-    - SoundStream
 - TTS: Text to speech
     - VITS ✅
     - VITS2 🚧
