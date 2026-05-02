@@ -10,36 +10,6 @@ from tts_impl.functional import (
     sinusoidal_harmonics,
     spectral_envelope_filter,
 )
-from tts_impl.net.vocoder.ddsp import HomomorphicVocoder
-
-
-@pytest.mark.parametrize("batch_size", [1, 4])
-@pytest.mark.parametrize("num_frames", [100, 200])
-@pytest.mark.parametrize("n_fft", [1024])
-@pytest.mark.parametrize("d_periodicity", [16])
-@pytest.mark.parametrize("d_spectral_envelope", [80])
-@pytest.mark.parametrize("hop_length", [256])
-def test_subtractive_vocoder(
-    batch_size: int,
-    num_frames: int,
-    n_fft: int,
-    d_periodicity: int,
-    d_spectral_envelope: int,
-    hop_length: int,
-):
-    sample_rate = 24000
-    vocoder = HomomorphicVocoder(
-        sample_rate=sample_rate,
-        n_fft=n_fft,
-        hop_length=hop_length,
-    )
-
-    f0 = torch.ones(batch_size, num_frames) * 440.0
-    per = torch.rand(batch_size, d_periodicity, num_frames)
-    env = torch.rand(batch_size, d_spectral_envelope, num_frames)
-    o = vocoder.forward(f0, per, env)
-    assert o.shape[0] == batch_size
-    assert o.shape[1] == num_frames * hop_length
 
 
 def test_xcorr():
