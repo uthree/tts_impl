@@ -31,30 +31,13 @@ class GanVocoderDiscriminator(Protocol):
     GAN-based vocoder discriminator
     """
 
-    def forward(self, x: torch.Tensor) -> tuple[list[torch.Tensor], list[torch.Tensor]]:
-        """
-        Args:
-            x: waveform (batch_size, in_channels, length)
-        Returns:
-            logits: list[Tensor]
-            fmap: list[Tensor]
-        """
-
-
-class SanVocoderDiscriminator(Protocol):
-    """
-    SAN-based vocoder discriminator
-    purposed in https://arxiv.org/abs/2309.02836
-    """
-
     def forward(
-        self, x: torch.Tensor
-    ) -> tuple[list[torch.Tensor], list[torch.Tensor], list[torch.Tensor]]:
+        self, x: torch.Tensor, sid: torch.Tensor | None = None
+    ) -> tuple[list[torch.Tensor], list[torch.Tensor]]:
         """
         Args:
             x: waveform (batch_size, in_channels, length)
         Returns:
             logits: list[Tensor]
-            directions: list[Tensor]
             fmap: list[Tensor]
         """

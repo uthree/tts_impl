@@ -36,6 +36,7 @@ class VitsLightningModule(L.LightningModule):
         lr: float = 2e-4,
         lr_decay: float = 0.9998749453,
         betas: list[float] = [0.8, 0.99],
+        warmup_steps: int = 1,
     ):
         super().__init__()
         self.automatic_optimization = False
@@ -47,6 +48,7 @@ class VitsLightningModule(L.LightningModule):
         self.weight_mel = weight_mel
         self.weight_adv = weight_adv
         self.weight_feat = weight_feat
+        self.warmup_steps = warmup_steps
 
         self.lr_decay = lr_decay
         self.lr = lr
@@ -67,13 +69,21 @@ class VitsLightningModule(L.LightningModule):
         sid = batch.get("speaker_id", None)
         w = batch.get("duration", None)
 
+        # set MAS noise gain
+        if self.global_step <= self.warmup_steps:
+            self.generator.mas_noise = 1.0 - (self.global_step / self.warmup_steps)
+        else:
+            self.generator.mas_noise = 0.0
+        self.log("mas noise", self.generator.mas_noise)
+
         # generator step
         real, fake = self._generator_training_step(
             x, x_lengths, y, y_lengths, waveform, sid=sid, w=w
         )
 
-        # discriminator step
-        self._discriminator_training_step(real, fake)
+        if self.global_step > self.warmup_steps:
+            # discriminator step
+            self._discriminator_training_step(real, fake, sid)
 
     def _generator_training_step(
         self, x, x_lengths, y, y_lengths, waveform, sid=None, w=None
@@ -84,8 +94,10 @@ class VitsLightningModule(L.LightningModule):
         real, fake, loss_gen_tts = self._generator_forward(
             x, x_lengths, y, y_lengths, waveform, sid=sid, w=w
         )
-        loss_gen_vocoder = self._vocoder_adversarial_loss(real, fake)
-        loss_g = loss_gen_tts + loss_gen_vocoder
+
+        loss_g = loss_gen_tts
+        loss_gen_vocoder = self._vocoder_adversarial_loss(real, fake, sid)
+        loss_g += loss_gen_vocoder
 
         # logs
         self.log("train loss/generator total", loss_g)
@@ -138,40 +150,42 @@ class VitsLightningModule(L.LightningModule):
         return real, fake, loss
 
     def _vocoder_adversarial_loss(
-        self, real: torch.Tensor, fake: torch.Tensor
+        self, real: torch.Tensor, fake: torch.Tensor, sid: torch.Tensor | None = None
     ) -> torch.Tensor:
         # spectrogram
         spec_real = self.spectrogram(real).detach()
         spec_fake = self.spectrogram(fake)
 
         # forward pass
-        logits, fmap_fake = self.discriminator(fake)
-        _, fmap_real = self.discriminator(real)
-        loss_adv, loss_adv_list = generator_loss(logits)
-        loss_feat = feature_loss(fmap_real, fmap_fake)
+        # mel loss
         loss_mel = F.l1_loss(spec_fake, spec_real)
-        loss_g = (
-            loss_mel * self.weight_mel
-            + loss_feat * self.weight_feat
-            + loss_adv * self.weight_adv
-        )
-
-        # logs
-        for i, l in enumerate(loss_adv_list):
-            self.log(f"generator adversarial/{i}", l)
+        loss_g = loss_mel * self.weight_mel
         self.log("train loss/mel spectrogram", loss_mel)
-        self.log("train loss/feature matching", loss_feat)
-        self.log("train loss/generator adversarial", loss_adv)
+
+        if self.global_step > self.warmup_steps:
+            # adv. loss and feat. loss
+            logits, fmap_fake = self.discriminator(fake, sid)
+            _, fmap_real = self.discriminator(real, sid)
+            loss_adv, loss_adv_list = generator_loss(logits)
+            loss_feat = feature_loss(fmap_real, fmap_fake)
+            loss_g += loss_feat * self.weight_feat + loss_adv * self.weight_adv
+            for i, l in enumerate(loss_adv_list):
+                self.log(f"generator adversarial/{i}", l)
+                self.log("train loss/feature matching", loss_feat)
+                self.log("train loss/generator adversarial", loss_adv)
+
         return loss_g
 
-    def _discriminator_training_step(self, real: torch.Tensor, fake: torch.Tensor):
+    def _discriminator_training_step(
+        self, real: torch.Tensor, fake: torch.Tensor, sid: torch.Tensor | None = None
+    ):
         _opt_g, opt_d = self.optimizers()  # get optimizer
 
         # forward pass
         fake = fake.detach()  # stop gradient
         real = real.detach()
-        logits_fake, _ = self.discriminator(fake)
-        logits_real, _ = self.discriminator(real)
+        logits_fake, _ = self.discriminator(fake, sid)
+        logits_real, _ = self.discriminator(real, sid)
         loss_d, loss_d_list_r, loss_d_list_f = discriminator_loss(
             logits_real, logits_fake
         )
@@ -216,21 +230,36 @@ class VitsLightningModule(L.LightningModule):
     @torch.no_grad
     def validation_step(self, batch, bid):
         reference_waveform = batch["waveform"]
+        if "acoustic_features" in batch:
+            y = batch["acoustic_features"]
+        else:
+            y = self.spectrogram(reference_waveform.sum(1)).detach()
+        y_lengths = batch["acoustic_features_lengths"]
+        sid = batch.get("speaker_id", None)
+
         synthesized_waveform = self.generator.infer(
             batch["phonemes"], batch["phonemes_lengths"], batch["speaker_id"]
         )
+        reconstructed_waveform = self.generator.recon(y, y_lengths, sid)
         for i in range(synthesized_waveform.shape[0]):
-            r = reference_waveform[i].sum(dim=0, keepdim=True).detach().cpu()
-            f = synthesized_waveform[i].sum(dim=0, keepdim=True).detach().cpu()
+            ref = reference_waveform[i].sum(dim=0, keepdim=True).detach().cpu()
+            syn = synthesized_waveform[i].sum(dim=0, keepdim=True).detach().cpu()
+            rec = reconstructed_waveform[i].sum(dim=0, keepdim=True).detach().cpu()
             self.logger.experiment.add_audio(
                 f"synthesized waveform/{bid}_{i}",
-                f,
+                syn,
+                self.current_epoch,
+                sample_rate=self.generator.sample_rate,
+            )
+            self.logger.experiment.add_audio(
+                f"reconstructed waveform/{bid}_{i}",
+                rec,
                 self.current_epoch,
                 sample_rate=self.generator.sample_rate,
             )
             self.logger.experiment.add_audio(
                 f"reference waveform/{bid}_{i}",
-                r,
+                ref,
                 self.current_epoch,
                 sample_rate=self.generator.sample_rate,
             )

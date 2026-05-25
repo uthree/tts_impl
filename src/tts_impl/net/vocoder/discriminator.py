@@ -1,5 +1,6 @@
 # HiFi-GAN Discriminator from https://arxiv.org/abs/2010.05646
 import torch
+from torch import Tensor
 from torch import nn as nn
 from torch.nn import functional as F
 from torch.nn.utils import spectral_norm
@@ -27,9 +28,11 @@ class DiscriminatorP(nn.Module):
         channels_max: int = 1024,
         channels_mul: int = 4,
         num_layers: int = 4,
+        n_speakers: int = 0,
     ):
         super().__init__()
         self.period = period
+        self.n_speakers = n_speakers
         norm_f = weight_norm if not use_spectral_norm else spectral_norm
         self.convs = nn.ModuleList()
         self.convs.append(
@@ -59,12 +62,18 @@ class DiscriminatorP(nn.Module):
                 )
             )
             c = c_n
-        self.conv_post = norm_f(nn.Conv2d(c, 1, (3, 1), 1, (1, 0)))
+        if n_speakers > 0:
+            self.speaker_embedding = nn.Embedding(n_speakers, c)
+        else:
+            self.conv_post = norm_f(nn.Conv2d(c, 1, (3, 1), 1, (1, 0)))
 
-    def forward(self, x: torch.Tensor) -> tuple[torch.Tensor, list[torch.Tensor]]:
+    def forward(
+        self, x: torch.Tensor, sid: torch.Tensor | None = None
+    ) -> tuple[torch.Tensor, list[torch.Tensor]]:
         """
         args:
             x: [batch_size, 1, time]
+            sid: [batch_size]
         outputs:
             x: [batch_size, 1, time]
             fmap: [batch_size, channels, period, time]
@@ -83,16 +92,22 @@ class DiscriminatorP(nn.Module):
             x = l(x)
             x = F.leaky_relu(x, LRELU_SLOPE, inplace=True)
             fmap.append(x)
-        x = self.conv_post(x)
-        # fmap.append(x)
+        if sid is not None and self.n_speakers > 0:
+            y = F.normalize(self.speaker_embedding(sid), dim=1)
+            x = (x * y[:, :, None, None]).sum(dim=1, keepdim=True)
+        else:
+            x = self.conv_post(x)
         x = torch.flatten(x, 1, -1)
 
         return x, fmap
 
 
 class DiscriminatorS(nn.Module):
-    def __init__(self, scale: int = 1, use_spectral_norm: bool = False):
+    def __init__(
+        self, scale: int = 1, use_spectral_norm: bool = False, n_speakers: int = 0
+    ):
         super().__init__()
+        self.n_speakers = n_speakers
         if scale == 1:
             self.pool = nn.Identity()
         else:
@@ -110,12 +125,18 @@ class DiscriminatorS(nn.Module):
                 norm_f(nn.Conv1d(1024, 1024, 5, 1, padding=2)),
             ]
         )
-        self.conv_post = norm_f(nn.Conv1d(1024, 1, 3, 1, padding=1))
+        if n_speakers > 0:
+            self.speaker_embedding = nn.Embedding(n_speakers, 1024)
+        else:
+            self.conv_post = norm_f(nn.Conv1d(1024, 1, 3, 1, padding=1))
 
-    def forward(self, x: torch.Tensor) -> tuple[torch.Tensor, list[torch.Tensor]]:
+    def forward(
+        self, x: torch.Tensor, sid: Tensor | None = None
+    ) -> tuple[torch.Tensor, list[torch.Tensor]]:
         """
         args:
             x: [batch_size, 1, time]
+            sid: [batch_size]
         outputs:
             x: [batch_size, 1, time]
             fmap: [batch_size, channels, time]
@@ -126,8 +147,12 @@ class DiscriminatorS(nn.Module):
             x = l(x)
             x = F.leaky_relu(x, LRELU_SLOPE, inplace=True)
             fmap.append(x)
-        x = self.conv_post(x)
-        # fmap.append(x)
+        if sid is not None and self.n_speakers > 0:
+            y = F.normalize(self.speaker_embedding(sid), dim=1)
+            x = (x * y[:, :, None]).sum(dim=1, keepdim=True)
+        else:
+            x = self.conv_post(x)
+
         x = torch.flatten(x, 1, -1)
 
         return x, fmap
@@ -145,11 +170,13 @@ class CombinedDiscriminator(nn.Module, GanVocoderDiscriminator):
     def append(self, d):
         self.discriminators.append(d)
 
-    def forward(self, x: torch.Tensor) -> tuple[list[torch.Tensor], list[torch.Tensor]]:
+    def forward(
+        self, x: torch.Tensor, sid: Tensor | None = None
+    ) -> tuple[list[torch.Tensor], list[torch.Tensor]]:
         fmap = []
         logits = []
         for sd in self.discriminators:
-            l, f = sd(x)
+            l, f = sd(x, sid)
             if type(l) is list:
                 logits += l
             else:
@@ -170,6 +197,7 @@ class MultiPeriodDiscriminator(CombinedDiscriminator):
         channels_max: int = 1024,
         channels_mul: int = 4,
         num_layers: int = 4,
+        n_speakers: int = 0,
     ):
         super().__init__()
         self.discriminators = nn.ModuleList()
@@ -184,6 +212,7 @@ class MultiPeriodDiscriminator(CombinedDiscriminator):
                     channels_max,
                     channels_mul,
                     num_layers,
+                    n_speakers,
                 )
             )
 
@@ -207,10 +236,12 @@ class DiscriminatorR(nn.Module):
         use_spectral_norm: bool = False,
         log_scale: bool = False,
         pre_layernorm: bool = False,
+        n_speakers: int = 0,
     ):
         super().__init__()
         self.log_scale = log_scale
         self.pre_layernorm = pre_layernorm
+        self.n_speakers = n_speakers
 
         norm_f = (
             nn.utils.parametrizations.spectral_norm
@@ -226,7 +257,10 @@ class DiscriminatorR(nn.Module):
             self.convs.append(
                 norm_f(nn.Conv2d(channels, channels, (9, 3), (2, 1), (2, 1)))
             )
-        self.post = nn.Conv2d(channels, 1, 1)
+        if n_speakers > 0:
+            self.speaker_embedding = nn.Embedding(n_speakers, channels)
+        else:
+            self.post = nn.Conv2d(channels, 1, 1)
 
     def spectrogram(self, x):
         # spectrogram
@@ -248,7 +282,7 @@ class DiscriminatorR(nn.Module):
     def safe_log(self, x):
         return torch.log(F.relu(x.float(), inplace=True) + 1e-12)
 
-    def forward(self, x):
+    def forward(self, x, sid):
         x = self.spectrogram(x)
         x = x.unsqueeze(1)
         feats = [x]
@@ -256,8 +290,11 @@ class DiscriminatorR(nn.Module):
             x = l(x)
             F.leaky_relu(x, 0.1, inplace=True)
             feats.append(x)
-        logit = self.post(x)
-        # feats.append(x)
+        if sid is not None and self.n_speakers > 0:
+            y = F.normalize(self.speaker_embedding(sid), dim=1)
+            logit = (x * y[:, :, None, None]).sum(dim=1, keepdim=True)
+        else:
+            logit = self.post(x)
         return logit, feats
 
 
@@ -271,6 +308,7 @@ class MultiResolutionStftDiscriminator(CombinedDiscriminator):
         num_layers: int = 4,
         pre_layernorm: bool = False,
         log_scale: bool = False,
+        n_speakers: int = 0,
     ):
         super().__init__()
         for n, h in zip(n_fft, hop_size, strict=False):
@@ -282,6 +320,7 @@ class MultiResolutionStftDiscriminator(CombinedDiscriminator):
                     num_layers,
                     pre_layernorm=pre_layernorm,
                     log_scale=log_scale,
+                    n_speakers=n_speakers,
                 )
             )
 

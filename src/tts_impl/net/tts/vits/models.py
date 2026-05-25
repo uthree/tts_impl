@@ -566,3 +566,9 @@ class VitsGenerator(nn.Module):
         z_hat = self.flow(z_p, y_mask, g=g_tgt, reverse=True)
         o_hat = self.dec(z_hat * y_mask, g=g_tgt)
         return o_hat, y_mask, (z, z_p, z_hat)
+
+    def recon(self, y, y_lengths, sid):
+        g = self.emb_g(sid).unsqueeze(-1)
+        z, m_q, logs_q, y_mask = self.enc_q(y, y_lengths, g=g)
+        o = self.dec(z * y_mask, g=g)
+        return o

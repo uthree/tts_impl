@@ -11,5 +11,4 @@ from .tts import (
 from .vocoder import (
     GanVocoderDiscriminator,
     GanVocoderGenerator,
-    SanVocoderDiscriminator,
 )

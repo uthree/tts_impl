@@ -340,12 +340,32 @@ class MultiHeadAttention(nn.Module):
         k = self.conv_k(c)
         v = self.conv_v(c)
 
-        x, self.attn = self.attention(q, k, v, mask=attn_mask)
+        if self.window_size is None:
+            x, self.attn = self.attention(q, k, v, mask=attn_mask)
+        else:
+            x, self.attn = self.window_attention(q, k, v, mask=attn_mask)
 
         x = self.conv_o(x)
         return x
 
     def attention(self, query, key, value, mask=None):
+        b, d, t_s, t_t = (*key.size(), query.size(2))
+        query = query.view(b, self.n_heads, self.k_channels, t_t).transpose(2, 3)
+        key = key.view(b, self.n_heads, self.k_channels, t_s).transpose(2, 3)
+        value = value.view(b, self.n_heads, self.k_channels, t_s).transpose(2, 3)
+
+        if self.rotary_pos_emb:
+            query = self.rope_module(query)
+            key = self.rope_module(key)
+
+        output = F.scaled_dot_product_attention(query, key, value, attn_mask=mask)
+        output = (
+            output.transpose(2, 3).contiguous().view(b, d, t_t)
+        )  # [b, n_h, t_t, d_k] -> [b, d, t_t]
+        return output, None
+
+    def window_attention(self, query, key, value, mask=None):
+        # attention with window
         # reshape [b, d, t] -> [b, n_h, t, d_k]
         b, d, t_s, t_t = (*key.size(), query.size(2))
         query = query.view(b, self.n_heads, self.k_channels, t_t).transpose(2, 3)
@@ -353,22 +373,17 @@ class MultiHeadAttention(nn.Module):
         value = value.view(b, self.n_heads, self.k_channels, t_s).transpose(2, 3)
 
         if self.rotary_pos_emb:
-            assert t_s == t_t, (
-                "Rotary Positional Embeddings is only available for self-attention."
-            )
             query = self.rope_module(query)
             key = self.rope_module(key)
         scores = torch.matmul(query / math.sqrt(self.k_channels), key.transpose(-2, -1))
-        if self.window_size is not None:
-            assert t_s == t_t, (
-                "Relative attention is only available for self-attention."
-            )
-            key_relative_embeddings = self._get_relative_embeddings(self.emb_rel_k, t_s)
-            rel_logits = self._matmul_with_relative_keys(
-                query / math.sqrt(self.k_channels), key_relative_embeddings
-            )
-            scores_local = self._relative_position_to_absolute_position(rel_logits)
-            scores = scores + scores_local
+
+        assert t_s == t_t, "Relative attention is only available for self-attention."
+        key_relative_embeddings = self._get_relative_embeddings(self.emb_rel_k, t_s)
+        rel_logits = self._matmul_with_relative_keys(
+            query / math.sqrt(self.k_channels), key_relative_embeddings
+        )
+        scores_local = self._relative_position_to_absolute_position(rel_logits)
+        scores = scores + scores_local
         if self.proximal_bias:
             assert t_s == t_t, "Proximal bias is only available for self-attention."
             scores = scores + self._attention_bias_proximal(t_s).to(
@@ -389,14 +404,11 @@ class MultiHeadAttention(nn.Module):
         p_attn = F.softmax(scores, dim=-1)  # [b, n_h, t_t, t_s]
         p_attn = self.drop(p_attn)
         output = torch.matmul(p_attn, value)
-        if self.window_size is not None:
-            relative_weights = self._absolute_position_to_relative_position(p_attn)
-            value_relative_embeddings = self._get_relative_embeddings(
-                self.emb_rel_v, t_s
-            )
-            output = output + self._matmul_with_relative_values(
-                relative_weights, value_relative_embeddings
-            )
+        relative_weights = self._absolute_position_to_relative_position(p_attn)
+        value_relative_embeddings = self._get_relative_embeddings(self.emb_rel_v, t_s)
+        output = output + self._matmul_with_relative_values(
+            relative_weights, value_relative_embeddings
+        )
         output = (
             output.transpose(2, 3).contiguous().view(b, d, t_t)
         )  # [b, n_h, t_t, d_k] -> [b, d, t_t]
